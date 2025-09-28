@@ -1,0 +1,1148 @@
+/* ==========================================================================
+   RESPONSIVE STYLES - Mobile and Tablet Optimizations
+   ========================================================================== */
+
+/* Mobile-First Responsive Design
+   Breakpoints:
+   - 320px: Small mobile (iPhone SE, small Android)
+   - 375px: Medium mobile (iPhone 12/13, most Android)
+   - 414px: Large mobile (iPhone 12/13 Pro Max, large Android)
+   - 480px: Small tablet (iPad Mini portrait)
+   - 768px: Large tablet (iPad, small laptop)
+   - 1024px: Desktop (laptop, desktop)
+*/
+
+/* ==========================================================================
+   MOBILE STYLES (320px - 767px)
+   ========================================================================== */
+
+/* Base Mobile Styles - Maintain desktop structure with reduced sizing */
+@media (max-width: 767px) {
+  /* Typography adjustments - proportional reduction */
+  h1 { font-size: clamp(18px, 4.5vw, 24px); }
+  h2 { font-size: clamp(16px, 4vw, 20px); }
+  h3 { font-size: clamp(14px, 3.5vw, 18px); }
+  h4 { font-size: clamp(12px, 3vw, 16px); }
+  h5 { font-size: clamp(11px, 2.5vw, 14px); }
+  h6 { font-size: clamp(10px, 2vw, 12px); }
+  
+  /* Body text scaling */
+  body { font-size: clamp(13px, 3vw, 15px); }
+  
+  /* Container adjustments - maintain structure, reduce padding */
+  .container {
+    padding: 0 var(--spacing-sm);
+    max-width: 100%;
+  }
+  
+  .main-content {
+    padding: var(--spacing-sm);
+  }
+  
+  /* Grid adjustments - keep same structure, reduce gaps */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    gap: var(--spacing-sm);
+  }
+  
+  /* Spacing adjustments - proportional reduction */
+  .p-lg { padding: var(--spacing-sm); }
+  .p-xl { padding: var(--spacing-sm); }
+  .m-lg { margin: var(--spacing-sm); }
+  .m-xl { margin: var(--spacing-sm); }
+  
+  /* Navbar adjustments - maintain layout, reduce sizes */
+  .navbar-container {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .nav-brand {
+    font-size: var(--font-size-xl);
+    margin-left: -60px;
+  }
+  
+  .nav-links {
+    gap: var(--spacing-sm);
+  }
+  
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+  
+  /* Card adjustments - maintain structure, reduce padding */
+  .card {
+    padding: var(--spacing-sm);
+  }
+  
+  /* Button adjustments - maintain appearance, reduce size */
+  .btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    min-height: 40px;
+  }
+  
+  .btn-sm {
+    padding: var(--spacing-xs);
+    min-height: 36px;
+  }
+  
+  .btn-lg {
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: 44px;
+  }
+  
+  /* Form adjustments - maintain structure, reduce sizes */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    min-height: 40px;
+  }
+  
+  /* Match card adjustments - maintain layout, reduce spacing */
+  .match-card {
+    padding: var(--spacing-sm);
+  }
+  
+  .match-odds {
+    gap: var(--spacing-xs);
+  }
+  
+  .odd-button {
+    padding: var(--spacing-xs);
+    min-height: 40px;
+    font-size: var(--font-size-xs);
+  }
+  
+  /* Hero slider adjustments - maintain structure, reduce height */
+  .hero-slider {
+    height: 250px;
+    margin-bottom: var(--spacing-md);
+    width: 100vw;
+    margin-left: calc(-1 * var(--spacing-xs));
+    margin-right: calc(-1 * var(--spacing-xs));
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 15px;
+    gap: 8px;
+  }
+  
+  .dot {
+    width: 8px;
+    height: 8px;
+  }
+  
+  /* Reduce container margins for full-width content */
+  .container,
+  .main-content,
+  .page-content {
+    margin: 0;
+    padding: 0 var(--spacing-xs);
+  }
+  
+  .under-navbar {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-md);
+  }
+  
+  .hero-title {
+    font-size: clamp(16px, 4vw, 20px);
+  }
+  
+  .hero-description {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+  
+  /* Wheel adjustments - maintain appearance, reduce size */
+  .wheel-container {
+    padding: var(--spacing-md);
+  }
+  
+  .wheel {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .spin-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-base);
+    min-height: 44px;
+  }
+  
+  /* Admin dashboard adjustments - collapsible sidebar */
+  .admin-sidebar {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: -100%;
+    height: 100vh;
+    z-index: var(--z-modal);
+    transition: left var(--transition-base);
+    overflow-y: auto;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+  }
+  
+  .admin-sidebar.open {
+    left: 0;
+  }
+  
+  .admin-main-content {
+    padding: var(--spacing-xs);
+    margin-left: 0;
+    padding-top: calc(var(--spacing-sm) + 44px); /* Account for fixed toggle button */
+  }
+  
+  /* Modal adjustments - maintain structure, reduce padding */
+  .modal {
+    padding: var(--spacing-md);
+    margin: var(--spacing-sm);
+    width: calc(100% - var(--spacing-sm) * 2);
+  }
+}
+
+/* ==========================================================================
+   SMALL MOBILE STYLES (320px - 374px)
+   ========================================================================== */
+
+@media (max-width: 374px) {
+  /* Ultra-compact mobile - maintain structure, minimal sizing */
+  .navbar-container {
+    padding: var(--spacing-xs);
+    flex-direction: row; /* Keep horizontal layout */
+    gap: var(--spacing-xs);
+  }
+  
+  .nav-brand {
+    font-size: var(--font-size-lg);
+    margin-left: -30px;
+  }
+  
+  .nav-links {
+    gap: var(--spacing-xs);
+    flex-wrap: nowrap; /* Keep horizontal */
+  }
+  
+  .nav-link {
+    padding: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+  }
+  
+  .navbar-right {
+    gap: var(--spacing-xs);
+  }
+  
+  .user-section {
+    gap: var(--spacing-xs);
+  }
+  
+  .balance-display {
+    padding: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+  }
+  
+  /* Maintain grid structure, reduce gaps */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    gap: var(--spacing-xs);
+  }
+  
+  /* Match odds - keep 3-column layout, reduce spacing */
+  .match-odds {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-xs);
+  }
+  
+  /* Hero slider - maintain structure, minimal height */
+  .hero-slider {
+    height: 180px;
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 10px;
+    gap: 6px;
+  }
+  
+  .dot {
+    width: 6px;
+    height: 6px;
+  }
+  
+  /* Minimal margins for full-width content */
+  .container,
+  .main-content,
+  .page-content {
+    margin: 0;
+    padding: 0 var(--spacing-xs);
+  }
+  
+  .under-navbar {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-sm);
+  }
+  
+  .hero-title {
+    font-size: clamp(14px, 3.5vw, 18px);
+  }
+  
+  .hero-description {
+    font-size: clamp(11px, 2.5vw, 14px);
+  }
+  
+  /* Wheel - maintain circular appearance */
+  .wheel {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .spin-btn {
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    min-height: 40px;
+  }
+}
+
+/* ==========================================================================
+   MEDIUM MOBILE STYLES (375px - 413px)
+   ========================================================================== */
+
+@media (min-width: 375px) and (max-width: 413px) {
+  .navbar-container {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .nav-brand {
+    font-size: var(--font-size-xl);
+    margin-left: -40px;
+  }
+  
+  .nav-links {
+    gap: var(--spacing-sm);
+  }
+  
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+  
+  /* Maintain grid structure */
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .hero-slider {
+    height: 220px;
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 12px;
+    gap: 7px;
+  }
+  
+  .dot {
+    width: 7px;
+    height: 7px;
+  }
+  
+  /* Minimal margins for full-width content */
+  .container,
+  .main-content,
+  .page-content {
+    margin: 0;
+    padding: 0 var(--spacing-xs);
+  }
+  
+  .under-navbar {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-md);
+  }
+  
+  .hero-title {
+    font-size: clamp(16px, 4vw, 20px);
+  }
+  
+  .hero-description {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+  
+  .wheel {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* ==========================================================================
+   LARGE MOBILE STYLES (414px - 479px)
+   ========================================================================== */
+
+@media (min-width: 414px) and (max-width: 479px) {
+  .navbar-container {
+    padding: var(--spacing-sm) var(--spacing-lg);
+  }
+  
+  .nav-brand {
+    font-size: var(--font-size-xl);
+    margin-left: -50px;
+  }
+  
+  .nav-links {
+    gap: var(--spacing-md);
+  }
+  
+  /* Maintain desktop-like grid structure */
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .hero-slider {
+    height: 250px;
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 15px;
+    gap: 8px;
+  }
+  
+  .dot {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-md);
+  }
+  
+  .hero-title {
+    font-size: clamp(16px, 4vw, 20px);
+  }
+  
+  .hero-description {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+  
+  .wheel {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+/* ==========================================================================
+   SMALL TABLET STYLES (480px - 767px)
+   ========================================================================== */
+
+@media (min-width: 480px) and (max-width: 767px) {
+  .navbar-container {
+    padding: var(--spacing-sm) var(--spacing-lg);
+  }
+  
+  .nav-brand {
+    font-size: var(--font-size-2xl);
+    margin-left: -60px;
+  }
+  
+  .nav-links {
+    gap: var(--spacing-md);
+  }
+  
+  /* Maintain desktop grid structure */
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+  }
+  
+  /* Match odds - keep 3-column layout */
+  .match-odds {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .hero-slider {
+    height: 280px;
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 18px;
+    gap: 9px;
+  }
+  
+  .dot {
+    width: 9px;
+    height: 9px;
+  }
+  
+  /* Minimal margins for full-width content */
+  .container,
+  .main-content,
+  .page-content {
+    margin: 0;
+    padding: 0 var(--spacing-sm);
+  }
+  
+  .under-navbar {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-md);
+  }
+  
+  .hero-title {
+    font-size: clamp(16px, 4vw, 20px);
+  }
+  
+  .hero-description {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+  
+  .wheel {
+    width: 220px;
+    height: 220px;
+  }
+  
+  /* Admin sidebar - maintain desktop-like structure */
+  .admin-sidebar {
+    width: 240px;
+  }
+}
+
+/* ==========================================================================
+   TABLET STYLES (768px - 1023px)
+   ========================================================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet-specific adjustments - very close to desktop */
+  .container {
+    max-width: 100%;
+    padding: 0 var(--spacing-lg);
+  }
+  
+  .nav-brand {
+    margin-left: -80px;
+  }
+  
+  /* Maintain desktop grid structure */
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+  
+  .hero-slider {
+    height: 350px;
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 20px;
+    gap: 10px;
+  }
+  
+  .dot {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-md);
+  }
+  
+  .hero-title {
+    font-size: clamp(16px, 4vw, 20px);
+  }
+  
+  .hero-description {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+  
+  .wheel {
+    width: 250px;
+    height: 250px;
+  }
+  
+  /* Admin dashboard - maintain desktop structure */
+  .admin-sidebar {
+    width: 260px;
+  }
+  
+  .admin-main-content {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* ==========================================================================
+   LANDSCAPE ORIENTATION ADJUSTMENTS
+   ========================================================================== */
+
+@media (max-height: 600px) and (orientation: landscape) {
+  /* Maintain structure, reduce heights for landscape */
+  .hero-slider {
+    height: 150px;
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .slide-background img {
+    width: 100vw;
+    object-fit: cover;
+  }
+  
+  .slider-dots {
+    bottom: 10px;
+    gap: 6px;
+  }
+  
+  .dot {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .hero-content {
+    padding: var(--spacing-sm);
+  }
+  
+  .hero-title {
+    font-size: clamp(14px, 3.5vw, 18px);
+  }
+  
+  .hero-description {
+    font-size: clamp(12px, 3vw, 14px);
+  }
+  
+  .wheel-container {
+    padding: var(--spacing-md);
+  }
+  
+  .wheel {
+    width: 120px;
+    height: 120px;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .spin-btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* ==========================================================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ========================================================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Touch-friendly interactions - maintain appearance */
+  .btn,
+  .nav-link,
+  .odd-button,
+  .spin-btn {
+    min-height: 40px; /* Slightly reduced but still touch-friendly */
+  }
+  
+  /* Increase touch targets slightly */
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .form-input,
+  .form-select,
+  .form-textarea {
+    min-height: 40px;
+  }
+  
+  /* Keep hover effects but add active states for touch feedback */
+  .btn:active,
+  .nav-link:active,
+  .odd-button:active,
+  .spin-btn:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+/* ==========================================================================
+   HIGH DPI DISPLAY OPTIMIZATIONS
+   ========================================================================== */
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Ensure crisp rendering on high DPI displays */
+  .nav-brand,
+  .hero-title,
+  .match-teams {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Reduce animations for users with motion sensitivity */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .hero-slide {
+    transition: none;
+  }
+  
+  .wheel {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  /* High contrast mode support */
+  .btn-primary {
+    border: 2px solid var(--dark-bg);
+  }
+  
+  .card {
+    border-width: 2px;
+  }
+  
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+    border-width: 2px;
+  }
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+
+@media print {
+  .navbar,
+  .admin-sidebar,
+  .hero-slider,
+  .wheel-container,
+  .btn,
+  .nav-link {
+    display: none !important;
+  }
+  
+  .main-content,
+  .admin-main-content {
+    padding: 0;
+    margin: 0;
+  }
+  
+  .card,
+  .match-card {
+    border: 1px solid #000;
+    break-inside: avoid;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+/* ==========================================================================
+   UTILITY CLASSES FOR RESPONSIVE DESIGN
+   ========================================================================== */
+
+/* Full-width utilities for mobile */
+@media (max-width: 767px) {
+  .full-width-mobile {
+    width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  .break-out-mobile {
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+    width: 100vw !important;
+  }
+}
+
+/* Full-width utilities for tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .full-width-tablet {
+    width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  .break-out-tablet {
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+    width: 100vw !important;
+  }
+}
+
+/* Responsive text alignment */
+@media (max-width: 767px) {
+  .text-center-mobile { text-align: center; }
+  .text-left-mobile { text-align: left; }
+  .text-right-mobile { text-align: right; }
+}
+
+
+
+
+
+
+/* ==========================================================================
+   DESKTOP WHEEL OF FORTUNE RESPONSIVE STYLES
+   ========================================================================== */
+
+/* Desktop wheel responsive styles - only apply to 1025px+ */
+@media (min-width: 1025px) {
+  /* Wheel size variables for desktop */
+  :root {
+    --wheel-size: 300px;
+  }
+
+  /* Desktop wheel container sizing */
+  .wheel-container {
+    width: var(--wheel-size) !important;
+    height: var(--wheel-size) !important;
+  }
+
+  /* Desktop wheel refinements */
+  .wheel-of-fortune { 
+    max-width: 100% !important; 
+    padding: 20px !important; 
+  }
+  
+  .wheel-container { 
+    margin: 40px auto !important; 
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5) !important; 
+  }
+  
+  .wheel-pointer { 
+    width: 45px !important; 
+    height: 30px !important; 
+    top: 9% !important; 
+  }
+  
+  .wheel-segment span { 
+    font-size: 14px !important; 
+  }
+
+  /* Desktop wheel performance optimizations */
+  .wheel, 
+  .wheel-container { 
+    transform: translateZ(0); 
+    backface-visibility: hidden; 
+    -webkit-backface-visibility: hidden; 
+  }
+
+  /* Desktop wheel layout adjustments */
+  .wheel-of-fortune { 
+    display: block; 
+    gap: 20px; 
+    align-items: center; 
+  }
+
+  /* Desktop wheel container margins */
+  .wheel-container { 
+    margin: 40px auto !important; 
+  }
+  
+  .wheel-segment span { 
+    font-size: 14px !important; 
+  }
+
+  /* Desktop wheel shadows */
+  .wheel-container { 
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5) !important; 
+  }
+}
+
+/* Desktop landscape handling */
+@media (min-width: 1025px) and (max-height: 600px) and (orientation: landscape) {
+  .wheel-of-fortune { 
+    display: flex; 
+    gap: 20px; 
+    align-items: center; 
+  }
+  
+  .betting-controls { 
+    width: 45% !important; 
+    align-items: stretch !important; 
+  }
+}
+
+/* ==========================================================================
+   LIVE BETTING SCORE BUTTON SIZE OPTIMIZATION
+   ========================================================================== */
+
+/* Reduce live score button sizes for better interface */
+.live-score {
+  background: rgba(255, 68, 68, 0.2) !important;
+  color: #ffffff !important;
+  font-weight: bold !important;
+  font-size: 14px !important;        /* Reduced from 18px */
+  padding: 6px 12px !important;      /* Reduced from 8px 16px */
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 68, 68, 0.5) !important;
+  text-align: center !important;
+  min-width: 50px !important;        /* Reduced from 60px */
+  height: 24px !important;           /* Set fixed height */
+  line-height: 1 !important;         /* Control vertical text alignment */
+  max-width: 80px !important;        /* Set maximum width */
+  box-sizing: border-box !important; /* Include padding in width calculation */
+}
+
+/* Mobile responsive adjustments for live score buttons */
+@media (max-width: 768px) {
+  .live-score {
+    font-size: 12px !important;      /* Further reduced for mobile */
+    padding: 4px 8px !important;     /* Smaller padding for mobile */
+    min-width: 40px !important;      /* Smaller width for mobile */
+    height: 20px !important;         /* Smaller height for mobile */
+  }
+}
+
+/* Ultra small screens */
+@media (max-width: 480px) {
+  .live-score {
+    font-size: 11px !important;      /* Even smaller for very small screens */
+    padding: 3px 6px !important;     /* Minimal padding */
+    min-width: 35px !important;      /* Minimal width */
+    height: 18px !important;         /* Minimal height */
+  }
+}
+
+/* ==========================================================================
+   LIVE BETTING ODDS HEADER ALIGNMENT
+   ========================================================================== */
+
+/* Align odds headers with their respective odds buttons */
+.live-league-header {
+  display: grid !important;
+  grid-template-columns: 1fr auto auto auto !important; /* League title + odds headers */
+  gap: 16px !important;
+  align-items: center !important;
+  padding: 16px !important;
+}
+
+.live-league-header .league-title {
+  grid-column: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.live-league-header .odds-header {
+  grid-column: auto !important;
+  min-width: 60px !important;
+  text-align: center !important;
+  padding: 8px 12px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  margin-left: -16px !important; /* Move headers further left for perfect alignment */
+}
+
+/* Ensure match cards align with the headers */
+.league-matches .match-row {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important; /* Actions + Teams + Score+Odds */
+  gap: 16px !important;
+  align-items: center !important;
+}
+
+.league-matches .match-actions {
+  grid-column: 1 !important;
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.league-matches .match-teams {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+}
+
+.league-matches .score-odds-line {
+  grid-column: 3 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  justify-content: flex-end !important;
+}
+
+.league-matches .live-score-container {
+  flex-shrink: 0 !important;
+}
+
+.league-matches .odds-buttons-group {
+  display: flex !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+.league-matches .additional-markets-container {
+  grid-column: 3 !important;
+  grid-row: 2 !important;
+  justify-self: end !important;
+  margin-top: 8px !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .live-league-header {
+    grid-template-columns: 1fr auto auto !important; /* League title + 2 odds headers */
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+  
+  .live-league-header .odds-header {
+    min-width: 50px !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+    margin-left: -12px !important; /* Move headers further left for tablet alignment */
+  }
+  
+  .league-matches .match-row {
+    grid-template-columns: auto 1fr auto !important; /* Actions + Teams + Score+Odds */
+    gap: 12px !important;
+  }
+  
+  .league-matches .score-odds-line {
+    gap: 8px !important;
+  }
+  
+  .league-matches .odds-buttons-group {
+    gap: 6px !important;
+  }
+  
+  .league-matches .additional-markets-container {
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+    justify-self: end !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* Ultra small screens */
+@media (max-width: 480px) {
+  .live-league-header {
+    grid-template-columns: 1fr auto !important; /* League title + 1 odds header */
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+  
+  .live-league-header .odds-header {
+    min-width: 40px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    margin-left: -8px !important; /* Move headers further left for mobile alignment */
+  }
+  
+  .league-matches .match-row {
+    grid-template-columns: 1fr auto !important; /* Teams + Score+Odds */
+    gap: 8px !important;
+  }
+  
+  .league-matches .match-actions {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    justify-self: start !important;
+    margin-top: 4px !important;
+  }
+  
+  .league-matches .score-odds-line {
+    gap: 6px !important;
+  }
+  
+  .league-matches .odds-buttons-group {
+    gap: 4px !important;
+  }
+}

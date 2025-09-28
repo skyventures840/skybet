@@ -1,0 +1,28 @@
+{
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "cssnano": "^6.0.1",
+    "postcss": "^8.4.32",
+    "postcss-cli": "^10.1.0",
+    "postcss-custom-properties": "^13.0.0",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "postcss-focus-visible": "^8.0.0",
+    "postcss-focus-within": "^5.0.0",
+    "postcss-import": "^15.1.0",
+    "postcss-logical": "^5.0.4",
+    "postcss-page-break": "^3.0.4",
+    "postcss-place": "^8.0.0",
+    "postcss-preset-env": "^9.3.0",
+    "postcss-replace": "^1.0.0",
+    "purgecss": "^5.0.0",
+    "uncss": "^0.17.3"
+  },
+  "scripts": {
+    "css:build": "postcss src/styles/main.css -o dist/styles.min.css",
+    "css:watch": "postcss src/styles/main.css -o dist/styles.min.css --watch",
+    "css:purge": "purgecss --css dist/styles.min.css --content src/**/*.js --output dist/styles.purged.css",
+    "css:minify": "cssnano dist/styles.purged.css dist/styles.final.css",
+    "css:optimize": "npm run css:build && npm run css:purge && npm run css:minify",
+    "css:analyze": "uncss src/**/*.js > css-analysis.txt"
+  }
+}
