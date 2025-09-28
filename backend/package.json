@@ -59,6 +59,7 @@
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
   },
+  "type": "commonjs",
   "repository": {
     "type": "git",
     "url": "https://github.com/your-org/platypus-backend.git"

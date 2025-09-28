@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
 const MultiBet = require('../models/MultiBet');
-const { validateMultiBet } = require('../utils/Validation');
+const { validateMultiBet } = require('../utils/Validation.js');
 
 // @route   POST /api/multibets
 // @desc    Create a new multi-bet
