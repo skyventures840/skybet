@@ -12,6 +12,8 @@ const MatchMarkets = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedMarket, setSelectedMarket] = useState('all');
+    // Track expanded/collapsed state per market key
+    const [expandedByKey, setExpandedByKey] = useState({});
 
     useEffect(() => {
         console.log('MatchMarkets useEffect triggered with matchId:', matchId);
@@ -59,32 +61,31 @@ const MatchMarkets = () => {
                             processedMarketKeys.add(market.key);
                             console.log(`Adding new market: ${market.key}`);
                             
-                            // Create clean market title and description
+                            // Create clean market title and remove verbose descriptions
                             let marketTitle = market.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                            let marketDescription = `Betting market for ${market.key.replace(/_/g, ' ')}`;
                             
                             // Special handling for common market types
                             if (market.key === 'h2h') {
                                 marketTitle = 'H2H';
-                                marketDescription = 'Head to Head - Pick the winner of the match';
+                                // Remove description text
                             } else if (market.key === 'totals') {
                                 marketTitle = 'Total Goals';
-                                marketDescription = 'Over/Under total goals in the match';
+                                // Remove description text
                             } else if (market.key === 'spreads') {
                                 marketTitle = 'Point Spread';
-                                marketDescription = 'Handicap betting with point spread';
+                                // Remove description text
                             } else if (market.key === 'double_chance') {
                                 marketTitle = 'Double Chance';
-                                marketDescription = 'Two-way betting on match outcomes';
+                                // Remove description text
                             } else if (market.key === 'additional') {
                                 marketTitle = 'Additional Markets';
-                                marketDescription = 'Special betting markets';
+                                // Remove description text
                             }
                             
                             markets.push({
                                 key: market.key,
                                 title: marketTitle,
-                                description: marketDescription,
+                                // description removed as per requirements
                                 outcomes: market.outcomes.map(outcome => ({
                                     name: outcome.name,
                                     price: outcome.price,
@@ -121,6 +122,25 @@ const MatchMarkets = () => {
             setLoading(false);
         }
     }, [matchId, location.search]);
+
+    // Initialize expanded state when match data is loaded
+    useEffect(() => {
+        if (match && match.markets && Array.isArray(match.markets)) {
+            // Only initialize once to preserve user toggles
+            if (Object.keys(expandedByKey).length === 0) {
+                const initial = {};
+                match.markets.forEach(m => {
+                    // Default expand all markets
+                    initial[m.key] = true;
+                });
+                setExpandedByKey(initial);
+            }
+        }
+    }, [match]);
+
+    const toggleMarket = (key) => {
+        setExpandedByKey(prev => ({ ...prev, [key]: !prev[key] }));
+    };
 
     // Transform API data to match the expected format for MatchMarkets
     // transformMatchData not used; keeping logic in fetch
@@ -245,32 +265,31 @@ const MatchMarkets = () => {
                                                 processedMarketKeys.add(market.key);
                                                 console.log(`Retry: Adding new market: ${market.key}`);
                                                 
-                                                // Create clean market title and description
+                                                // Create clean market title and remove verbose descriptions
                                                 let marketTitle = market.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                                let marketDescription = `Betting market for ${market.key.replace(/_/g, ' ')}`;
                                                 
                                                 // Special handling for common market types
                                                 if (market.key === 'h2h') {
                                                     marketTitle = 'H2H';
-                                                    marketDescription = 'Head to Head - Pick the winner of the match';
+                                                    // Remove description text
                                                 } else if (market.key === 'totals') {
                                                     marketTitle = 'Total Goals';
-                                                    marketDescription = 'Over/Under total goals in the match';
+                                                    // Remove description text
                                                 } else if (market.key === 'spreads') {
                                                     marketTitle = 'Point Spread';
-                                                    marketDescription = 'Handicap betting with point spread';
+                                                    // Remove description text
                                                 } else if (market.key === 'double_chance') {
                                                     marketTitle = 'Double Chance';
-                                                    marketDescription = 'Two-way betting on match outcomes';
+                                                    // Remove description text
                                                 } else if (market.key === 'additional') {
                                                     marketTitle = 'Additional Markets';
-                                                    marketDescription = 'Special betting markets';
+                                                    // Remove description text
                                                 }
                                                 
                                                 markets.push({
                                                     key: market.key,
                                                     title: marketTitle,
-                                                    description: marketDescription,
+                                                    // description removed as per requirements
                                                     outcomes: market.outcomes.map(outcome => ({
                                                         name: outcome.name,
                                                         price: outcome.price,
@@ -388,13 +407,40 @@ const MatchMarkets = () => {
                     }
                     
                     return (
-                        <div key={market.key} className="market-card">
-                            <div className="market-header">
-                                <h3>{market.title}</h3>
-                                <p className="market-description">{market.description}</p>
-                            </div>
+                        <div key={market.key} className={`market-card ${expandedByKey[market.key] ? 'expanded' : 'collapsed'}`}>
+                            <button
+                                className="market-header"
+                                onClick={() => toggleMarket(market.key)}
+                                aria-expanded={!!expandedByKey[market.key]}
+                                aria-controls={`outcomes-${market.key}`}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    width: '100%',
+                                    border: 'none',
+                                    padding: '8px 0',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <h3 style={{ margin: 0 }}>{market.title}</h3>
+                                <span
+                                    className="market-chevron"
+                                    style={{
+                                        display: 'inline-block',
+                                        transition: 'transform 0.2s ease',
+                                        transform: expandedByKey[market.key] ? 'rotate(90deg)' : 'rotate(0deg)'
+                                    }}
+                                >
+                                    ▸
+                                </span>
+                            </button>
                             
-                            <div className="market-outcomes">
+                            <div
+                                id={`outcomes-${market.key}`}
+                                className="market-outcomes"
+                                style={{ display: expandedByKey[market.key] ? 'grid' : 'none' }}
+                            >
                                 {validOutcomes.map((outcome, index) => (
                                     <button
                                         key={index}

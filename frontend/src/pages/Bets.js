@@ -9,11 +9,14 @@ const Bets = () => {
   const [stats, setStats] = useState({
     activeBets: 0,
     totalBets: 0,
-    winRate: 0
+    winRate: 0,
+    wonBets: 0,
+    lostBets: 0
   });
 
   useEffect(() => {
     fetchBetHistory();
+    fetchBetStats();
   }, []);
 
   // Add sample data for testing if no bets exist
@@ -79,22 +82,9 @@ const Bets = () => {
         console.log('Bet history data:', response.data);
         const bets = response.data.bets || [];
         setBetHistory(bets);
-        
-        // Calculate stats
-        const activeBets = bets.filter(bet => bet.status === 'pending').length;
-        const totalBets = bets.length;
-        const wonBets = bets.filter(bet => bet.status === 'won').length;
-        const winRate = totalBets > 0 ? Math.round((wonBets / totalBets) * 100) : 0;
-        
-        setStats({
-          activeBets,
-          totalBets,
-          winRate
-        });
       } else {
         console.log('No response data received');
         setBetHistory([]);
-        setStats({ activeBets: 0, totalBets: 0, winRate: 0 });
       }
     } catch (err) {
       console.error('Failed to fetch bet history:', err);
@@ -105,39 +95,34 @@ const Bets = () => {
       });
       setError('Failed to load bet history.');
       setBetHistory([]);
-      setStats({ activeBets: 0, totalBets: 0, winRate: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'won':
-        return '#4caf50';
-      case 'lost':
-        return '#f44336';
-      case 'pending':
-        return '#ff9800';
-      case 'void':
-        return '#9e9e9e';
-      default:
-        return '#666';
+  const fetchBetStats = async () => {
+    try {
+      console.log('Fetching bet stats summary...');
+      const response = await apiService.getBetStatsSummary();
+      console.log('Bet stats API response:', response);
+      if (response && response.data) {
+        const summary = response.data;
+        const activeBets = summary.pendingBets ?? 0;
+        const totalBets = summary.totalBets ?? 0;
+        const winRate = summary.winRate != null ? parseFloat(summary.winRate) : 0;
+        const wonBets = summary.wonBets ?? 0;
+        const lostBets = summary.lostBets ?? 0;
+        setStats({ activeBets, totalBets, winRate, wonBets, lostBets });
+      } else {
+        setStats({ activeBets: 0, totalBets: 0, winRate: 0, wonBets: 0, lostBets: 0 });
+      }
+    } catch (err) {
+      console.error('Failed to fetch bet stats summary:', err);
+      setStats({ activeBets: 0, totalBets: 0, winRate: 0, wonBets: 0, lostBets: 0 });
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'won':
-        return <span className="status-icon won">✓</span>;
-      case 'lost':
-        return <span className="status-icon lost">✗</span>;
-      case 'pending':
-        return null; // No icon for pending
-      default:
-        return null;
-    }
-  };
+  // Removed legacy status helpers (color/icon) since redesigned UI no longer uses them
 
   const toggleBetExpansion = (betId) => {
     const newExpandedBets = new Set(expandedBets);
@@ -229,10 +214,10 @@ const Bets = () => {
             <div className="bet-history-header">
               <h2>Bet History</h2>
               <div className="bet-history-stats">
-                <span className="stat-item">Total: {betHistory.length}</span>
-                <span className="stat-item">Pending: {betHistory.filter(bet => bet.status === 'pending').length}</span>
-                <span className="stat-item">Won: {betHistory.filter(bet => bet.status === 'won').length}</span>
-                <span className="stat-item">Lost: {betHistory.filter(bet => bet.status === 'lost').length}</span>
+                <span className="stat-item">Total: {stats.totalBets}</span>
+                <span className="stat-item">Pending: {stats.activeBets}</span>
+                <span className="stat-item">Won: {stats.wonBets}</span>
+                <span className="stat-item">Lost: {stats.lostBets}</span>
               </div>
             </div>
             
@@ -243,6 +228,14 @@ const Bets = () => {
                 
                 // For testing - create sample matches if none exist
                 let displayMatches = bet.matches || [];
+                // Normalize match status casing and shape for consistent rendering
+                const normalizeStatus = (s) => {
+                  if (!s) return 'pending';
+                  const lower = String(s).toLowerCase();
+                  if (lower === 'win') return 'won';
+                  if (lower === 'loss') return 'lost';
+                  return lower; // pending, won, lost, void
+                };
                 if (isMultibet && displayMatches.length === 0) {
                   // Parse matches from selection string for legacy bets
                   if (bet.selection && bet.selection.includes(';')) {
@@ -284,94 +277,113 @@ const Bets = () => {
                   }];
                 }
                 
+                // Normalize statuses for counting
+                displayMatches = displayMatches.map(m => ({
+                  ...m,
+                  status: normalizeStatus(m.status),
+                  outcome: m.outcome || m.result?.finalOutcome || null
+                }));
+
+                const wonCount = displayMatches.filter(m => normalizeStatus(m.status) === 'won').length;
+                const lostCount = displayMatches.filter(m => normalizeStatus(m.status) === 'lost').length;
+                const totalCount = displayMatches.length || 1;
+
+                const getMatchType = (match) => {
+                  // Default to 1x2 if selection is typical, else use bet market
+                  const sel = String(match.selection || '').toUpperCase();
+                  if (['1', 'X', '2'].includes(sel)) return '1x2';
+                  return bet.market || 'Market';
+                };
+
+                const getFtResult = (match) => {
+                  // Prefer structured result scores if present
+                  if (match.result && (match.result.homeScore != null || match.result.awayScore != null)) {
+                    const hs = match.result.homeScore ?? '-';
+                    const as = match.result.awayScore ?? '-';
+                    return `${hs}-${as}`;
+                  }
+                  // Fallbacks
+                  if (match.finalScore) return match.finalScore;
+                  if (match.outcome && ['1','X','2'].includes(String(match.outcome))) return match.outcome;
+                  return normalizeStatus(match.status) === 'pending' ? '—' : (match.outcome || match.status || '—');
+                };
+
                 return (
-                  <div key={bet.id} className={`bet-card ${bet.status} ${isExpanded ? 'expanded' : ''}`}>
-                    {/* Bet Summary - Always Visible */}
-                    <div 
-                      className="bet-summary"
+                  <div key={bet.id} className={`bet-card ${bet.status} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+                    {/* Collapsed Summary */}
+                    <div
+                      className="bet-summary-collapsed"
                       onClick={() => toggleBetExpansion(bet.id)}
                     >
-                      <div className="bet-info-left">
-                        <div className="bet-id">#{bet.id?.slice(-6) || 'N/A'}</div>
-                        <div className="bet-date">{formatDate(bet.createdAt)}</div>
-                        {bet.bonus && <span className="bonus-tag">bonus</span>}
+                      <div className="bet-summary-info">
+                        <div className="bet-summary-title">#{bet.id?.slice(-6) || 'N/A'} • {formatDate(bet.createdAt)}</div>
+                        <div className="bet-summary-meta">{isMultibet ? `${displayMatches.length} events • ${bet.market || 'Parlay'}` : `${bet.market || 'Single'} bet`}</div>
                       </div>
-                      
-                      <div className="bet-info-right">
-                        <div className="bet-amount">${formatAmount(bet.stake)}</div>
-                        <div className="bet-status-badge" style={{ color: getStatusColor(bet.status) }}>
-                          {bet.status.toUpperCase()}
-                        </div>
+                      <div className="bet-summary-amounts">
+                        <span className="bet-summary-stake">${formatAmount(bet.stake)}</span>
+                        <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
                       </div>
-                      
-                      <div className="bet-expand-icon">
-                        <span className={`expand-arrow ${isExpanded ? 'expanded' : ''}`}>▼</span>
-                      </div>
+                      <button className={`bet-expand-btn ${isExpanded ? 'expanded' : ''}`} aria-label="Expand bet">
+                        ▼
+                      </button>
                     </div>
-                    
+
                     {/* Expanded Content */}
                     {isExpanded && (
-                      <div className="bet-details">
-                        <div className="bet-overview">
-                          <div className="bet-summary-info">
-                            <div className="bet-stake">
-                              <span className="label">Amount:</span>
-                              <span className="value">${formatAmount(bet.stake)}</span>
-                            </div>
-                            <div className="bet-payout">
-                              <span className="label">Possible Payout:</span>
-                              <span className="value">${formatAmount(bet.potentialWin)}</span>
-                            </div>
-                            <div className="bet-odds">
-                              <span className="label">Combined Odds:</span>
-                              <span className="value">{formatOdds(bet.odds)}</span>
-                            </div>
-                            <div className="bet-results-summary">
-                              <span className="label">Won/Lost/Total:</span>
-                              <span className="value">
-                                {displayMatches.length > 0 ? 
-                                  `${displayMatches.filter(m => m.status === 'won').length}/${displayMatches.filter(m => m.status === 'lost').length}/${displayMatches.length}` :
-                                  '1/0/1'
-                                }
-                              </span>
-                            </div>
+                      <div className="betslip-match-details">
+                        {/* Header summary like the screenshot */}
+                        <div className="betslip-header-expanded">
+                          <div className="betslip-header-item">
+                            <span className="betslip-header-label">Amount</span>
+                            <span className="betslip-header-value">${formatAmount(bet.stake)}</span>
+                          </div>
+                          <div className="betslip-header-item">
+                            <span className="betslip-header-label">Possible Payout</span>
+                            <span className="betslip-header-value underlined">${formatAmount(bet.potentialWin)}</span>
+                          </div>
+                          <div className="betslip-header-item">
+                            <span className="betslip-header-label">Won/Lost/Total</span>
+                            <span className="betslip-header-value won-lost">{wonCount}/{lostCount}/{totalCount}</span>
                           </div>
                         </div>
-                        
-                        {/* Individual Match Details Table */}
-                        <div className="bet-matches-table">
-                          <div className="matches-table-header">
-                            <div className="table-col-match">Match</div>
-                            <div className="table-col-selection">Selection</div>
-                            <div className="table-col-odds">Odds</div>
-                            <div className="table-col-result">Result</div>
-                          </div>
-                          
-                          <div className="matches-table-body">
+
+                        {/* Match table redesigned to mirror attachment */}
+                        <table className="betslip-match-table">
+                          <thead>
+                            <tr>
+                              <th>Match</th>
+                              <th>Type</th>
+                              <th>Pick</th>
+                              <th>FT Results</th>
+                              <th>Outcome</th>
+                            </tr>
+                          </thead>
+                          <tbody>
                             {displayMatches.map((match, index) => (
-                                <div key={index} className="match-table-row">
-                                  <div className="table-col-match">
-                                    <div className="match-teams">
-                                      {match.homeTeam} vs {match.awayTeam}
-                                    </div>
+                              <tr key={index}>
+                                <td className="match-name">
+                                  <div className="match-name-stack">
+                                    <span className="home-team">{match.homeTeam}</span>
+                                    <span className="vs">vs</span>
+                                    <span className="away-team">{match.awayTeam}</span>
                                   </div>
-                                  <div className="table-col-selection">
-                                    <span className="selection-value">{match.selection}</span>
-                                  </div>
-                                  <div className="table-col-odds">
-                                    <span className="odds-value">{formatOdds(match.odds)}</span>
-                                  </div>
-                                  <div className="table-col-result">
-                                    <div className="result-container">
-                                      {getStatusIcon(match.status)}
-                                      <span className="result-value">{match.outcome || match.status}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
-                            }
-                          </div>
-                        </div>
+                                </td>
+                                <td>{getMatchType(match)}</td>
+                                <td className="selection">
+                                  {match.homeTeam && match.awayTeam ? (
+                                    <>
+                                      {match.selection} ({formatOdds(match.odds)})
+                                    </>
+                                  ) : (match.selection)}
+                                </td>
+                                <td className="odds">{getFtResult(match)}</td>
+                                <td className={`result ${normalizeStatus(match.status) === 'lost' ? 'lost' : ''}`}>
+                                  {normalizeStatus(match.status) === 'won' ? 'Won' : normalizeStatus(match.status) === 'lost' ? 'Lost' : normalizeStatus(match.status) === 'void' ? 'Void' : 'Pending'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>

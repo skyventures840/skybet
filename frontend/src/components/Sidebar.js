@@ -447,6 +447,20 @@ const Sidebar = ({ closeSidebar }) => {
     sport.subItems?.some(sub => sub.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Deduplicate sports by name to avoid duplicate React keys (e.g., MMA, Boxing, Cricket)
+  const uniqueSports = (() => {
+    const seen = new Set();
+    const result = [];
+    for (const s of filteredSports) {
+      const key = s.name.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(s);
+      }
+    }
+    return result;
+  })();
+
   return (
     <div className="sidebar">
       {/* Navigation Links Section */}
@@ -548,8 +562,8 @@ const Sidebar = ({ closeSidebar }) => {
         
         {!sportsSectionHidden && (
           <div className="sports-list">
-            {filteredSports.map((sport) => (
-              <div key={sport.name} className="sport-item">
+            {uniqueSports.map((sport, idx) => (
+              <div key={`${sport.name}-${idx}`} className="sport-item">
                 <div 
                   className="sport-header"
                   onClick={() => {
@@ -577,9 +591,9 @@ const Sidebar = ({ closeSidebar }) => {
                 
                 {sport.isExpandable && expandedSports[sport.name] && (
                   <div className="subcategories">
-                    {sport.subItems.slice(0, showAllSubcategories[sport.name] ? undefined : 5).map((subItem) => (
+                    {sport.subItems.slice(0, showAllSubcategories[sport.name] ? undefined : 5).map((subItem, subIdx) => (
                       <Link
-                        key={subItem.name}
+                        key={`${subItem.name}-${subIdx}`}
                         to={subItem.path}
                         className={`subcategory-item ${location.pathname === subItem.path ? 'active' : ''}`}
                         onClick={(e) => {

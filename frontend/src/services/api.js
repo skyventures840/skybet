@@ -13,6 +13,32 @@ const api = axios.create({
   },
 });
 
+// Simple in-memory cache with TTL to speed up initial loads
+const responseCache = {
+  store: new Map(),
+  get(key) {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.response;
+  },
+  set(key, response, ttl) {
+    this.store.set(key, { response, ttl, timestamp: Date.now() });
+  }
+};
+
+async function cachedGet(path, ttlMs) {
+  const cached = responseCache.get(path);
+  if (cached) return cached;
+  const response = await api.get(path);
+  responseCache.set(path, response, ttlMs);
+  return response;
+}
+
 // Request interceptor to add the auth token to headers
 api.interceptors.request.use(
   (config) => {
@@ -93,8 +119,10 @@ const apiService = {
 
   // Matches - Updated to use correct endpoints
   getAllMatches: () => api.get('/matches/all'),
-  getMatches: () => api.get('/matches'), 
-  getPopularMatches: () => api.get('/matches/popular/trending'),
+  // Cache main matches list briefly to avoid spinner and reflows
+  getMatches: () => cachedGet('/matches', 30000),
+  // Cache popular matches briefly
+  getPopularMatches: () => cachedGet('/matches/popular/trending', 30000),
   getMatchById: (id) => api.get(`/matches/${id}`),
   getLiveMatches: () => api.get('/matches/live/real-time'),
   addMatch: (matchData) => api.post('/admin/matches', matchData),
@@ -104,6 +132,7 @@ const apiService = {
   // Bets
   placeBet: (betData) => api.post('/bets', betData),
   getUserBets: () => api.get('/bets/my-bets'),
+  getBetStatsSummary: () => api.get('/bets/stats/summary'),
 
   // Sports
   getAllSports: () => api.get('/sports'),
@@ -121,7 +150,8 @@ const apiService = {
     return api.put(`/users/${userId}/unblock`);
   },
   // Hero Section
-  getHeroSlides: () => api.get('/admin/hero'),
+  // Cache hero slides longer since they change infrequently
+  getHeroSlides: () => cachedGet('/admin/hero', 300000),
   createHeroSlide: (data) => api.post('/admin/hero', data),
   updateHeroSlide: (id, data) => api.put(`/admin/hero/${id}`, data),
   deleteHeroSlide: (id) => api.delete(`/admin/hero/${id}`),

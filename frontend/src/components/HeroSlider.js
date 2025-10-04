@@ -42,8 +42,9 @@ const HeroSlider = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
+  // While loading, render an empty hero container to avoid layout shift (no loading text)
   if (loading) {
-    return <div className="hero-slider"><div className="slider-container"><p>Loading hero section...</p></div></div>;
+    return <div className="hero-slider"><div className="slider-container"></div></div>;
   }
   if (error) {
     return <div className="hero-slider"><div className="slider-container"><p>{error}</p></div></div>;

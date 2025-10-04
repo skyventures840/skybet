@@ -28,9 +28,11 @@ module.exports = [
         navigator: "readonly",
         performance: "readonly",
         URL: "readonly",
+        URLSearchParams: "readonly",
         DOMException: "readonly",
         AbortController: "readonly",
         MessageChannel: "readonly",
+        WebSocket: "readonly",
         queueMicrotask: "readonly",
         alert: "readonly",
         // React globals
@@ -68,4 +70,4 @@ module.exports = [
       }
     }
   }
-]; 
+];

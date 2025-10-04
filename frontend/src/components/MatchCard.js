@@ -463,7 +463,7 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
                     {/* Additional match section controls */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
                       <div style={{ color: '#ccc', fontSize: 12 }}>
-                        {additionalMarketsTotal > 0 ? `Additional markets available: ${additionalMarketsTotal}` : 'No additional markets'}
+                        {additionalMarketsTotal > 0 ? `+${additionalMarketsTotal}` : ''}
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button

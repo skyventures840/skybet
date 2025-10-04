@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
 
-const PopularMatches = ({ matches, loading = false }) => {
+const PopularMatches = ({ matches }) => {
   const dispatch = useDispatch();
   const scrollRef = useRef(null);
   const [displayedMatches, setDisplayedMatches] = useState([]);
@@ -52,8 +52,8 @@ const PopularMatches = ({ matches, loading = false }) => {
     }
   };
 
-  // Show loading skeleton if loading or transitioning
-  if (loading || isTransitioning) {
+  // Show skeleton only when transitioning; ignore parent loading flag to avoid loading text UX
+  if (isTransitioning) {
     return (
       <div className="popular-matches-section">
         <div className="popular-matches-box">

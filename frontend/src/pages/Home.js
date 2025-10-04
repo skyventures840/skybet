@@ -464,19 +464,7 @@ const Home = () => {
     console.log(`Subcategory "${subcategory}": ${matches.length} matches`);
   });
 
-  if (loading) {
-    return (
-      <div className="home-page">
-        <HeroSlider />
-        <div className="main-content">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading matches...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Do not gate initial render behind loading; show page immediately without loading text
 
   if (error) {
     return (
