@@ -7,10 +7,12 @@
 
 require('dotenv').config();
 
+// Allow either MONGODB_URI or MONGODB_EXTERNAL_URI to satisfy DB requirement
 const requiredEnvVars = [
-  'MONGODB_URI',
   'JWT_SECRET'
 ];
+
+const dbEnvVars = ['MONGODB_URI', 'MONGODB_EXTERNAL_URI'];
 
 const optionalEnvVars = [
   'NODE_ENV',
@@ -34,16 +36,26 @@ let hasErrors = false;
 
 // Check required environment variables
 console.log('📋 Required environment variables:');
+
+// DB requirement: at least one of the DB URI vars must be set
+const hasMongoPrimary = !!process.env.MONGODB_URI;
+const hasMongoExternal = !!process.env.MONGODB_EXTERNAL_URI;
+if (!hasMongoPrimary && !hasMongoExternal) {
+  console.log('❌ MONGODB_URI or MONGODB_EXTERNAL_URI: NOT SET');
+  hasErrors = true;
+} else {
+  const chosen = hasMongoPrimary ? 'MONGODB_URI' : 'MONGODB_EXTERNAL_URI';
+  console.log(`✅ ${chosen}: ***SET***`);
+}
+
+// JWT requirement
 requiredEnvVars.forEach(varName => {
   const value = process.env[varName];
   if (!value) {
     console.log(`❌ ${varName}: NOT SET`);
     hasErrors = true;
   } else {
-    // Hide sensitive values
-    const displayValue = ['JWT_SECRET', 'MONGODB_URI'].includes(varName) 
-      ? '***SET***' 
-      : value;
+    const displayValue = '***SET***';
     console.log(`✅ ${varName}: ${displayValue}`);
   }
 });
@@ -64,7 +76,7 @@ optionalEnvVars.forEach(varName => {
 console.log('\n🔧 Environment configuration:');
 console.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 console.log(`PORT: ${process.env.PORT || '10000'}`);
-console.log(`MongoDB URI configured: ${process.env.MONGODB_URI ? 'Yes' : 'No'}`);
+console.log(`MongoDB URI configured: ${hasMongoPrimary || hasMongoExternal ? 'Yes' : 'No'}`);
 
 if (hasErrors) {
   console.log('\n❌ Environment validation failed!');

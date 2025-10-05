@@ -196,8 +196,8 @@ const startCronJobs = () => {
   let isBroadcasting = false;
   let isCleaningUp = false;
 
-  // Fetch odds every 10 minutes (reduced frequency)
-  cron.schedule('*/10 * * * *', async () => {
+  // Fetch upcoming odds every 5 minutes (more frequent)
+  cron.schedule('*/5 * * * *', async () => {
     if (isOddsFetching) {
       logger.warn('Odds fetching already in progress, skipping...');
       return;
@@ -231,8 +231,8 @@ const startCronJobs = () => {
     }
   });
 
-  // Fetch live odds every 5 minutes (reduced frequency)
-  cron.schedule('*/5 * * * *', async () => {
+  // Fetch live odds every minute (near real-time)
+  cron.schedule('*/1 * * * *', async () => {
     if (isLiveOddsFetching) {
       logger.warn('Live odds fetching already in progress, skipping...');
       return;
@@ -250,8 +250,8 @@ const startCronJobs = () => {
     }
   });
 
-  // Update match statuses every 2 minutes (reduced frequency)
-  cron.schedule('*/2 * * * *', async () => {
+  // Update match statuses every minute (near real-time)
+  cron.schedule('*/1 * * * *', async () => {
     if (isStatusUpdating) {
       logger.warn('Status update already in progress, skipping...');
       return;
@@ -269,8 +269,8 @@ const startCronJobs = () => {
     }
   });
 
-  // Broadcast live matches update every 2 minutes (reduced frequency)
-  cron.schedule('*/2 * * * *', async () => {
+  // Broadcast live matches update every minute (near real-time)
+  cron.schedule('*/1 * * * *', async () => {
     if (isBroadcasting) {
       logger.warn('Broadcast already in progress, skipping...');
       return;

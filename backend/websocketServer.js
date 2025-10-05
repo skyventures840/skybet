@@ -12,6 +12,7 @@ class WebSocketServer {
     this.liveMatchesSubscribers = new Set(); // Set of clients subscribed to live matches
     
     this.setupWebSocketServer();
+    this.initializeChangeStreams();
   }
   
   setupWebSocketServer() {
@@ -20,6 +21,95 @@ class WebSocketServer {
     });
     
     console.log('WebSocket server started');
+  }
+  
+  // Initialize MongoDB change streams for real-time updates
+  initializeChangeStreams() {
+    // Odds change stream: push odds_change to relevant subscribers
+    try {
+      this.oddsChangeStream = Odds.watch([], { fullDocument: 'updateLookup' });
+      this.oddsChangeStream.on('change', async (change) => {
+        const doc = change.fullDocument;
+        if (!doc) return;
+        try {
+          const homeTeam = doc.home_team;
+          const awayTeam = doc.away_team;
+          const bookmakers = doc.bookmakers || [];
+
+          // Find the corresponding live match by team names
+          const match = await Match.findOne({ homeTeam, awayTeam, status: 'live' });
+          if (!match) return;
+
+          const newOdds = this.extractBasicOddsFromBookmakers(bookmakers, homeTeam, awayTeam);
+          if (newOdds && Object.keys(newOdds).length > 0) {
+            // Send odds change to match subscribers and live matches subscribers
+            this.broadcastOddsChange(match._id.toString(), newOdds);
+          }
+        } catch (err) {
+          console.error('Error processing odds change stream:', err);
+        }
+      });
+      console.log('Initialized Odds change stream');
+    } catch (err) {
+      console.warn('Odds change stream unavailable (is MongoDB a replica set?):', err && err.message ? err.message : err);
+    }
+
+    // Match change stream: push live list and results in near-real-time
+    try {
+      this.matchChangeStream = Match.watch([], { fullDocument: 'updateLookup' });
+      this.matchChangeStream.on('change', async (change) => {
+        const doc = change.fullDocument;
+        if (!doc) return;
+        try {
+          const op = change.operationType;
+          const updatedFields = change.updateDescription && change.updateDescription.updatedFields ? change.updateDescription.updatedFields : {};
+
+          // Broadcast result updates when scores change
+          const scoreChanged = 'homeScore' in updatedFields || 'awayScore' in updatedFields;
+          if (scoreChanged || op === 'insert') {
+            if (doc.homeScore !== null && doc.awayScore !== null) {
+              this.broadcastMatchResult(doc._id.toString(), {
+                homeScore: doc.homeScore,
+                awayScore: doc.awayScore,
+                score: `${doc.homeScore}-${doc.awayScore}`,
+              });
+            }
+          }
+
+          // Keep live matches list fresh for inserts or status transitions
+          const statusChanged = 'status' in updatedFields;
+          if (op === 'insert' || statusChanged || scoreChanged) {
+            await this.broadcastLiveMatchesUpdate();
+          }
+        } catch (err) {
+          console.error('Error processing match change stream:', err);
+        }
+      });
+      console.log('Initialized Match change stream');
+    } catch (err) {
+      console.warn('Match change stream unavailable (is MongoDB a replica set?):', err && err.message ? err.message : err);
+    }
+  }
+
+  // Extract basic 1X2 odds from bookmakers list
+  extractBasicOddsFromBookmakers(bookmakers, homeTeam, awayTeam) {
+    try {
+      if (!Array.isArray(bookmakers) || bookmakers.length === 0) return null;
+      const bookmakerWithH2H = bookmakers.find(bm => Array.isArray(bm.markets) && bm.markets.some(m => m.key === 'h2h'));
+      if (!bookmakerWithH2H) return null;
+      const h2hMarket = bookmakerWithH2H.markets.find(m => m.key === 'h2h');
+      if (!h2hMarket || !Array.isArray(h2hMarket.outcomes)) return null;
+      const odds = {};
+      h2hMarket.outcomes.forEach(outcome => {
+        if (outcome.name === homeTeam) odds['1'] = outcome.price;
+        else if (outcome.name === awayTeam) odds['2'] = outcome.price;
+        else if (outcome.name === 'Draw') odds['X'] = outcome.price;
+      });
+      return odds;
+    } catch (err) {
+      console.error('Error extracting basic odds:', err);
+      return null;
+    }
   }
   
   handleConnection(ws, req) {
@@ -502,7 +592,10 @@ class WebSocketServer {
       }
     };
     
+    // Targeted match subscribers
     this.broadcastToMatch(matchId, message);
+    // Also notify live matches subscribers to keep lists in sync
+    this.broadcastToLiveMatchesSubscribers(message);
   }
   
   // Broadcast live matches update
@@ -557,6 +650,17 @@ class WebSocketServer {
     console.log('Shutting down WebSocket server...');
     
     this.stopHeartbeat();
+    
+    try {
+      if (this.oddsChangeStream && typeof this.oddsChangeStream.close === 'function') {
+        this.oddsChangeStream.close();
+      }
+      if (this.matchChangeStream && typeof this.matchChangeStream.close === 'function') {
+        this.matchChangeStream.close();
+      }
+    } catch (err) {
+      console.warn('Error closing change streams:', err);
+    }
     
     this.wss.clients.forEach((ws) => {
       ws.close(1001, 'Server shutdown');
