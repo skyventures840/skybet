@@ -76,80 +76,60 @@ const Soccer = () => {
     setFilteredMatches(filtered);
   }, [matches, searchTerm, selectedDate]);
 
-  // Transform odds data to match frontend format
-  const transformOddsToMatches = (oddsData) => {
-    return oddsData
-      .filter(odds => odds.sport_key === 'soccer')
-      .map(odds => {
-        // Get the first bookmaker's markets
-        const bookmaker = odds.bookmakers?.[0];
-        if (!bookmaker || !bookmaker.markets || bookmaker.markets.length === 0) {
-          return null; // Skip matches with no bookmakers or markets
-        }
+  // Transform backend /api/matches response to frontend format
+  const transformMatchesResponse = (data) => {
+    if (!Array.isArray(data)) return [];
 
-        const h2hMarket = bookmaker.markets.find(market => market.key === 'h2h');
-        const totalsMarket = bookmaker.markets.find(market => market.key === 'totals');
-        
-        // Check if h2h market has valid outcomes
-        if (!h2hMarket || !h2hMarket.outcomes || h2hMarket.outcomes.length < 2) {
-          return null; // Skip matches with invalid h2h market
-        }
-        
-        const outcomes = h2hMarket.outcomes;
-        
-        // Create odds object only with valid data
-        const oddsObj = {
-          '1': outcomes[0]?.price || null,
-          '2': outcomes[1]?.price || null
-        };
+    const now = new Date();
+    return data
+      .filter(match => {
+        const sportKey = (match.sport || '').toLowerCase();
+        // Only soccer-like sports
+        const isSoccer = sportKey.includes('soccer');
+        // Only pre-match upcoming items
+        const start = new Date(match.startTime);
+        const isUpcoming = (match.status || 'upcoming') === 'upcoming' && start > now;
+        return isSoccer && isUpcoming;
+      })
+      .map(match => {
+        const oddsObj = match.odds || {};
+        const start = new Date(match.startTime);
 
-        // Add draw option for soccer if available
-        if (outcomes.length > 2) {
-          oddsObj['X'] = outcomes[1]?.price || null;
-          oddsObj['2'] = outcomes[2]?.price || null;
-        }
+        // Ensure basic odds are numbers when present
+        ['1','2','X','TM','TU','Total','1X','12','2X'].forEach(k => {
+          if (oddsObj && oddsObj[k] != null) {
+            const num = Number(oddsObj[k]);
+            oddsObj[k] = Number.isFinite(num) ? num : oddsObj[k];
+          }
+        });
 
-        // Add totals market if available and valid
-        if (totalsMarket && totalsMarket.outcomes && totalsMarket.outcomes.length >= 2) {
-          oddsObj['Total'] = totalsMarket.outcomes[0]?.point || null;
-          oddsObj['TM'] = totalsMarket.outcomes[0]?.price || null;
-          oddsObj['TU'] = totalsMarket.outcomes[1]?.price || null;
-        }
-
-        // Only return match if we have at least basic odds
-        if (!oddsObj['1'] || !oddsObj['2']) {
+        // Only return match if we have at least basic odds for 1 and 2
+        if (!(oddsObj['1'] > 0 && oddsObj['2'] > 0)) {
           return null;
         }
 
-
-
-        // Also count markets that might be available but not displayed in main odds
-        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] !== null).length;
-        const totalAvailableMarkets = bookmaker.markets.filter(market => 
-          market.outcomes && market.outcomes.length > 0 && 
-          market.outcomes.some(outcome => outcome.price > 0)
-        ).length;
-
-        // Calculate additional markets as total available minus displayed
-        const actualAdditionalMarkets = Math.max(0, totalAvailableMarkets - displayedOddsCount);
+        const additionalMarkets = Number(match.additionalMarkets || 0);
+        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] && oddsObj[key] > 0).length;
+        const additionalOddsCount = Math.max(0, additionalMarkets - displayedOddsCount);
 
         return {
-          id: odds.gameId,
-          league: odds.sport_title,
-          time: new Date(odds.commence_time).toLocaleString('en-US', {
+          id: match.id,
+          league: match.league || match.sport || 'Soccer',
+          time: start.toLocaleString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
             day: '2-digit',
             month: '2-digit'
           }),
-          startTime: new Date(odds.commence_time), // <-- add this line
-          homeTeam: odds.home_team,
-          awayTeam: odds.away_team,
+          startTime: start,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
           odds: oddsObj,
-          additionalOdds: actualAdditionalMarkets > 0 ? `+${actualAdditionalMarkets}` : null,
+          additionalOdds: additionalOddsCount > 0 ? `+${additionalOddsCount}` : null,
           sport: 'Soccer'
         };
-      }).filter(match => match !== null); // Remove null matches
+      })
+      .filter(Boolean);
   };
 
   const fetchMatches = async () => {
@@ -157,12 +137,12 @@ const Soccer = () => {
       setLoading(true);
       setError(null);
       
-      // Fetch odds data from API
+      // Fetch unified matches from API
       const response = await apiService.getMatches();
-      const oddsData = response.data.data || [];
-      
-      // Transform odds data to match frontend format
-      const soccerMatches = transformOddsToMatches(oddsData);
+      const apiMatches = response.data.matches || [];
+
+      // Transform to frontend format
+      const soccerMatches = transformMatchesResponse(apiMatches);
       setMatches(soccerMatches);
       
     } catch (err) {
@@ -219,6 +199,8 @@ const Soccer = () => {
 
   useEffect(() => {
     fetchMatches();
+    const interval = setInterval(fetchMatches, 30000); // refresh every 30s
+    return () => clearInterval(interval);
   }, []);
 
   // Group matches by subcategory
@@ -245,9 +227,24 @@ const Soccer = () => {
           <h1 className="sport-title">Soccer</h1>
           <p className="sport-subtitle">Bet on Premier League, Champions League and more</p>
         </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading soccer matches...</p>
+        <div className="matches-section">
+          <div className="section-header">
+            <h2 className="section-title">UPCOMING MATCHES</h2>
+            <div className="view-all-btn empty" style={{ opacity: 0.5 }}>Loading…</div>
+          </div>
+          <div className="matches-skeleton-grid">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <div key={idx} className="skeleton" style={{ padding: 16 }}>
+                <div className="skeleton-line" style={{ width: '60%', height: 16, marginBottom: 8 }}></div>
+                <div className="skeleton-line" style={{ width: '80%', height: 12, marginBottom: 12 }}></div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="skeleton-odds"></div>
+                  <div className="skeleton-odds"></div>
+                  <div className="skeleton-odds"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

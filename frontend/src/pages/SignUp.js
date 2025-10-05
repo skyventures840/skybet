@@ -36,7 +36,15 @@ const SignUp = () => {
     } catch (error) {
         console.error('Signup error:', error);
         if (error.response) {
-            setError(error.response.data.message || 'Server error occurred');
+            const data = error.response.data || {};
+            if (Array.isArray(data.errors) && data.errors.length) {
+                const messages = data.errors
+                  .map(e => e.msg || e.message || `${e.param}: invalid`)
+                  .filter(Boolean);
+                setError(messages.join('\n'));
+            } else {
+                setError(data.message || 'Server error occurred');
+            }
         } else if (error.request) {
             setError('No response from server. Please check your connection.');
         } else {

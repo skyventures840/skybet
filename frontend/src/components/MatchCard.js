@@ -107,6 +107,14 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
     };
 
     const addToBetslip = (betType, odds, matchInfo) => {
+        // Prevent adding bets for matches that have already started
+        const hasStart = !!matchInfo?.startTime;
+        const startDate = hasStart ? new Date(matchInfo.startTime) : null;
+        if (hasStart && startDate <= new Date()) {
+            console.warn('Cannot add started match to betslip:', matchInfo?.homeTeam, 'vs', matchInfo?.awayTeam);
+            return;
+        }
+
         const bet = {
             matchId: matchInfo.id || matchInfo._id, // Use id instead of _id for better compatibility
             match: `${matchInfo.homeTeam} vs ${matchInfo.awayTeam}`,

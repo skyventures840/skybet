@@ -2,7 +2,7 @@ const DISABLE_ODDS_LOCK = process.env.REACT_APP_DISABLE_ODDS_LOCK === 'true';
 
 export const RISK_THRESHOLDS = {
   // Minimum odds allowed (below this is risky): relax slightly to avoid over-locking
-  MIN_ODDS: 1.05,
+  MIN_ODDS: 1.11,
   
   MAX_ODDS: 50.0,
   
@@ -12,7 +12,7 @@ export const RISK_THRESHOLDS = {
   
   LIVE_TIME_THRESHOLD_MINUTES: 10,
   
-  OBVIOUS_WIN_THRESHOLD: 1.04,
+  OBVIOUS_WIN_THRESHOLD: 1.11,
   OBVIOUS_LOSS_THRESHOLD: 50.0,
 };
 
@@ -177,7 +177,7 @@ export const getRiskReasonText = (riskFactors) => {
   
   const reasonMap = {
     'odds_too_low': 'Odds too low',
-    'obvious_outcome': 'Odds too low (below 1.10)',
+    'obvious_outcome': 'Odds too low (below 1.11)',
     'live_match_obvious': 'Live match outcome obvious',
     'suspicious_draw_odds': 'Suspicious draw odds'
   };

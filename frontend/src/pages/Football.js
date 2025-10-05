@@ -87,6 +87,10 @@ const Football = () => {
       );
     }
 
+    // Hide past matches (only show upcoming)
+    const now = new Date();
+    filtered = filtered.filter(match => new Date(match.startTime) >= now);
+
     setFilteredMatches(filtered);
   }, [matches, searchTerm, selectedDate, selectedLeague]);
 

@@ -172,7 +172,11 @@ const Home = () => {
         return matchDate >= selectedDateObj && matchDate < nextDay;
       });
     }
-    
+
+    // Hide past matches (only upcoming)
+    const now = new Date();
+    filtered = filtered.filter(match => new Date(match.startTime) >= now);
+
     setFilteredMatches(filtered);
   }, [matches, searchTerm, selectedDate, selectedSidebarFilter, selectedSubcategory]);
 
@@ -278,12 +282,15 @@ const Home = () => {
       setMatches(transformedMatches);
       
       // Use the same data for popular matches (ensure no duplicates)
+      const now = new Date();
       const popularMatchesData = transformedMatches
         .filter(match => {
           // Count valid odds (greater than 0)
           const validOddsCount = Object.values(match.odds || {}).filter(odd => odd > 0).length;
           return validOddsCount >= 2;
         })
+        // Only upcoming
+        .filter(match => new Date(match.startTime) >= now)
         .slice(0, 6)
         .map(match => ({
           id: match.id || match._id,
@@ -353,7 +360,11 @@ const Home = () => {
       if (popularCacheRaw) {
         const popularCache = JSON.parse(popularCacheRaw);
         const popularData = popularCache?.data?.matches || [];
-        const transformedPopular = popularData.map(match => ({
+        const now = new Date();
+        const transformedPopular = popularData
+          // Only upcoming
+          .filter(match => new Date(match.startTime) >= now)
+          .map(match => ({
           id: match.id || match._id,
           league: match.league || '',
           subcategory: match.subcategory || '',
@@ -419,9 +430,13 @@ const Home = () => {
       
       const response = await apiService.getPopularMatches();
       const popularData = response.data.matches || [];
+      const now = new Date();
       
       // Transform and deduplicate popular matches
-      const transformedPopular = popularData.map(match => ({
+      const transformedPopular = popularData
+        // Only upcoming
+        .filter(match => new Date(match.startTime) >= now)
+        .map(match => ({
         id: match.id || match._id,
         league: match.league || '',
         subcategory: match.subcategory || '',

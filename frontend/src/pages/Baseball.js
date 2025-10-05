@@ -73,6 +73,10 @@ const Baseball = () => {
       });
     }
 
+    // Hide past matches (only show upcoming)
+    const now = new Date();
+    filtered = filtered.filter(match => new Date(match.startTime) >= now);
+
     setFilteredMatches(filtered);
   }, [matches, searchTerm, selectedDate]);
 
@@ -197,9 +201,24 @@ const Baseball = () => {
           <h1 className="sport-title">Baseball</h1>
           <p className="sport-subtitle">Bet on MLB and international baseball leagues</p>
         </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading baseball matches...</p>
+        <div className="matches-section">
+          <div className="section-header">
+            <h2 className="section-title">UPCOMING MATCHES</h2>
+            <div className="view-all-btn empty" style={{ opacity: 0.5 }}>Loading…</div>
+          </div>
+          <div className="matches-skeleton-grid">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <div key={idx} className="skeleton" style={{ padding: 16 }}>
+                <div className="skeleton-line" style={{ width: '60%', height: 16, marginBottom: 8 }}></div>
+                <div className="skeleton-line" style={{ width: '80%', height: 12, marginBottom: 12 }}></div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="skeleton-odds"></div>
+                  <div className="skeleton-odds"></div>
+                  <div className="skeleton-odds"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

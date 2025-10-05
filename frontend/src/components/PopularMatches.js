@@ -18,6 +18,14 @@ const PopularMatches = ({ matches }) => {
   }, [matches]);
 
   const addToBetslip = (match, betType, odds) => {
+    // Prevent adding bets for matches that have already started
+    const hasStart = !!match?.startTime;
+    const startDate = hasStart ? new Date(match.startTime) : null;
+    if (hasStart && startDate <= new Date()) {
+      console.warn('Cannot add started match to betslip:', match?.homeTeam, 'vs', match?.awayTeam);
+      return;
+    }
+
     const bet = {
       matchId: match.id || match._id,
       match: `${match.homeTeam} vs ${match.awayTeam}`,

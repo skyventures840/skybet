@@ -89,6 +89,13 @@ const Betslip = () => {
 
     // Validate each bet
     for (const bet of activeBets) {
+      // Prevent placing bets on matches that have started
+      const hasStart = !!bet.startTime;
+      const startDate = hasStart ? new Date(bet.startTime) : null;
+      if (hasStart && startDate <= new Date()) {
+        return 'One or more selections have already started. Remove them to proceed.';
+      }
+
       // Check for required fields
       if (!bet.matchId) {
         return 'Invalid match selection';
@@ -415,10 +422,11 @@ const Betslip = () => {
               
               const selectionDisplay = getSelectionDisplay(bet);
               const when = bet.startTime ? new Date(bet.startTime).toLocaleString() : '';
+              const isStarted = bet.startTime ? new Date(bet.startTime) <= new Date() : false;
               const isExpanded = expandedMatches[index] && !isCollapsed;
               
               return (
-                <div key={index} className={`bet-card bet-line-item ${activeTab === 'Ordinary' ? 'ordinary-bet' : 'express-bet'}`}>
+                <div key={index} className={`bet-card bet-line-item ${activeTab === 'Ordinary' ? 'ordinary-bet' : 'express-bet'} ${isStarted ? 'started-bet' : ''}`}>
                   {/* Compact Header - Always Visible */}
                   <div className="bet-line-header" onClick={() => activeTab === 'Ordinary' && toggleMatchExpansion(index)}>
                     <div className="bet-line-title">{matchTitle}</div>
@@ -447,6 +455,12 @@ const Betslip = () => {
                       {when && (
                         <div className="bet-line-meta">Starts at {when}</div>
                       )}
+
+                      {isStarted && (
+                        <div className="bet-line-warning" style={{ color: '#ff4444' }}>
+                          Match has started. Remove this selection to proceed.
+                        </div>
+                      )}
                       
                       <div className="bet-outcome">
                         <span>Outcome</span>
@@ -467,6 +481,12 @@ const Betslip = () => {
                         <div className="bet-line-meta">Starts {when}</div>
                       )}
 
+                      {isStarted && (
+                        <div className="bet-line-warning" style={{ color: '#ff4444', marginTop: 6 }}>
+                          Started — remove to place bets.
+                        </div>
+                      )}
+
                       {/* Express stake input after each selection */}
                       <div className="bet-stake-section">
                         <label htmlFor={`stake-${index}`}>Stake:</label>
@@ -478,6 +498,7 @@ const Betslip = () => {
                             placeholder="0"
                             value={bet.stake || ''}
                             onChange={(e) => updateStakeHandler(index, e.target.value)}
+                            disabled={isStarted}
                             className="stake-input"
                             min="0.01"
                             step="0.01"

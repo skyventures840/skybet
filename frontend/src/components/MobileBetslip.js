@@ -87,6 +87,13 @@ const MobileBetslip = () => {
     if (activeBets.length === 0) return 'No bets selected';
 
     for (const bet of activeBets) {
+      // Disallow started matches
+      const hasStart = !!bet.startTime;
+      const startDate = hasStart ? new Date(bet.startTime) : null;
+      if (hasStart && startDate <= new Date()) {
+        return 'One or more selections have already started. Remove them to proceed.';
+      }
+
       if (!bet.matchId) return 'Invalid match selection';
       if (!bet.type && !bet.market) return 'Invalid bet type';
       
@@ -293,11 +300,12 @@ const MobileBetslip = () => {
                   ? `${bet.homeTeam} vs ${bet.awayTeam}`
                   : (bet.match || 'Match');
                 
-                const selectionDisplay = getSelectionDisplay(bet);
-                const when = bet.startTime ? new Date(bet.startTime).toLocaleString() : '';
+              const selectionDisplay = getSelectionDisplay(bet);
+              const when = bet.startTime ? new Date(bet.startTime).toLocaleString() : '';
+              const isStarted = bet.startTime ? new Date(bet.startTime) <= new Date() : false;
                 
                 return (
-                  <div key={index} className="mobile-bet-card">
+                  <div key={index} className={`mobile-bet-card ${isStarted ? 'started-bet' : ''}`}>
                     <div className="mobile-bet-header">
                       <div className="mobile-bet-title">{matchTitle}</div>
                       <button
@@ -319,6 +327,12 @@ const MobileBetslip = () => {
                         <div className="mobile-bet-time">Starts {when}</div>
                       )}
 
+                      {isStarted && (
+                        <div className="mobile-bet-warning" style={{ color: '#ff4444', marginTop: 6 }}>
+                          Started — remove to place bets.
+                        </div>
+                      )}
+
                       {/* Express stake input */}
                       {activeTab === 'Express' && (
                         <div className="mobile-stake-section">
@@ -335,6 +349,7 @@ const MobileBetslip = () => {
                               placeholder="0"
                               value={bet.stake || ''}
                               onChange={(e) => updateStakeHandler(index, e.target.value)}
+                              disabled={isStarted}
                               className="mobile-stake-input"
                               min="0.01"
                               step="0.01"
