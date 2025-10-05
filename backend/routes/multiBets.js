@@ -4,9 +4,7 @@ const { auth } = require('../middleware/auth');
 const MultiBet = require('../models/MultiBet');
 const { validateMultiBet } = require('../utils/Validation');
 
-// @route   POST /api/multibets
-// @desc    Create a new multi-bet
-// @access  Private
+
 router.post('/', auth, async (req, res) => {
   try {
     const { matches, stake, currency = 'USD' } = req.body;
@@ -290,4 +288,3 @@ router.get('/stats/summary', auth, async (req, res) => {
 });
 
 module.exports = router;
-

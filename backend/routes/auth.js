@@ -79,7 +79,8 @@ router.post('/login', [
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.log('[DEBUG] Validation errors:', errors.array());
-    return res.status(400).json({ errors: errors.array() });
+    const messages = errors.array().map(e => e.msg || e.message || `${e.param}: invalid`);
+    return res.status(400).json({ message: messages.join(', '), errors: errors.array() });
   }
 
   try {

@@ -187,7 +187,7 @@ router.get('/', async (req, res) => {  // Removed auth middleware
 });
 
 // Get matches by league ID
-router.get('/league/:leagueId', auth, async (req, res) => {
+router.get('/league/:leagueId', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -222,7 +222,7 @@ router.get('/league/:leagueId', auth, async (req, res) => {
 });
 
 // Get popular matches (most bet on)
-router.get('/popular/trending', auth, async (req, res) => {
+router.get('/popular/trending', async (req, res) => {
   try {
     // Get matches from both collections
     const [adminMatches, oddsData] = await Promise.all([
@@ -366,7 +366,7 @@ router.get('/popular/trending', auth, async (req, res) => {
 });
 
 // Get match by ID with markets and odds
-router.get('/:matchId', auth, async (req, res) => {
+router.get('/:matchId', async (req, res) => {
   try {
     const match = await Match.findById(req.params.matchId);
     
@@ -813,7 +813,7 @@ router.delete('/:matchId', adminAuth, async (req, res) => {
 });
 
 // Get upcoming matches for today
-router.get('/today/upcoming', auth, async (req, res) => {
+router.get('/today/upcoming', async (req, res) => {
   try {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -833,7 +833,7 @@ router.get('/today/upcoming', auth, async (req, res) => {
 });
 
 // Get matches for today
-router.get('/today', auth, async (req, res) => {
+router.get('/today', async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
