@@ -1,0 +1,224 @@
+
+@import 'base.css';
+@import 'layout.css';
+@import 'components.css';
+@import 'mobile-responsive.css';
+@import 'modern-mobile.css';
+
+
+@media (min-width: 1024px) {
+  /* Hide hamburger menu on desktop */
+  .hamburger-menu {
+    display: none;
+  }
+  
+  /* Admin dashboard - Preserve original desktop layout */
+  .admin-sidebar {
+    width: 280px;
+  }
+  
+  .admin-main-content {
+    padding: var(--spacing-xl);
+  }
+  
+  /* Modal - Preserve original desktop sizing */
+  .modal {
+    padding: var(--spacing-xl);
+    max-width: 500px;
+  }
+}
+
+/* ==========================================================================
+   BROWSER-SPECIFIC FIXES
+   ========================================================================== */
+
+/* Safari-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent zoom on input focus */
+  input, select, textarea, button {
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
+  
+  /* Fix for iOS Safari rendering issues */
+  .nav-brand,
+  .hero-title,
+  .match-teams {
+    -webkit-font-smoothing: antialiased;
+    -webkit-transform: translateZ(0);
+  }
+  
+  /* Fix for iOS Safari flexbox issues */
+  .navbar-container,
+  .nav-links,
+  .user-section {
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+  }
+}
+
+/* Android-specific fixes */
+@supports not (-webkit-touch-callout: none) {
+  /* Fix for text rendering issues on Android */
+  .wheel-segment span, 
+  .multiplier-btn, 
+  .bet-amount input {
+    transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* Fix for Android Chrome flexbox issues */
+  .flex,
+  .flex-col,
+  .flex-row {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+  }
+}
+
+/* Firefox-specific fixes */
+@-moz-document url-prefix() {
+  /* Fix for Firefox grid gap issues */
+  .grid,
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    gap: var(--spacing-lg);
+  }
+  
+  /* Fix for Firefox button alignment */
+  .btn {
+    display: -webkit-inline-flex;
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+  }
+}
+
+/* Edge-specific fixes */
+@supports (-ms-ime-align: auto) {
+  /* Fix for Edge CSS Grid issues */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    display: -ms-grid;
+    display: grid;
+  }
+  
+  /* Fix for Edge flexbox issues */
+  .flex {
+    display: -ms-flexbox;
+    display: flex;
+  }
+}
+
+/* ==========================================================================
+   GLOBAL PERFORMANCE & ACCESSIBILITY ENHANCEMENTS
+   ========================================================================== */
+
+/* Hardware acceleration for smooth animations */
+.hero-slider,
+.wheel,
+.btn:hover,
+.nav-link:hover {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Focus indicators for accessibility */
+.btn:focus,
+.nav-link:focus,
+.odd-button:focus,
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: 2px solid var(--primary-green);
+  outline-offset: 2px;
+}
+
+/* Skip link for screen readers */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--primary-green);
+  color: var(--dark-bg);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  z-index: var(--z-modal);
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    border: 2px solid var(--dark-bg);
+  }
+  
+  .card,
+  .match-card {
+    border-width: 2px;
+  }
+  
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+
+    
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .hero-slide {
+    transition: none;
+  }
+  
+  .wheel {
+    transition: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .navbar,
+  .admin-sidebar,
+  .hero-slider,
+  .wheel-container,
+  .btn,
+  .nav-link {
+    display: none !important;
+  }
+  
+  .main-content,
+  .admin-main-content {
+    padding: 0;
+    margin: 0;
+  }
+  
+  .card,
+  .match-card {
+    border: 1px solid #000;
+    break-inside: avoid;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+}

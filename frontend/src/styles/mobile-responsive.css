@@ -1,0 +1,4700 @@
+/* Ensure avatar stays 60px round even if earlier rules set 32px */
+@media (max-width: 767px) {
+  .user-section .profile-avatar,
+  .navbar-right .profile-avatar,
+  .profile-avatar {
+    width: 32px !important; /* match hamburger height */
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1 !important;
+    line-height: 32px !important;
+  }
+}
+/* ========================================================================
+   GLOBAL HORIZONTAL OVERFLOW GUARD
+   ======================================================================== */
+html, body {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+#root, .app, .page-content, .content-wrapper, .main-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE STYLES - Modern Mobile & Tablet Design
+   ========================================================================== */
+
+/* ==========================================================================
+   MOBILE NAVBAR SIZE UPDATES (High-priority overrides)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Double SkyBet title size */
+  .navbar .navbar-left .nav-brand,
+  .navbar-left .nav-brand,
+  .nav-brand {
+    font-size: clamp(320px, 80vw, 640px) !important;
+    line-height: 0.8 !important;
+    letter-spacing: -3px !important;
+  }
+
+  /* When logged in: keep profile + hamburger, hide logout button */
+  .user-section .logout-btn {
+    display: none !important;
+  }
+
+  /* Increase sizes of remaining buttons and icons */
+  .profile-avatar {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1 !important;
+    line-height: 44px !important;
+    font-size: 16px !important;
+  }
+
+  .hamburger-menu {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .hamburger-line {
+    width: 22px !important;
+    height: 3px !important;
+    background: #000000 !important; /* black for maximum visibility */
+    margin: 3px 0 !important;
+    border-radius: 3px !important;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+  }
+
+  .login-btn, .signup-btn {
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    min-height: 32px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Clamp match containers to viewport and pin to left to avoid left overflow */
+  .popular-matches-section,
+  .popular-matches,
+  .matches-container,
+  .match-list,
+  .competition-group,
+  .match-container,
+  .match-row,
+  .match-card {
+    width: 100% !important; /* Use parent width to avoid viewport shifts */
+    max-width: 100% !important;
+    min-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: translateX(0) !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+  }
+}
+
+/* FULL WIDTH LAYOUT - ZERO MARGINS FOR MOBILE */
+@media (max-width: 768px) {
+  /* CRITICAL: Prevent any horizontal overflow */
+  * {
+    box-sizing: border-box !important;
+  }
+
+  /* ULTRA CRITICAL: Remove horizontal scroll completely */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Ensure full width for all main containers - FIXED WIDTH LIKE NAVBAR */
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important; /* Fixed width like navbar */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    overflow-x: hidden !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+  }
+
+  /* App root - prevent overflow - FIXED WIDTH LIKE NAVBAR */
+  #root {
+    width: 100% !important; /* Fixed width like navbar */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Main content container - FIXED WIDTH LIKE NAVBAR */
+  .main-content {
+    width: 100% !important; /* Fixed width like navbar */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Navbar - FIXED WIDTH LIKE NAVBAR */
+  .navbar {
+    width: 100% !important; /* Fixed width like navbar */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important; /* Prevent overflow */
+    box-sizing: border-box !important;
+  }
+
+  /* Hero slider - FIXED WIDTH LIKE NAVBAR */
+  .hero-slider {
+    width: 100% !important; /* Fixed width like navbar */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Popular matches - FULL SCREEN WIDTH */
+  .popular-matches-section,
+  .popular-matches {
+    width: 100% !important; /* Full screen width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important; /* Prevent left overflow */
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: 0 !important; /* Align to left edge */
+    right: 0 !important; /* Align to right edge */
+  }
+
+  /* Match cards container - FULL SCREEN WIDTH */
+  .matches-container,
+  .match-list {
+    width: 100% !important; /* Full screen width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; 
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: 0 !important; /* Align to left edge */
+    right: 0 !important; /* Align to right edge */
+  }
+
+  /* Individual match cards - FULL SCREEN WIDTH */
+  .match-card {
+    width: 100% !important; /* Full screen width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: 0 !important; /* Align to left edge */
+    right: 0 !important; /* Align to right edge */
+  }
+
+  /* CRITICAL: Add vertical scroll to match card section */
+  .matches-container,
+  .match-list,
+  .popular-matches-section {
+    max-height: 70vh !important; /* Limit height to 70% of viewport */
+    overflow-y: auto !important; /* Enable vertical scrolling */
+    overflow-x: hidden !important; /* Prevent horizontal scrolling */
+    -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+    width: 100% !important; /* Full screen width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    left: 0 !important; /* Align to left edge */
+    right: 0 !important; /* Align to right edge */
+  }
+
+  /* Competition group - FULL SCREEN WIDTH WITH ZERO MARGINS */
+  .competition-group {
+    width: 100% !important; /* Full screen width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important; /* Zero margins */
+    padding: 0 !important; /* Zero padding */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Matches list - FULL SCREEN WIDTH WITH ZERO MARGINS */
+  .matches-list {
+    width: 100% !important; /* Full screen width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important; /* Zero margins */
+    padding: 0 !important; /* Zero padding */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* League header - FULL SCREEN WIDTH WITH ZERO MARGINS */
+  .league-header {
+    width: 100% !important; /* Full viewport width */
+    max-width: 100% !important; /* Prevent overflow */
+    min-width: 0 !important; /* Ensure full width */
+    margin: 0 !important; /* Zero margins */
+    padding: 0 !important; /* Zero padding */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Match row - full width */
+  .match-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Additional match card containers - full width */
+  .match-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Score and odds line - full width */
+  .score-odds-line {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Odds buttons container - full width */
+  .odds-buttons-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Match teams section - full width */
+  .match-teams {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Additional markets container - full width */
+  .additional-markets-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ULTRA HIGH PRIORITY - FORCE FULL WIDTH FOR ALL MATCH CARD ELEMENTS */
+  .match-card,
+  .match-container,
+  .competition-group,
+  .matches-list,
+  .league-header,
+  .match-row,
+  .score-odds-line,
+  .odds-buttons-container,
+  .match-teams,
+  .additional-markets-container {
+    width: 100vw !important; /* Full screen width */
+    max-width: 100vw !important; /* Prevent overflow */
+    min-width: 100vw !important; /* Ensure full width */
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: translateX(0) !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+  }
+
+  /* CRITICAL: Ensure all match card content covers full width without overflowing */
+  .match-card .match-row,
+  .match-card .match-teams,
+  .match-card .score-odds-line,
+  .match-card .odds-buttons-container,
+  .match-card .league-header,
+  .match-card .league-title {
+    width: 100% !important; /* Use full available width */
+    max-width: 100% !important; /* Prevent overflow */
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Force parent containers to not limit width */
+  .main-content,
+  .page-content,
+  .content-wrapper,
+  .app-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* CRITICAL: Prevent horizontal scroll and ensure content fits */
+  .match-card .match-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 8px !important; /* Small padding for content breathing room */
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .match-card .match-teams {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 60% !important;
+    overflow: hidden !important;
+  }
+
+  .match-card .score-odds-line {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    max-width: 40% !important;
+    overflow: hidden !important;
+  }
+
+  .match-card .odds-buttons-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    gap: 4px !important;
+    justify-content: space-between !important;
+    overflow: hidden !important;
+  }
+
+  .match-card .odds-button {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-height: 32px !important; /* Reduced height from default */
+    padding: 6px 8px !important; /* Reduced padding */
+  }
+
+  /* Ensure no element exceeds viewport width - COMPREHENSIVE OVERRIDE */
+  .match-card *,
+  .main-content *,
+  .popular-matches *,
+  .hero-slider *,
+  .navbar * {
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+
+  /* CRITICAL: Force all containers to respect fixed width */
+  .app,
+  .page-content,
+  .content-wrapper,
+  .app-container,
+  .main-container {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: visible !important; /* Allow navbar content to be visible */
+    box-sizing: border-box !important;
+  }
+
+  /* ULTRA CRITICAL: Force all match card containers to full screen width with zero margins */
+  .competition-group,
+  .matches-list,
+  .league-header,
+  .match-row,
+  .match-container,
+  .score-odds-line,
+  .odds-buttons-container,
+  .match-teams,
+  .additional-markets-container,
+  .match-card,
+  .match-list,
+  .matches-container {
+    width: 100vw !important; /* Full viewport width */
+    max-width: 100vw !important; /* Prevent overflow */
+    min-width: 100vw !important; /* Ensure full width */
+    margin: 0 !important; /* Zero margins */
+    padding-left: 0 !important; /* Zero left padding */
+    padding-right: 0 !important; /* Zero right padding */
+    margin-left: 0 !important; /* Zero left margin */
+    margin-right: 0 !important; /* Zero right margin */
+    left: 0 !important; /* Position at left edge */
+    right: 0 !important; /* Position at right edge */
+    transform: translateX(0) !important; /* No horizontal translation */
+    box-sizing: border-box !important;
+    position: relative !important;
+    overflow-x: hidden !important;
+  }
+
+  /* UNIFORM FONT SIZES FOR ALL MATCH CARD TEXT ELEMENTS */
+  .match-card .team-name,
+  .match-card .team-score,
+  .match-card .match-league,
+  .match-card .match-time,
+  .match-card .match-date-time,
+  .match-card .vs,
+  .match-card .match-market-info,
+  .match-card .odd-label,
+  .match-card .odd-value,
+  .match-card .live-score,
+  .match-card .more-markets-icon,
+  .match-card .more-markets-count {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size for all text */
+  }
+
+  /* Specific adjustments for better hierarchy */
+  .match-card .team-name {
+    font-weight: 600 !important; /* Slightly bolder for team names */
+  }
+
+  .match-card .team-score {
+    font-weight: 700 !important; /* Bold for scores */
+  }
+
+  .match-card .odd-value {
+    font-weight: 700 !important; /* Bold for odds values */
+  }
+
+  .match-card .match-league,
+  .match-card .match-time,
+  .match-card .vs,
+  .match-card .match-market-info {
+    font-weight: 500 !important; /* Medium weight for secondary info */
+  }
+}
+
+/* GLOBAL OVERRIDE FOR SKYBET TITLE - HIGHEST PRIORITY */
+@media (max-width: 767px) {
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand,
+  .navbar .navbar-left .nav-brand,
+  header .nav-brand,
+  .navbar header .nav-brand,
+  .navbar-container .navbar-left .nav-brand {
+    font-size: clamp(280px, 65vw, 420px) !important; /* Significantly increased font size */
+    max-width: 1600px !important; /* Increased to accommodate larger text */
+    margin-left: -60px !important; /* Moved even further to the left to give hamburger more space */
+    transform: scale(1) !important;
+    line-height: 0.8 !important; /* Tighter line height for better fit */
+    font-weight: 900 !important; /* Increased font weight */
+    display: flex !important;
+    align-items: center !important;
+    text-decoration: none !important;
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    overflow: visible !important; /* Allow text to be visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4) !important; /* Enhanced shadow */
+    letter-spacing: -3px !important; /* Better letter spacing */
+  }
+}
+
+/* ULTRA HIGH SPECIFICITY OVERRIDE - OVERRIDE ALL OTHER STYLES */
+@media (max-width: 767px) {
+  .navbar .navbar-container .navbar-left .nav-brand,
+  .navbar .navbar-left .nav-brand,
+  .navbar-container .navbar-left .nav-brand,
+  .navbar-left .nav-brand,
+  .nav-brand {
+    font-size: clamp(220px, 55vw, 320px) !important; /* Further increased font size */
+    max-width: 1600px !important; /* Increased to accommodate larger text */
+    margin-left: -60px !important; /* Moved even further to the left to give hamburger more space */
+    transform: scale(1) !important;
+    line-height: 0.8 !important; /* Tighter line height for better fit */
+    font-weight: 900 !important; /* Increased font weight */
+    display: flex !important;
+    align-items: center !important;
+    text-decoration: none !important;
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    overflow: visible !important; /* Allow text to be visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4) !important; /* Enhanced shadow */
+    letter-spacing: -3px !important; /* Better letter spacing */
+  }
+}
+
+/* FORCE SKYBET TITLE SIZE - OVERRIDE CSS VARIABLES */
+@media (max-width: 767px) {
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: 220px !important; /* Significantly increased font size to match */
+    max-width: 1200px !important; /* Increased to accommodate larger text */
+    margin-left: 10px !important; /* Moved slightly to the right */
+    transform: scale(1) !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    text-decoration: none !important;
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+/* High specificity overrides to ensure mobile styles take precedence */
+@media (max-width: 1023px) {
+  /* Override any conflicting desktop styles with higher specificity */
+  .app .page-content .under-navbar .middle,
+  .app .page-content .under-navbar .container,
+  .app .page-content .under-navbar .main-content {
+    margin: 0 !important;
+    padding: 0 16px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .app .page-content .under-navbar {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .app .page-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* Mobile-First Responsive Design
+   Breakpoints:
+   - 320px: Small mobile (iPhone SE, small Android)
+   - 375px: Medium mobile (iPhone 12/13, most Android)
+   - 414px: Large mobile (iPhone 12/13 Pro Max, large Android)
+   - 480px: Small tablet (iPad Mini portrait)
+   - 768px: Large tablet (iPad, small laptop)
+   - 1024px: Desktop (laptop, desktop)
+*/
+
+/* ==========================================================================
+   MOBILE NAVBAR STYLES (320px - 767px) - SMALL SCREENS ONLY
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Modern Mobile Navbar Container - Only for small screens */
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: linear-gradient(135deg, var(--header-bg) 0%, rgba(15, 15, 15, 0.95) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    height: 64px;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    margin: 0;
+    padding: 0;
+  }
+
+  .navbar-container {
+    max-width: 100vw !important;
+    width: 100vw !important;
+    padding: 0 4px !important; /* Reduced padding to give more space for brand text */
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    gap: 4px;
+    overflow-x: visible !important; /* Allow content to be visible instead of hidden */
+    box-sizing: border-box !important;
+  }
+
+  /* Left side: Logo only */
+  .navbar-left {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 auto !important; /* Allow flexible growth for large brand text */
+    min-width: 0 !important;
+    max-width: none !important; /* Remove restrictive max-width to allow large brand text */
+    margin-left: -20px !important; /* Move further left to give hamburger more space */
+  }
+
+  .nav-brand {
+    font-size: clamp(180px, 45vw, 240px) !important; /* Further increased font size */
+    font-weight: 800 !important;
+    text-decoration: none !important;
+    display: flex !important;
+    align-items: center !important;
+    margin-left: -60px !important; /* Moved even further to the left to give hamburger more space */
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
+    flex: 1 1 auto !important; /* Allow flexible growth */
+    min-width: 0 !important;
+    overflow: visible !important; /* Allow text to be visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    max-width: none !important; /* Remove max-width constraint */
+    transform: scale(1) !important; /* Force rendering */
+    line-height: 1 !important; /* Override any line-height */
+  }
+  
+  /* Override CSS variables and other conflicting styles */
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(220px, 50vw, 300px) !important; /* Significantly increased font size to match */
+    max-width: none !important; /* Remove max-width constraint to allow full visibility */
+    margin-left: -20px !important; /* Moved to the left to give hamburger space */
+    overflow: visible !important; /* Ensure text is visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    flex: 1 1 auto !important; /* Allow flexible growth */
+  }
+
+  .brand-w { 
+    color: #99ff00; 
+    text-shadow: 0 0 10px rgba(153, 255, 0, 0.3);
+  }
+  .brand-e { 
+    color: #00ff88; 
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+  }
+
+  /* CRITICAL: Ensure navbar and all its content is always visible */
+  .navbar,
+  .navbar *,
+  .navbar-container,
+  .navbar-container *,
+  .navbar-left,
+  .navbar-left *,
+  .navbar-right,
+  .navbar-right *,
+  .nav-brand,
+  .nav-brand * {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    max-width: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* ULTRA CRITICAL: Override parent containers that might clip navbar content */
+  .app .navbar,
+  .page-content .navbar,
+  .under-navbar .navbar,
+  .app .navbar *,
+  .page-content .navbar *,
+  .under-navbar .navbar * {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    max-width: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* NUCLEAR OPTION: Force hamburger menu visibility in ALL scenarios */
+  .navbar .hamburger-menu,
+  .navbar-container .hamburger-menu,
+  .navbar-right .hamburger-menu,
+  .navbar .navbar-right .hamburger-menu,
+  .navbar-container .navbar-right .hamburger-menu,
+  .app .navbar .hamburger-menu,
+  .page-content .navbar .hamburger-menu,
+  .under-navbar .navbar .hamburger-menu,
+  .app .navbar-container .hamburger-menu,
+  .page-content .navbar-container .hamburger-menu,
+  .under-navbar .navbar-container .hamburger-menu {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+    order: 2 !important;
+  }
+
+  /* Modern Hamburger Menu Button - Far right - ALWAYS VISIBLE ON MOBILE */
+  .hamburger-menu {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 32px !important; /* Increased size for better visibility */
+    height: 32px !important; /* Increased size for better visibility */
+    background: #3a3a3a !important; /* Visible grey background for contrast */
+    border: 1px solid rgba(255, 255, 255, 0.08) !important; /* subtle outline */
+    border-radius: 8px !important; /* Keep shape for hit area */
+    cursor: pointer !important;
+    padding: 0 !important;
+    z-index: 1001 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    flex-shrink: 0 !important;
+    margin-left: 6px !important; /* Add breathing room from auth/buttons */
+    margin-right: 12px !important; /* Ensure clear contrast from edge */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    order: 2 !important; /* Position on the right side of navbar-right */
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+  }
+
+  /* CRITICAL: Ensure hamburger is always visible regardless of login state */
+  .navbar-right .hamburger-menu,
+  .auth-buttons + .hamburger-menu,
+  .user-section + .hamburger-menu,
+  .navbar .hamburger-menu,
+  .navbar-container .hamburger-menu,
+  .navbar-right .hamburger-menu,
+  .hamburger-menu {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+  }
+
+  .hamburger-menu:hover {
+    background: #4a4a4a !important; /* slightly lighter on hover */
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    transform: scale(1.05);
+  }
+
+  .hamburger-menu:active {
+    transform: scale(0.95);
+  }
+
+  .hamburger-line {
+    width: 22px !important; /* Match screenshot proportion */
+    height: 3px !important; /* Keep thick and readable */
+    background: #000000 !important; /* black for maximum visibility */
+    margin: 3px 0 !important; /* Increase spacing between bars */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 3px !important; /* Fully rounded ends look */
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.8) !important; /* white outline for contrast */
+  }
+
+  .hamburger-menu.active {
+    background: #4a4a4a !important; /* keep visible when active */
+    border-color: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  .hamburger-menu.active .hamburger-line {
+    background: #000000 !important; /* black for maximum visibility in active state */
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.8) !important;
+  }
+
+  .hamburger-menu.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+  }
+
+  .hamburger-menu.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  .hamburger-menu.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+  }
+
+  /* Right side: Language selector, Auth buttons, and Hamburger */
+  .navbar-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+    flex: 0 0 45% !important; /* Shift group left by reducing width */
+    min-width: 0 !important;
+    overflow: visible !important; /* Ensure hamburger is always visible */
+    position: relative !important;
+    width: 45% !important; /* Explicit reduced width */
+    max-width: 45% !important; /* Limit to 45% */
+    margin-left: auto !important; /* Push to the right side */
+    margin-right: 24px !important; /* Leave a clear right margin */
+    justify-content: space-between !important; /* Distribute space between auth buttons and hamburger */
+  }
+
+  /* Language selector - hide on very small screens to save space */
+  .language-selector {
+    display: none !important; /* Hide on mobile to save space for auth buttons */
+  }
+
+  .auth-buttons {
+    display: flex !important;
+    gap: 3px !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    order: 1 !important; /* Position on the left side of navbar-right */
+    margin-left: -10px !important; /* Move further left to give hamburger more space */
+  }
+
+  .login-btn, .signup-btn {
+    padding: 6px 8px !important; /* More compact for small screens */
+    border-radius: 10px !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    font-size: clamp(10px, 2.2vw, 12px) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: 1px solid transparent !important;
+    cursor: pointer !important;
+    min-height: 28px !important; /* Slightly smaller touch target */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .login-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .login-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--primary-green);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .login-btn:active {
+    transform: translateY(0);
+  }
+
+  .signup-btn {
+    background: linear-gradient(135deg, var(--primary-green) 0%, #88e600 100%);
+    color: var(--dark-bg);
+    border: 1px solid var(--primary-green);
+    box-shadow: 0 2px 8px rgba(153, 255, 0, 0.3);
+  }
+
+  .signup-btn:hover {
+    background: linear-gradient(135deg, #88e600 0%, var(--primary-green) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(153, 255, 0, 0.4);
+  }
+
+  .signup-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(153, 255, 0, 0.3);
+  }
+
+  /* User section for logged in users */
+  .user-section {
+    display: flex;
+    align-items: center;
+    gap: 2px; /* Further reduced gap to save space */
+    flex-shrink: 1; /* Allow shrinking to make room for hamburger */
+    min-width: 0; /* Allow content to shrink */
+    overflow: hidden; /* Hide overflow if needed */
+    max-width: calc(100% - 40px); /* Reserve space for hamburger */
+    order: 1 !important; /* Position on the left side of navbar-right */
+    margin-left: -10px !important; /* Move further left to give hamburger more space */
+  }
+
+  .balance-display {
+    display: none !important; /* Hide balance display to save space for hamburger */
+  }
+
+  .profile-avatar {
+    width: 32px !important; /* Increased size for better visibility */
+    height: 32px !important; /* Increased size for better visibility */
+    border-radius: 50% !important; /* Ensure perfectly round */
+    background: var(--primary-green) !important;
+    color: var(--dark-bg) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 700 !important;
+    font-size: 14px !important; /* Increased font size */
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    flex-shrink: 0 !important; /* Don't shrink avatar */
+    min-width: 32px !important; /* Ensure minimum size */
+    min-height: 32px !important; /* Ensure minimum size */
+    max-width: 32px !important; /* Ensure maximum size */
+    max-height: 32px !important; /* Ensure maximum size */
+  }
+
+  .profile-avatar:hover {
+    transform: scale(1.05);
+  }
+
+  .username-link {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    display: none; /* Hide on mobile to save space */
+  }
+
+  .logout-btn {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 3px 6px; /* Further reduced padding */
+    border-radius: 10px; /* Smaller border radius */
+    font-size: 9px; /* Smaller font size */
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0; /* Don't shrink logout button */
+    min-height: 24px; /* Reduced height */
+  }
+
+  .logout-btn:hover {
+    background: #cc3333;
+    transform: translateY(-1px);
+  }
+
+  /* Profile dropdown adjustments for mobile */
+  .profile-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+    z-index: 1002;
+    margin-top: 8px;
+  }
+
+  .profile-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .profile-avatar-large {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-green);
+    color: var(--dark-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .profile-info h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .profile-info p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .profile-details {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .profile-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .detail-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .profile-actions {
+    padding: 12px 16px;
+  }
+
+  .profile-action-btn, .profile-logout-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .profile-action-btn {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+  }
+
+  .profile-action-btn:hover {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+
+  .profile-logout-btn {
+    background: var(--error);
+    color: white;
+  }
+
+  .profile-logout-btn:hover {
+    background: #cc3333;
+  }
+}
+
+/* ==========================================================================
+   MOBILE SIDEBAR STYLES (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Mobile Sidebar Overlay */
+  .sidebar {
+    position: fixed;
+    top: 60px; /* Below navbar */
+    left: -100%;
+    width: 100%;
+    height: calc(100vh - 60px);
+    background: var(--sidebar-bg);
+    z-index: 999;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  /* Sidebar Navigation */
+  .sidebar-navigation {
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .prematch-live-switch {
+    display: flex;
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 16px;
+  }
+
+  .nav-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .nav-tab.active {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+
+  .sidebar-nav-link {
+    display: block;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background: var(--card-bg);
+  }
+
+  .sidebar-nav-link:hover {
+    background: var(--hover-bg);
+    color: var(--primary-green);
+  }
+
+  /* Search Section */
+  .search-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .search-container {
+    position: relative;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 16px;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+
+  .search-input:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  /* All Events Section */
+  .all-events-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .all-events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .all-events-header:hover {
+    background: var(--hover-bg);
+  }
+
+  .all-events-header span:first-child {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+
+  .arrow {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.3s ease;
+  }
+
+  .arrow.expanded {
+    transform: rotate(180deg);
+  }
+
+  .all-events-content {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+  }
+
+  .events-slider {
+    margin-bottom: 12px;
+  }
+
+  .events-range {
+    width: 100%;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .events-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-green);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .events-count {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 8px;
+  }
+
+  .datepicker-icon-btn {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .datepicker-icon-btn:hover {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+
+  .datepicker-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+  }
+
+  /* Sports Section */
+  .sports-section {
+    padding: 16px;
+  }
+
+  .sports-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 12px;
+  }
+
+  .sports-header:hover {
+    background: var(--hover-bg);
+  }
+
+  .sports-header span:first-child {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+
+  .sports-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sport-item {
+    margin-bottom: 8px;
+  }
+
+  .sport-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .sport-header:hover {
+    background: var(--hover-bg);
+  }
+
+  .sport-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sport-icon {
+    font-size: 20px;
+  }
+
+  .sport-name {
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+
+  .expand-arrow {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.3s ease;
+  }
+
+  .expand-arrow.expanded {
+    transform: rotate(90deg);
+  }
+
+  .subcategories {
+    margin-top: 8px;
+    padding-left: 16px;
+  }
+
+  .subcategory-item {
+    display: block;
+    padding: 10px 16px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    margin-bottom: 4px;
+  }
+
+  .subcategory-item:hover {
+    background: var(--hover-bg);
+    color: var(--primary-green);
+  }
+
+  .subcategory-item.active {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+
+  .show-more-btn {
+    width: 100%;
+    padding: 8px 16px;
+    background: var(--hover-bg);
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+  }
+
+  .show-more-btn:hover {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+}
+
+/* ==========================================================================
+   MOBILE MARGIN & PADDING RESET (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Reset all margins and padding that could cause overflow */
+  * {
+    box-sizing: border-box;
+  }
+
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important; /* Fixed width like navbar */
+    max-width: 100vw !important; /* Prevent overflow */
+    min-width: 100vw !important; /* Ensure full width */
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .app {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: visible !important; /* Allow navbar content to be visible */
+  }
+
+  .page-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: visible !important; /* Allow navbar content to be visible */
+    padding-top: 60px; /* Account for fixed navbar */
+  }
+
+  .under-navbar {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .middle {
+    margin: 0 !important;
+    padding: 0 !important; /* ZERO margins for full page coverage */
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .container {
+    margin: 0 !important;
+    padding: 0 !important; /* ZERO margins for full page coverage */
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important; /* ZERO margins for full page coverage */
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  /* Force zero margins and paddings on all content containers */
+  .page-content > *,
+  .under-navbar > *,
+  .middle > * {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Reset any conflicting desktop styles */
+  .side-bar-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .bet-slip-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE HERO SECTION (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Hero section with proper margins and full width */
+
+  .hero-slider {
+    height: 250px !important; /* Increased from 180px for better visibility */
+    width: 100vw !important;
+    margin: 0 !important;
+    margin-bottom: 6px !important;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+    left: 0 !important;
+    right: 0 !important;
+    max-width: 100vw !important;
+  }
+
+  .slide-background img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    z-index: 2;
+    padding: 0 4px; /* Further reduced left/right padding */
+    width: 100%;
+    margin: 0;
+  }
+
+  .hero-title {
+    font-size: clamp(10px, 2.5vw, 13px) !important;
+    font-weight: 700;
+    margin-bottom: 1px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+    line-height: 1.0;
+  }
+
+  .hero-description {
+    font-size: clamp(7px, 1.5vw, 8px) !important;
+    opacity: 0.9;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+    line-height: 1.1;
+  }
+
+  /* Navigation arrows positioned at left and right edges - smaller size */
+  .hero-slider .prev-arrow,
+  .hero-slider .next-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    width: 12px; /* Reduced from 20px */
+    height: 12px; /* Reduced from 20px */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 4;
+    font-size: 5px; /* Reduced from 8px */
+    transition: all 0.3s ease;
+  }
+
+  .hero-slider .prev-arrow {
+    left: 2px;
+  }
+
+  .hero-slider .next-arrow {
+    right: 2px;
+  }
+
+  .hero-slider .prev-arrow:hover,
+  .hero-slider .next-arrow:hover {
+    background: rgba(0, 255, 136, 0.8);
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  /* Much smaller dots for slide indicators */
+  .slider-dots {
+    position: absolute;
+    bottom: 0.5px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.25px;
+    z-index: 3;
+  }
+
+  .dot {
+    width: 0.02px; /* Further reduced from 0.05px */
+    height: 0.02px; /* Further reduced from 0.05px */
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .dot.active {
+    background: var(--primary-green);
+    transform: scale(1.1);
+  }
+
+  .dot:hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* ==========================================================================
+   MOBILE MATCH CARDS SPECIFIC STYLES (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* ==========================================================================
+     MATCH CARD ODDS HEADERS - HIDDEN
+     ========================================================================== */
+  
+  /* Hide odds headers in match cards only - COMPLETE HIDING */
+  .match-container .odds-headers-container,
+  .match-container .odds-header,
+  .league-header .odds-header,
+  .league-header .odds-headers-container {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    z-index: -1 !important;
+    pointer-events: none !important;
+  }
+
+  /* Hide any odds header text content */
+  .match-container .odds-header *,
+  .match-container .odds-headers-container *,
+  .league-header .odds-header *,
+  .league-header .odds-headers-container * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+  }
+
+  /* Additional specific hiding for league header odds */
+  .league-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Force hide all odds headers in league header */
+  .league-header .odds-header,
+  .league-header .odds-headers-container {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    z-index: -1 !important;
+    pointer-events: none !important;
+  }
+
+  /* ==========================================================================
+     MATCH CARD ODDS BUTTONS - INCREASED WIDTH & EVEN DISTRIBUTION
+     ========================================================================== */
+  
+  /* Match card odds buttons container - full width distribution */
+  .match-container .odds-buttons-container {
+    display: flex !important;
+    gap: 3px !important; /* Minimal gap for maximum width utilization */
+    flex-shrink: 0 !important;
+    flex: 1 1 auto !important;
+    justify-content: space-between !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  /* Match card odds buttons - reduced height and uniform font size */
+  .match-container .odds-button {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 8px 6px !important; /* Reduced padding for smaller buttons */
+    border: 1px solid #333 !important; /* Dark border */
+    background: #1a1a1a !important; /* Dark background */
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-size: clamp(12px, 2.8vw, 14px) !important; /* Uniform font size */
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    min-height: 40px !important; /* Reduced height */
+    min-width: 0 !important;
+    max-width: none !important;
+    color: white !important; /* White text */
+    overflow: hidden !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important; /* Darker shadow */
+    width: 100% !important;
+    flex-grow: 1 !important; /* Ensure equal distribution */
+    flex-shrink: 1 !important;
+    flex-basis: 0 !important; /* Equal basis for distribution */
+    text-align: center !important; /* Center align text */
+  }
+
+  /* Match card odds button hover effects */
+  .match-container .odds-button:hover {
+    background: var(--primary-green) !important;
+    color: var(--dark-bg) !important;
+    border-color: var(--primary-green) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(0, 255, 136, 0.3) !important;
+  }
+
+  /* Match card odds button labels - uniform size */
+  .match-container .odd-label {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size */
+    color: #cccccc !important; /* Light gray for labels */
+    margin-bottom: 3px !important; /* Increased margin */
+    font-weight: 500 !important;
+    text-align: center !important; /* Center align */
+  }
+
+  /* Match card odds button values - uniform size */
+  .match-container .odd-value {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size */
+    font-weight: 700 !important;
+    color: white !important; /* White text */
+    text-align: center !important; /* Center align */
+  }
+
+  /* Match card score and odds line - full width */
+  .match-container .score-odds-line {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important; /* Stretch to full width */
+    min-width: 0 !important; /* Allow flexible width */
+    width: 100% !important; /* Take full available width */
+    margin-left: auto !important;
+    flex: 1 1 auto !important; /* Take remaining space */
+  }
+
+  /* ==========================================================================
+     DEDICATED MATCH CARD STYLES - COMPLETELY SEPARATE FROM POPULAR MATCHES
+     ========================================================================== */
+  
+  /* Match card container */
+  .match-card {
+    background: var(--card-bg) !important;
+    border: none !important; /* Remove border for full-width coverage */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; /* Subtle separator only */
+    border-radius: 0 !important; /* Remove border radius for seamless connection */
+    margin-bottom: 0 !important; /* Remove margin for seamless connection */
+    cursor: pointer !important;
+    position: relative !important;
+    width: 100% !important; /* Use 100% instead of 100vw */
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    left: 0 !important;
+    right: 0 !important;
+    padding: 16px 8px !important; /* Optimized padding for full-width utilization */
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    box-shadow: none !important; /* Remove shadow for seamless appearance */
+  }
+
+  /* Match card league header */
+  .match-card .league-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    margin-bottom: 8px !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    position: relative !important;
+  }
+
+  /* Match card league title - FULL DISPLAY */
+  .match-card .league-title {
+    white-space: normal !important;
+    text-overflow: unset !important;
+    word-wrap: break-word !important;
+    max-width: none !important;
+    overflow: visible !important;
+    width: auto !important;
+    flex: 1 1 auto !important;
+    font-weight: bold !important;
+    font-size: clamp(16px, 4vw, 18px) !important; /* Increased font size for better visibility */
+    display: flex !important;
+    align-items: center !important;
+    color: white !important;
+    margin-left: 0 !important;
+    min-width: 50px !important;
+    justify-content: flex-start !important;
+    line-height: 1.3 !important; /* Better line height for increased height */
+  }
+
+  /* Match card odds headers - COMPLETELY REMOVED */
+  .match-card .odds-headers-container,
+  .match-card .odds-header {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+  }
+
+  /* Match card row layout */
+  .match-card .match-row {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    justify-content: space-between !important;
+  }
+
+  /* Match card teams section */
+  .match-card .match-teams {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    margin-right: 12px !important;
+    min-width: 0 !important;
+    max-width: 60% !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+  }
+
+  /* Match card date and time */
+  .match-card .match-date-time {
+    font-size: clamp(10px, 2.5vw, 12px) !important;
+    color: var(--text-muted) !important;
+    text-align: left !important;
+    margin-bottom: 4px !important;
+    margin-left: 0 !important;
+    font-weight: 500 !important;
+  }
+
+  /* Match card team names */
+  .match-card .team {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: clamp(13px, 3vw, 16px) !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    max-width: 100% !important;
+    flex: 1 !important;
+    margin-bottom: 2px !important;
+  }
+
+  /* Match card team flags */
+  .match-card .team-flag {
+    width: 12px !important;
+    height: 8px !important;
+    object-fit: cover !important;
+    border-radius: 1px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Match card VS text */
+  .match-card .vs {
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    color: var(--text-muted) !important;
+    font-weight: 400 !important;
+    text-align: left !important;
+    margin: 1px 0 !important;
+    margin-left: 0 !important;
+  }
+
+  /* Match card market info */
+  .match-card .match-market-info {
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    color: var(--text-muted) !important;
+    text-align: center !important;
+    margin-top: 2px !important;
+  }
+
+  /* Match card actions - HIDDEN */
+  .match-card .match-actions {
+    display: none !important;
+  }
+
+  /* Match card score and odds line - FULL WIDTH */
+  .match-card .score-odds-line {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important; /* Stretch to full width */
+    min-width: 0 !important; /* Allow flexible width */
+    width: 100% !important; /* Take full available width */
+    margin-left: auto !important;
+    flex: 1 1 auto !important; /* Take remaining space */
+  }
+
+  /* Match card odds buttons container - FULL WIDTH DISTRIBUTION */
+  .match-card .odds-buttons-container {
+    display: flex !important;
+    gap: 3px !important; /* Slightly smaller gap for tighter layout */
+    flex-shrink: 0 !important;
+    flex: 1 1 auto !important;
+    justify-content: space-between !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    align-items: stretch !important; /* Ensure equal height */
+  }
+
+  /* Match card odds buttons - REDUCED HEIGHT & UNIFORM FONT SIZE */
+  .match-card .odds-button {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 6px 6px !important; /* Slightly reduced padding for smaller buttons */
+    border: 1px solid #e0e0e0 !important;
+    background: #f8f9fa !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Slightly smaller uniform font size */
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    min-height: 36px !important; /* Slightly reduced height */
+    min-width: 0 !important;
+    max-width: none !important;
+    color: var(--text-primary) !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    width: 100% !important;
+    flex-grow: 1 !important; /* Ensure equal distribution */
+    flex-shrink: 1 !important;
+    flex-basis: 0 !important; /* Equal basis for distribution */
+  }
+
+  /* Ensure odds value inside button inherits and centers cleanly */
+  .match-card .odds-button .odds-value {
+    font-size: inherit !important;
+    line-height: 1 !important;
+    text-align: center !important;
+  }
+
+  /* Match card odds button hover effects */
+  .match-card .odds-button:hover {
+    background: var(--primary-green) !important;
+    color: var(--dark-bg) !important;
+    border-color: var(--primary-green) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(0, 255, 136, 0.3) !important;
+  }
+
+  /* Match card selected odds button */
+  .match-card .odd-button.selected {
+    background: var(--primary-green) !important;
+    color: var(--dark-bg) !important;
+    border-color: var(--primary-green) !important;
+  }
+
+  /* Match card odds button labels - INCREASED SIZE */
+  .match-card .odd-label {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size */
+    color: var(--text-muted) !important;
+    margin-bottom: 3px !important; /* Increased margin */
+    font-weight: 500 !important;
+  }
+
+  /* Match card odds button values - UNIFORM SIZE */
+  .match-card .odd-value {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size */
+    font-weight: 700 !important;
+  }
+
+  /* Match card live match indicator */
+  .match-card .live-match {
+    border-left: 3px solid var(--primary-green) !important;
+  }
+
+  /* Match card last child */
+  .match-card:last-child {
+    border-bottom: none !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE POPULAR MATCHES & MATCH CARDS (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* ==========================================================================
+     POPULAR MATCHES SECTION - UNCHANGED
+     ========================================================================== */
+  
+  .popular-matches {
+    padding: 0 !important; /* ZERO padding for full width */
+    margin: 0 !important;
+    width: 100vw !important; /* Match hero section width */
+    max-width: 100vw !important;
+    margin-left: 0 !important; /* Remove negative margins */
+    margin-right: 0 !important; /* Remove negative margins */
+    overflow: hidden !important; /* Prevent overflow */
+    position: relative; /* For proper content positioning */
+  }
+
+  .popular-matches h2 {
+    font-size: clamp(16px, 4vw, 18px) !important;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    padding: 0 40px !important; /* Increased padding to move title slightly right */
+    text-align: left;
+  }
+
+  .matches-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0 !important; /* No space between matches */
+    width: 150vw !important; /* Match hero section width */
+    max-width: 150vw !important;
+    margin: 0 !important;
+    padding: 0 !important; /* No padding for full width */
+    overflow: visible !important; /* Remove all scroll bars */
+  }
+
+  .match-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px; /* Modern rounded design */
+    margin-bottom: 8px; /* Space between cards */
+    cursor: pointer;
+    position: relative;
+    width: 100vw !important; /* Match hero section width */
+    max-width: 100vw !important;
+    margin-left: 0 !important; /* Remove negative margins */
+    margin-right: 0 !important; /* Remove negative margins */
+    box-sizing: border-box !important;
+    overflow: hidden !important; /* Prevent content overflow */
+    left: 0 !important;
+    right: 0 !important;
+    padding: 16px 20px !important; /* Increased padding for better spacing */
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Remove gap for single row layout */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  }
+
+  .match-card:last-child {
+    border-bottom: none !important; /* Remove bottom border from last item */
+  }
+
+  .match-card:first-child {
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important; /* Add top border to first item */
+  }
+
+  .match-card:hover {
+    background: rgba(0, 255, 136, 0.05) !important; /* Subtle hover effect */
+    transform: translateY(-1px); /* Subtle lift effect */
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2) !important; /* Enhanced shadow */
+    border-color: var(--primary-green) !important;
+  }
+
+  /* Alternate background for visual separation between sections */
+  .competition-group:nth-child(even) .match-card {
+    background: rgba(255, 255, 255, 0.02) !important; /* Very subtle alternate background */
+  }
+
+  .competition-group:nth-child(odd) .match-card {
+    background: var(--card-bg) !important; /* Default background */
+  }
+
+  /* League header with proper positioning - full width and increased height */
+  .league-header {
+    background: #4CAF50 !important;
+    color: white !important;
+    padding: 20px 16px !important; /* Increased padding for more height */
+    display: flex;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+    gap: 8px;
+    width: 100vw !important; /* Full viewport width */
+    max-width: 100vw !important; /* Prevent overflow */
+    min-width: 100vw !important; /* Ensure full width */
+    margin: 0 !important; /* Zero margins */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-bottom: 0 !important;
+    position: relative;
+    justify-content: flex-start; /* Only show league title, no odds headers */
+    box-sizing: border-box !important;
+    min-height: 60px !important; /* Increased minimum height */
+  }
+
+  .league-title {
+    flex: 1 1 auto;
+    font-weight: bold;
+    font-size: clamp(16px, 4vw, 18px) !important; /* Increased font size for better visibility */
+    display: flex;
+    align-items: center;
+    color: white !important;
+    margin-left: 0 !important;
+    min-width: 50px;       
+    white-space: normal !important; /* Allow text wrapping */
+    max-width: none !important; /* Remove all width restrictions */
+    justify-content: flex-start; /* Align to far left */
+    overflow: visible !important; /* Ensure no hidden overflow */
+    text-overflow: unset !important; /* Remove ellipsis */
+    word-wrap: break-word !important; /* Allow word wrapping */
+    line-height: 1.3 !important; /* Better line height for increased height */
+  }
+
+  .league-title .arrow {
+    font-size: 8px;
+    color: var(--primary-green);
+    flex-shrink: 0;
+  }
+
+  /* Match container with proper layout - full width */
+  .match-container {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 0;
+    cursor: pointer;
+    position: relative;
+    width: 100%;
+    overflow: visible !important; /* Remove scroll bars */
+  }
+
+  .match-row {
+    display: flex;
+    align-items: center;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: transparent;
+    border-bottom: none; /* Remove border for cleaner look */
+    gap: 12px;
+    overflow: hidden !important; /* Prevent overflow */
+    width: 100% !important; /* Use full card width */
+    max-width: 100% !important;
+    min-height: 70px; /* Increased height for better spacing */
+    position: relative;
+    justify-content: space-between; /* Space between teams and odds */
+  }
+
+  .match-teams {
+    flex: 0 0 auto; /* Fixed size to allow odds to take more space */
+    min-width: 0; /* Allow text truncation */
+    margin: 0 !important;
+    padding: 0 !important; /* Remove padding for cleaner alignment */
+    display: flex;
+    flex-direction: column;
+    gap: 6px; /* Increased gap between team names */
+    cursor: pointer;
+    overflow: hidden;
+    word-wrap: break-word;
+    word-break: break-word;
+    align-items: flex-start; /* Align to left */
+    margin-right: 12px; /* Reduced space between teams and odds */
+    max-width: 60%; /* Limit teams width to give more space to odds */
+  }
+
+  .team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(13px, 3vw, 16px) !important; /* Larger font for better readability */
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+    max-width: 70%;
+    justify-content: flex-start; /* Align team names to the left */
+    text-align: left;
+    line-height: 1.3; /* Better line height */
+    padding: 2px 0; /* Small padding for better spacing */
+  }
+
+  .team-flag {
+    width: 14px;
+    height: 10px;
+    object-fit: cover;
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+
+  .vs {
+    font-size: clamp(8px, 1.8vw, 10px) !important;
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: center;
+    margin: 1px 0;
+  }
+
+  .match-time {
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: left !important; /* Align to left */
+    margin-left: 0 !important;
+  }
+
+  /* Odds section positioned to the right with proper column alignment */
+  .match-odds {
+    display: flex;
+    gap: 8px; /* Increased gap between odds buttons */
+    flex-shrink: 0;
+    align-items: center;
+    min-width: 160px; /* Increased width for better spacing */
+    justify-content: flex-end;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible;
+    margin-left: auto; /* Push odds to the far right */
+  }
+
+  .odds-button {
+    flex: 1 1 auto; /* Allow each button to take equal space */
+    margin: 0;
+    padding: 6px 4px; /* Further reduced padding for smaller buttons */
+    border: 1px solid #e0e0e0; /* Light grey border like in image */
+    background: #f8f9fa; /* Light grey background like in image */
+    border-radius: 8px; /* Rounded corners like in image */
+    cursor: pointer;
+    font-size: clamp(12px, 2.8vw, 14px); /* Uniform font size */
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    min-height: 36px; /* Reduced height for more compact design */
+    min-width: 0; /* Remove minimum width constraint */
+    max-width: none; /* Remove maximum width constraint */
+    color: var(--text-primary);
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    width: 100%; /* Take full available width */
+  }
+
+  .odds-button:hover {
+    background: var(--primary-green) !important;
+    color: var(--dark-bg) !important;
+    border-color: var(--primary-green) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 255, 136, 0.3) !important;
+  }
+
+  .odd-button.selected {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+    border-color: var(--primary-green);
+  }
+
+  .odd-label {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size */
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .odd-value {
+    font-size: clamp(11px, 2.6vw, 13px) !important; /* Uniform font size */
+    font-weight: 700;
+  }
+
+  /* Odds headers positioned above odds buttons - completely hidden on small screens */
+  .odds-headers-container {
+    display: none !important; /* Completely hide odds headers */
+    visibility: hidden !important; /* Additional hiding */
+    opacity: 0 !important; /* Make invisible */
+    height: 0 !important; /* Remove height */
+    margin: 0 !important; /* Remove margins */
+    padding: 0 !important; /* Remove padding */
+  }
+
+  .odds-header {
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    min-width: 50px;
+    max-width: 50px;
+    text-align: center;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Score and odds line layout - perfect alignment */
+  .score-odds-line {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    justify-content: flex-end; /* Align to right side */
+    min-width: 0; /* Allow proper sizing */
+  }
+
+  .live-score-container {
+    font-size: clamp(8px, 1.8vw, 10px) !important;
+    color: var(--primary-green);
+    font-weight: 700;
+    min-width: 30px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .odds-buttons-container {
+    display: flex;
+    gap: 4px; /* Reduced gap for better distribution */
+    flex-shrink: 0;
+    flex: 1 1 auto; /* Take full available width */
+    justify-content: space-between; /* Evenly distribute odds buttons */
+    min-width: 0; /* Allow proper sizing */
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    width: 100%; /* Ensure full width coverage */
+  }
+
+  /* General button styles for mobile - significantly smaller */
+  .btn {
+    padding: 4px 8px !important; /* Much smaller padding */
+    font-size: clamp(8px, 2vw, 10px) !important; /* Smaller font size */
+    min-height: 24px !important; /* Much smaller height */
+    border-radius: 6px !important; /* Smaller border radius */
+  }
+
+  .btn-sm {
+    padding: 2px 6px !important; /* Even smaller for small buttons */
+    font-size: clamp(7px, 1.8vw, 9px) !important;
+    min-height: 20px !important;
+  }
+
+  .btn-lg {
+    padding: 6px 12px !important; /* Smaller than desktop but still larger than regular */
+    font-size: clamp(9px, 2.2vw, 11px) !important;
+    min-height: 28px !important;
+  }
+
+  /* Navigation and action buttons */
+  .nav-link, .action-btn, .featured-btn, .competition-btn, .outrights-btn, .offers-btn {
+    padding: 4px 8px !important;
+    font-size: clamp(8px, 2vw, 10px) !important;
+    min-height: 24px !important;
+    border-radius: 6px !important;
+  }
+
+  /* More markets button */
+  .more-markets-button {
+    padding: 4px 6px !important;
+    font-size: clamp(7px, 1.8vw, 9px) !important;
+    min-height: 20px !important;
+    border-radius: 4px !important;
+  }
+
+  /* Favorite button */
+  .favorite-btn {
+    padding: 4px !important;
+    font-size: clamp(10px, 2.2vw, 12px) !important;
+    min-height: 24px !important;
+    min-width: 24px !important;
+    border-radius: 4px !important;
+  }
+
+  /* Match row layout optimization - full width with proper alignment */
+  .match-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+    min-width: 0; /* Allow text truncation */
+    overflow: hidden;
+    justify-content: space-between; /* Space between teams and odds */
+  }
+
+  .match-actions {
+    display: none !important; /* Hide star icon */
+  }
+
+  .match-teams {
+    flex: 0 0 auto; /* Fixed size to allow odds to take more space */
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0; /* Allow text truncation */
+    overflow: hidden;
+    margin: 0 !important; /* Remove margins */
+    margin-right: 12px; /* Reduced space between teams and odds */
+    max-width: 60%; /* Limit teams width to give more space to odds */
+  }
+
+  .match-date-time {
+    font-size: clamp(10px, 2.5vw, 12px) !important; /* Larger font for better visibility */
+    color: var(--text-muted);
+    text-align: left !important; /* Align to left */
+    margin-bottom: 4px; /* Increased margin for better spacing */
+    margin-left: 0 !important; /* Move to extreme left */
+    font-weight: 500; /* Slightly bolder for better readability */
+  }
+
+  .team {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: clamp(13px, 3vw, 16px) !important; /* Larger font for better readability */
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    margin-left: 0 !important;
+    max-width: 100%; /* Allow full width within grid column */
+    flex: 1;
+    margin-bottom: 2px; /* Small margin between teams */
+  }
+
+  .team-flag {
+    width: 12px;
+    height: 8px;
+    object-fit: cover;
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+
+  .vs {
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: left !important; /* Align to left */
+    margin: 1px 0;
+    margin-left: 0 !important; /* Move to extreme left */
+  }
+
+  .match-market-info {
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    color: var(--text-muted) !important;
+    text-align: center;
+    margin-top: 2px !important;
+  }
+
+  /* Live match specific styles */
+  .live-match {
+    border-left: 3px solid var(--primary-green) !important;
+  }
+
+  .live-status-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--primary-green);
+    color: var(--dark-bg);
+    font-size: clamp(6px, 1.4vw, 8px) !important;
+    font-weight: 700;
+    padding: 2px 4px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .live-time-display {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    color: var(--primary-green);
+    font-weight: 600;
+  }
+
+  .time-icon {
+    width: 6px;
+    height: 6px;
+    background: var(--primary-green);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .live-score {
+    font-size: clamp(9px, 2vw, 11px) !important;
+    color: var(--primary-green);
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* Additional markets button - hidden on small screens */
+  .additional-markets-container {
+    display: none !important; /* Hide on small screens */
+  }
+
+  .more-markets-icon {
+    font-size: clamp(8px, 1.8vw, 10px) !important;
+    font-weight: 700;
+  }
+
+  .more-markets-count {
+    font-size: clamp(7px, 1.6vw, 9px) !important;
+    font-weight: 600;
+  }
+
+  /* ==========================================================================
+     WHEEL OF FORTUNE SECTION - Mobile sidebar wheel button
+     ========================================================================== */
+  
+  /* Wheel of Fortune Section in Sidebar */
+  .wheel-section {
+    margin-top: 16px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+  }
+
+  .wheel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .wheel-list {
+    padding: 0 8px;
+  }
+
+  .wheel-item {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    color: var(--text-primary);
+    text-align: left;
+  }
+
+  .wheel-item:hover {
+    background: rgba(0, 255, 136, 0.1);
+    transform: translateX(4px);
+  }
+
+  .wheel-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .wheel-icon {
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+  }
+
+  .wheel-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  /* Wheel of Fortune Modal */
+  .wheel-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+  }
+
+  .wheel-modal-content {
+    background: var(--card-bg);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    position: relative;
+  }
+
+  .wheel-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    color: white;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .wheel-modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .wheel-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  .wheel-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+  }
+
+  .wheel-modal-body {
+    padding: 0;
+    overflow-y: auto;
+    max-height: calc(90vh - 70px);
+  }
+
+  /* Wheel of Fortune Component Mobile Optimization */
+  .wheel-modal-body .wheel-of-fortune {
+    padding: 20px;
+    background: var(--card-bg);
+  }
+
+  .wheel-modal-body .wheel-container {
+    margin: 0 auto;
+    max-width: 300px;
+  }
+
+  .wheel-modal-body .wheel {
+    width: 250px;
+    height: 250px;
+  }
+
+  .wheel-modal-body .multiplier-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  .wheel-modal-body .multiplier-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  .wheel-modal-body .bet-input {
+    width: 100%;
+    margin: 12px 0;
+  }
+
+  .wheel-modal-body .spin-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    margin: 12px 0;
+  }
+
+  .wheel-modal-body .history-section {
+    margin-top: 16px;
+  }
+
+  .wheel-modal-body .history-item {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  /* Additional mobile optimizations for wheel modal */
+  .wheel-modal-body .bet-amount-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-primary);
+  }
+
+  .wheel-modal-body .multiplier-btn.selected {
+    background: var(--primary-green);
+    color: white;
+    transform: scale(1.05);
+  }
+
+  .wheel-modal-body .result-display {
+    text-align: center;
+    padding: 16px;
+    background: rgba(0, 255, 136, 0.1);
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+
+  .wheel-modal-body .error-message {
+    color: #ff4444;
+    font-size: 12px;
+    text-align: center;
+    margin: 8px 0;
+  }
+
+  .wheel-modal-body .success-message {
+    color: var(--primary-green);
+    font-size: 12px;
+    text-align: center;
+    margin: 8px 0;
+  }
+
+  /* Ensure modal is properly positioned on mobile */
+  @media (max-height: 600px) {
+    .wheel-modal-content {
+      max-height: 95vh;
+    }
+    
+    .wheel-modal-body {
+      max-height: calc(95vh - 70px);
+    }
+  }
+
+  /* Landscape orientation adjustments */
+  @media (max-width: 768px) and (orientation: landscape) {
+    .wheel-modal-content {
+      max-width: 90vw;
+      max-height: 95vh;
+    }
+    
+    .wheel-modal-body .wheel {
+      width: 200px;
+      height: 200px;
+    }
+  }
+
+  /* ==========================================================================
+     MOBILE BETSLIP HIDING - Hide entire section on smaller screens
+     ========================================================================== */
+
+  /* Hide the entire betslip section on mobile */
+  .betslip {
+    display: none !important;
+  }
+
+  /* Show only betslip count in a mobile-friendly format - invisible green button */
+  .mobile-betslip-count {
+    position: fixed;
+    bottom: 16px; /* Right next to mobile bottom navigation */
+    right: 16px;
+    background: transparent; /* Make green button invisible */
+    color: transparent;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    box-shadow: none; /* Remove shadow */
+    z-index: 1000;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none; /* Remove border */
+  }
+
+  .mobile-betslip-count:hover {
+    transform: none; /* No hover effect since button is invisible */
+    box-shadow: none;
+  }
+
+  .mobile-betslip-count:active {
+    transform: none; /* No active effect since button is invisible */
+  }
+
+  /* Mobile betslip modal/overlay */
+  .mobile-betslip-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .mobile-betslip-overlay.show {
+    display: flex;
+  }
+
+  .mobile-betslip-modal {
+    background: var(--card-bg);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .mobile-betslip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    z-index: 1;
+  }
+
+  .mobile-betslip-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .mobile-betslip-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-betslip-close:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+  }
+
+  .mobile-betslip-content {
+    padding: 16px;
+  }
+
+  /* Mobile betslip tabs */
+  .mobile-betslip-tabs {
+    display: flex;
+    margin-bottom: 16px;
+    background: var(--dark-bg);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  .mobile-betslip-tab {
+    flex: 1;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-betslip-tab.active {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+
+  /* Mobile betslip count badge - only red badge visible */
+  .mobile-betslip-count-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--error);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 12px;
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(255, 68, 68, 0.3);
+    border: 2px solid var(--dark-bg);
+  }
+
+  /* Mobile betslip content styles */
+  .mobile-bets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .mobile-bet-card {
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .mobile-bet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .mobile-bet-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    margin-right: 8px;
+  }
+
+  .mobile-remove-bet {
+    background: var(--error);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-remove-bet:hover {
+    background: #cc3333;
+    transform: scale(1.1);
+  }
+
+  .mobile-bet-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mobile-bet-selection {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mobile-bet-market {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .mobile-bet-pick {
+    font-size: 12px;
+    color: var(--primary-green);
+    font-weight: 600;
+  }
+
+  .mobile-bet-time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .mobile-stake-section {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .mobile-stake-section label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .mobile-stake-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-stake-btn {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-stake-btn:hover {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+    border-color: var(--primary-green);
+  }
+
+  .mobile-stake-input {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .mobile-stake-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+  }
+
+  .mobile-betslip-summary {
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .mobile-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .mobile-summary-row:last-of-type {
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .mobile-error-message {
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .mobile-success-message {
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid var(--primary-green);
+    color: var(--primary-green);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .mobile-place-bet-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary-green) 0%, #88e600 100%);
+    color: var(--dark-bg);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .mobile-place-bet-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #88e600 0%, var(--primary-green) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 255, 136, 0.4);
+  }
+
+  .mobile-place-bet-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE TABLES AND GRIDS (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Ensure all tables are responsive and fit screen width */
+  table {
+    width: 100% !important;
+    max-width: 100vw !important;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: clamp(10px, 2.5vw, 12px) !important;
+  }
+
+  th, td {
+    padding: 6px 4px !important;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    word-wrap: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  th {
+    background: var(--card-bg);
+    font-weight: 600;
+    font-size: clamp(9px, 2.2vw, 11px) !important;
+    color: var(--text-primary);
+  }
+
+  td {
+    font-size: clamp(9px, 2.2vw, 11px) !important;
+    color: var(--text-secondary);
+  }
+
+  /* Responsive grid adjustments */
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+  }
+
+  /* Match cards in grids */
+  .matches-grid {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+  }
+
+  /* Popular matches - enable horizontal swipe with snap */
+  .popular-matches-scroll {
+    display: flex;
+    overflow-x: auto !important; /* Enable horizontal swipe */
+    overflow-y: hidden;
+    gap: 0 !important; /* No gap between cards for seamless appearance */
+    padding: 0 !important; /* No padding for full width */
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x; /* Allow horizontal panning */
+    scroll-snap-type: x mandatory; /* Snap one card at a time */
+    width: 100% !important; /* Use 100% instead of 100vw to prevent horizontal scroll */
+    max-width: 100% !important;
+    scrollbar-width: none; /* Hide scrollbar */
+    -ms-overflow-style: none; /* Hide scrollbar in IE/Edge */
+  }
+
+  .popular-matches-scroll::-webkit-scrollbar {
+    display: none; /* Hide scrollbar in WebKit browsers */
+  }
+
+  .popular-match-card {
+    flex: 0 0 100%; /* One card per viewport width */
+    min-width: 100%;
+    scroll-snap-align: start; /* Snap card to start */
+    background: var(--card-bg);
+    border: none !important; /* Remove border for full-width coverage */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; /* Subtle separator only */
+    border-radius: 0 !important; /* Remove border radius for seamless connection */
+    padding: 16px 8px !important; /* Optimized padding for full-width utilization */
+    transition: all 0.3s ease;
+    margin: 0 !important; /* No margin between cards */
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 120px !important; /* Increased height for better visibility */
+    box-sizing: border-box !important; /* Ensure padding is included in width */
+  }
+
+  /* Make popular matches arrows visible and positioned */
+  .popular-matches-box { position: relative; }
+  .popular-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .popular-slider-btn.prev-btn { left: 8px; }
+  .popular-slider-btn.next-btn { right: 8px; }
+
+  /* Ensure hero slider arrows are visible on mobile */
+  .hero-slider .slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    z-index: 6;
+  }
+  .hero-slider .prev-btn { left: 10px; }
+  .hero-slider .next-btn { right: 10px; }
+
+  /* Increase hero slide visual width by slightly scaling background image */
+  .hero-slider .slide-background img {
+    transform: scale(1.06);
+    transform-origin: center;
+  }
+
+  .popular-match-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px rgba(0, 255, 136, 0.1);
+    border-color: var(--primary-green);
+  }
+
+  /* Section headers responsive */
+  .section-header h2 {
+    font-size: clamp(16px, 4vw, 18px) !important;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    padding: 0 12px !important;
+  }
+
+  /* Tab navigation responsive */
+  .tab-navigation {
+    display: flex;
+    overflow-x: hidden !important; /* Remove horizontal scroll */
+    gap: 4px;
+    padding: 0 12px;
+    margin-bottom: 16px;
+    scrollbar-width: none; /* Hide scrollbar */
+    -ms-overflow-style: none; /* Hide scrollbar in IE/Edge */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Hide scrollbar in WebKit browsers */
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    padding: 4px 6px !important; /* Further reduced padding */
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px !important; /* Smaller border radius */
+    color: var(--text-secondary);
+    font-size: clamp(7px, 1.8vw, 9px) !important; /* Smaller font size */
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-height: 24px !important; /* Much smaller height */
+    min-width: 40px !important; /* Reduced minimum width */
+    max-width: 70px !important; /* Added maximum width constraint */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tab-btn.active {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+    border-color: var(--primary-green);
+  }
+
+  .tab-btn:hover {
+    background: var(--hover-bg);
+    color: var(--primary-green);
+  }
+
+  /* Competition groups responsive */
+  .competition-group {
+    margin-bottom: 0 !important; /* Remove bottom margin for continuous flow */
+    width: 100%;
+  }
+
+  .matches-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0 !important; /* No gap between matches for continuous flow */
+    width: 100%;
+  }
+
+  /* Ensure all content containers are full width */
+  .main-content,
+  .page-content,
+  .under-navbar,
+  .middle,
+  .container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .main-content {
+    padding: 0 !important; /* Zero padding for full width sections */
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  /* Popular matches section specific */
+  .popular-matches-section {
+    width: 100% !important; /* Use 100% instead of 100vw to prevent horizontal scroll */
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-left: 0 !important; /* Remove negative margins */
+    margin-right: 0 !important; /* Remove negative margins */
+    overflow: hidden !important;
+    position: relative; /* For proper content positioning */
+    left: 0 !important; /* Match hero section positioning */
+    min-height: 150px !important; /* Increased height for better visibility */
+    right: 0 !important; /* Match hero section positioning */
+    border-radius: 0; /* Match hero section border radius */
+  }
+
+  .popular-matches-box {
+    width: 100% !important; /* Use 100% instead of 100vw to prevent horizontal scroll */
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    position: relative; /* For proper content positioning */
+    left: 0 !important; /* Match hero section positioning */
+    right: 0 !important; /* Match hero section positioning */
+    border-radius: 0; /* Match hero section border radius */
+  }
+
+  .popular-matches-header {
+    padding: 0 8px !important; /* Reduced padding for full-width utilization */
+    margin-bottom: 8px !important; /* Reduced margin for compact design */
+    display: flex !important;
+    justify-content: flex-start !important; /* Move header to the left */
+    align-items: center !important;
+  }
+
+  .popular-matches-title {
+    font-size: clamp(14px, 3.5vw, 16px) !important; /* Slightly smaller title */
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 !important;
+    margin-left: 4px !important; /* Reduced margin for full-width utilization */
+    padding-left: 2px !important; /* Reduced padding for better space utilization */
+  }
+}
+
+/* ==========================================================================
+   MOBILE BOTTOM NAVIGATION (320px - 767px ONLY)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--header-bg);
+    border-top: 1px solid var(--border-color);
+    padding: 8px 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Hide bottom navigation on tablet and desktop */
+@media (min-width: 768px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Ensure bottom navigation is visible on all iPhone sizes */
+@media (max-width: 767px) and (orientation: portrait) {
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+    min-width: 60px;
+  }
+
+  .bottom-nav-item:hover,
+  .bottom-nav-item.active {
+    color: var(--primary-green);
+    background: rgba(0, 255, 136, 0.1);
+  }
+
+  .bottom-nav-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .bottom-nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .bottom-nav-icon-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bottom-nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    background: var(--error);
+    color: white;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 2px 4px;
+    border-radius: 8px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* Add bottom padding to main content to account for bottom nav - MOBILE ONLY */
+  .page-content {
+    padding-bottom: 80px;
+  }
+
+  .main-content {
+    padding-bottom: 80px;
+  }
+}
+
+/* Remove bottom padding on tablet and desktop since bottom nav is hidden */
+@media (min-width: 768px) {
+  .page-content {
+    padding-bottom: 0 !important;
+  }
+
+  .main-content {
+    padding-bottom: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   TABLET MARGIN & PADDING RESET (768px - 1023px)
+   ========================================================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Reset margins and padding for tablet */
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important; /* Fixed width like navbar */
+    max-width: 100vw !important; /* Prevent overflow */
+    min-width: 100vw !important; /* Ensure full width */
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .app {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: visible !important; /* Allow navbar content to be visible */
+  }
+
+  .page-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: visible !important; /* Allow navbar content to be visible */
+  }
+
+  .under-navbar {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .middle {
+    margin: 0 !important;
+    padding: 0 24px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .container {
+    margin: 0 !important;
+    padding: 0 24px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 24px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* ==========================================================================
+   TABLET STYLES (768px - 1023px)
+   ========================================================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet Navbar */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 70px;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .navbar-container {
+    padding: 0 24px !important;
+    height: 70px;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(24px, 6vw, 32px) !important; /* Restored to original size */
+    margin-left: -10px !important; /* Moved slightly right to prevent text hiding */
+  }
+
+  .hamburger-menu {
+    display: none; /* Hide hamburger on tablet */
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 24px;
+  }
+
+  .nav-link {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+
+  /* Tablet Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 70px;
+    left: -300px;
+    width: 300px;
+    height: calc(100vh - 70px);
+    background: var(--sidebar-bg);
+    z-index: 999;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  /* Tablet Hero */
+  .hero-slider {
+    height: 300px;
+    margin-bottom: 30px;
+  }
+
+  .hero-title {
+    font-size: 32px;
+  }
+
+  .hero-description {
+    font-size: 18px;
+  }
+
+  /* Tablet Matches */
+  .matches-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  /* Hide bottom nav on tablet */
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .page-content {
+    padding-bottom: 0 !important;
+  }
+
+  /* Ensure desktop navbar behavior on tablet and larger */
+  .navbar-container {
+    padding: var(--spacing-sm) var(--spacing-lg) !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+  }
+
+  .navbar-left {
+    flex: 1 !important;
+    gap: var(--spacing-lg) !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(24px, 6vw, 32px) !important; /* Restored to original size */
+    margin-left: -10px !important; /* Moved slightly right to prevent text hiding */
+  }
+
+  .navbar-right {
+    gap: var(--spacing-lg) !important;
+  }
+
+  .login-btn, .signup-btn {
+    padding: var(--spacing-sm) var(--spacing-md) !important;
+    font-size: var(--font-size-sm) !important;
+    min-height: 40px !important;
+  }
+
+  .hamburger-menu {
+    display: none !important; /* Hide hamburger on tablet+ */
+  }
+
+  .language-selector {
+    padding: var(--spacing-xs) var(--spacing-sm) !important;
+    font-size: var(--font-size-lg) !important;
+  }
+}
+
+/* ==========================================================================
+   SMALL MOBILE OPTIMIZATIONS (320px - 374px)
+   ========================================================================== */
+
+@media (max-width: 374px) {
+  /* Ultra-compact mobile - modern styling with minimal space */
+  .navbar-container {
+    padding: 0 4px !important; /* Minimal padding for very small screens */
+    gap: 2px !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(200px, 47vw, 260px) !important; /* Significantly increased font size to match */
+    margin-left: -20px !important; /* Moved to the left to give hamburger space */
+    max-width: none !important; /* Remove max-width constraint to allow full visibility */
+    transform: scale(1) !important; /* Force rendering */
+    line-height: 1 !important; /* Override any line-height */
+    overflow: visible !important; /* Allow text to be visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    flex: 1 1 auto !important; /* Allow flexible growth */
+  }
+  
+  /* Override CSS variables and other conflicting styles */
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(150px, 37vw, 190px) !important; /* Further increased font size */
+    max-width: none !important; /* Remove max-width constraint to allow full visibility */
+    margin-left: -20px !important; /* Moved to the left to give hamburger space */
+    overflow: visible !important; /* Ensure text is visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    flex: 1 1 auto !important; /* Allow flexible growth */
+  }
+
+  .hamburger-menu {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    margin-left: 2px !important;
+  }
+
+  .hamburger-line {
+    width: 14px;
+    height: 2px;
+  }
+
+  .login-btn, .signup-btn {
+    padding: 4px 6px; /* Ultra compact for very small screens */
+    font-size: clamp(8px, 2vw, 10px) !important;
+    min-height: 24px; /* Smaller touch target for very small screens */
+    border-radius: 8px;
+  }
+
+  .auth-buttons {
+    gap: 2px !important;
+  }
+
+  .navbar-right {
+    gap: 2px !important;
+  }
+
+  .language-selector {
+    padding: 2px 4px !important;
+    font-size: clamp(7px, 1.8vw, 9px) !important;
+  }
+
+  .navbar-left {
+    gap: 6px;
+    flex: 1 1 auto !important; /* Allow flexible growth for large brand text */
+    max-width: none !important; /* Remove restrictive max-width */
+  }
+
+  .navbar-right {
+    gap: 4px;
+  }
+
+  .auth-buttons {
+    gap: 4px;
+  }
+
+  /* Hero section for very small screens */
+  .hero-slider {
+    height: 140px !important; /* Further increased from 100px for better visibility */
+    margin-bottom: 3px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(8px, 2vw, 10px) !important;
+  }
+
+  .hero-description {
+    font-size: clamp(6px, 1.2vw, 7px) !important;
+  }
+
+  /* Hero arrows smaller for very small screens */
+  .hero-slider .prev-arrow,
+  .hero-slider .next-arrow {
+    width: 10px; /* Reduced from 18px */
+    height: 10px; /* Reduced from 18px */
+    font-size: 4px; /* Reduced from 7px */
+  }
+
+  .hero-slider .prev-arrow {
+    left: 1px;
+  }
+
+  .hero-slider .next-arrow {
+    right: 1px;
+  }
+
+  /* Much smaller dots for very small screens */
+  .slider-dots {
+    bottom: 0.25px;
+    gap: 0.125px;
+  }
+
+  .dot {
+    width: 0.015px; /* Further reduced from 0.04px */
+    height: 0.015px; /* Further reduced from 0.04px */
+  }
+
+  .dot.active {
+    transform: scale(1.1);
+  }
+
+  /* Match cards ultra-compact - full width */
+  .match-card {
+    padding: 14px 18px !important; /* Optimized padding for small screens */
+    margin: 0 0 6px 0 !important; /* Space between cards */
+    width: 100vw !important; /* Full viewport width */
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important; /* Break out of container */
+    margin-right: calc(-50vw + 50%) !important;
+    left: 0 !important; /* Ensure full width positioning */
+    right: 0 !important; /* Ensure full width positioning */
+    position: relative; /* Enable positioning */
+    overflow: hidden !important; /* Prevent content overflow */
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Single row layout */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  }
+
+  .popular-matches {
+    padding: 0 !important; /* ZERO padding for full width */
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .popular-matches h2 {
+    font-size: clamp(14px, 3.5vw, 16px) !important;
+    margin-bottom: 8px;
+    padding: 0 8px !important; /* Small padding for readability */
+  }
+
+  .matches-grid {
+    gap: 6px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 8px !important; /* Small padding for readability */
+  }
+
+  .odd-button {
+    padding: 4px 2px !important;
+    font-size: 8px !important;
+    min-height: 28px !important;
+    width: 100% !important;
+  }
+
+  .match-odds {
+    gap: 2px !important;
+  }
+
+  .odd-label {
+    font-size: 7px !important;
+  }
+
+  .odd-value {
+    font-size: 9px !important;
+  }
+
+  /* Bottom navigation ultra-compact */
+  .bottom-nav-item {
+    padding: 4px 6px !important;
+    min-width: 45px !important;
+  }
+
+  .bottom-nav-icon {
+    font-size: 16px !important;
+  }
+
+  .bottom-nav-label {
+    font-size: 8px !important;
+  }
+
+  .bottom-nav-badge {
+    font-size: 7px !important;
+    padding: 1px 3px !important;
+    min-width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Typography ultra-compact */
+  h1 { font-size: clamp(14px, 3.5vw, 16px) !important; }
+  h2 { font-size: clamp(12px, 3vw, 14px) !important; }
+  h3 { font-size: clamp(10px, 2.5vw, 12px) !important; }
+  h4 { font-size: clamp(9px, 2.2vw, 11px) !important; }
+  h5 { font-size: clamp(8px, 2vw, 10px) !important; }
+  h6 { font-size: clamp(7px, 1.8vw, 9px) !important; }
+  
+  body { font-size: clamp(10px, 2.5vw, 12px) !important; }
+  
+  .btn { font-size: clamp(9px, 2.2vw, 11px) !important; }
+  .form-input, .form-select, .form-textarea { font-size: clamp(10px, 2.5vw, 12px) !important; }
+  
+  .match-card .team-name { font-size: clamp(9px, 2.2vw, 11px) !important; }
+  .match-card .team-score { font-size: clamp(10px, 2.5vw, 12px) !important; }
+  .match-card .match-league { font-size: clamp(7px, 1.8vw, 9px) !important; }
+  .match-card .match-time { font-size: clamp(7px, 1.8vw, 9px) !important; }
+}
+
+/* ==========================================================================
+   MEDIUM MOBILE STYLES (375px - 413px)
+   ========================================================================== */
+
+@media (min-width: 375px) and (max-width: 413px) {
+  .navbar-container {
+    padding: 0 6px !important;
+    gap: 3px !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(220px, 50vw, 280px) !important; /* Significantly increased font size to match */
+    max-width: none !important; /* Remove max-width constraint to allow full visibility */
+    transform: scale(1) !important; /* Force rendering */
+    line-height: 1 !important; /* Override any line-height */
+    overflow: visible !important; /* Allow text to be visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    flex: 1 1 auto !important; /* Allow flexible growth */
+  }
+  
+  /* Override CSS variables and other conflicting styles */
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(160px, 40vw, 200px) !important; /* Further increased font size */
+    max-width: none !important; /* Remove max-width constraint to allow full visibility */
+    margin-left: -20px !important; /* Moved to the left to give hamburger space */
+    overflow: visible !important; /* Ensure text is visible */
+    text-overflow: unset !important; /* Remove ellipsis */
+    flex: 1 1 auto !important; /* Allow flexible growth */
+  }
+
+  .login-btn, .signup-btn {
+    padding: 5px 8px;
+    font-size: clamp(9px, 2.2vw, 11px) !important;
+    min-height: 26px;
+    border-radius: 9px;
+  }
+
+  .hamburger-menu {
+    width: 26px;
+    height: 26px;
+    margin-left: 2px !important;
+  }
+
+  .hamburger-line {
+    width: 15px;
+  }
+
+  .navbar-left {
+    gap: 8px;
+  }
+
+  .navbar-right {
+    gap: 5px;
+  }
+
+  .auth-buttons {
+    gap: 5px;
+  }
+
+  /* Hero section optimizations */
+  .hero-slider {
+    height: 160px !important; /* Further increased from 120px for better visibility */
+    margin-bottom: 6px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(11px, 2.8vw, 14px) !important;
+  }
+
+  .hero-description {
+    font-size: clamp(8px, 1.7vw, 9px) !important;
+  }
+
+  /* Hero arrows for medium mobile */
+  .hero-slider .prev-arrow,
+  .hero-slider .next-arrow {
+    width: 15px; /* Reduced from 26px */
+    height: 15px; /* Reduced from 26px */
+    font-size: 6px; /* Reduced from 11px */
+  }
+
+  .hero-slider .prev-arrow {
+    left: 3px;
+  }
+
+  .hero-slider .next-arrow {
+    right: 3px;
+  }
+
+  /* Maintain grid structure */
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* Minimal margins for full-width content */
+  .container,
+  .main-content,
+  .page-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .under-navbar {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .middle {
+    padding: 0 6px !important;
+  }
+
+  .popular-matches {
+    padding: 0 !important; /* ZERO padding for full width */
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .matches-grid {
+    gap: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .match-card {
+    padding: 8px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   LANDSCAPE ORIENTATION (Mobile & Tablet)
+   ========================================================================== */
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .hero-slider {
+    height: 150px;
+  }
+
+  .hero-title {
+    font-size: 18px;
+  }
+
+  .hero-description {
+    font-size: 12px;
+  }
+
+  .mobile-bottom-nav {
+    padding: 4px 0;
+  }
+
+  .bottom-nav-item {
+    padding: 4px 8px;
+  }
+
+  .bottom-nav-icon {
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+
+  .bottom-nav-label {
+    font-size: 8px;
+  }
+}
+
+/* ==========================================================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ========================================================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  .hamburger-menu,
+  .login-btn,
+  .signup-btn,
+  .odd-button,
+  .bottom-nav-item {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .hamburger-menu:active,
+  .login-btn:active,
+  .signup-btn:active,
+  .odd-button:active,
+  .bottom-nav-item:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  /* Enhanced touch feedback */
+  .match-card:active {
+    transform: scale(0.98);
+  }
+
+  .sport-header:active,
+  .subcategory-item:active {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+  }
+
+  /* Prevent text selection on touch devices */
+  .hamburger-menu,
+  .bottom-nav-item,
+  .odd-button {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .hamburger-menu,
+  .sidebar,
+  .hero-slider,
+  .match-card,
+  .odd-button,
+  .bottom-nav-item {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .navbar,
+  .sidebar,
+  .mobile-bottom-nav {
+    border-width: 2px;
+  }
+
+  .odd-button,
+  .login-btn,
+  .signup-btn {
+    border-width: 2px;
+  }
+}
+
+/* ==========================================================================
+   MOBILE PERFORMANCE OPTIMIZATIONS
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Hardware acceleration for smooth animations */
+  .navbar,
+  .sidebar,
+  .mobile-bottom-nav,
+  .hero-slider,
+  .match-card {
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Optimize scrolling performance */
+  .sidebar,
+  .sports-list,
+  .page-content {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce repaints on mobile */
+  .hamburger-menu,
+  .odd-button,
+  .bottom-nav-item {
+    will-change: transform;
+  }
+
+  /* Optimize images for mobile */
+  .hero-slider img,
+  .slide-background img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* ==========================================================================
+   IPHONE SPECIFIC OPTIMIZATIONS
+   ========================================================================== */
+
+/* iPhone SE (375x667) and similar small screens */
+@media (max-width: 375px) and (max-height: 667px) {
+  .hero-slider {
+    height: 140px !important; /* Further increased from 105px for better visibility */
+    margin-bottom: 4px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(9px, 2.3vw, 12px) !important;
+  }
+
+  .hero-description {
+    font-size: clamp(7px, 1.5vw, 8px) !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(200px, 48vw, 270px) !important; /* Significantly increased font size to match */
+    transform: scale(1) !important; /* Force rendering */
+    line-height: 1 !important; /* Override any line-height */
+  }
+  
+  /* Override CSS variables and other conflicting styles */
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(144px, 34.8vw, 192px) !important; /* Doubled font size */
+    margin-left: 0 !important;
+  }
+
+  .popular-matches h2 {
+    font-size: clamp(15px, 3.8vw, 17px) !important;
+  }
+
+  .match-card {
+    padding: 10px !important;
+  }
+
+  .odd-button {
+    min-height: 30px !important;
+    font-size: clamp(8px, 2vw, 10px) !important;
+  }
+
+  /* Ultra-small dots for iPhone SE */
+  .slider-dots {
+    bottom: 0.75px !important;
+    gap: 0.25px !important;
+  }
+
+  .dot {
+    width: 0.03px !important; /* Further reduced from 0.09px */
+    height: 0.03px !important; /* Further reduced from 0.09px */
+  }
+
+  .dot.active {
+    transform: scale(1.1) !important;
+  }
+}
+
+/* iPhone 12/13/14 (390x844) and similar */
+@media (min-width: 376px) and (max-width: 414px) and (max-height: 844px) {
+  .hero-slider {
+    height: 160px !important; /* Further increased from 120px for better visibility */
+    margin-bottom: 6px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(10px, 2.5vw, 13px) !important;
+  }
+
+  .hero-description {
+    font-size: clamp(8px, 1.7vw, 9px) !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(210px, 50vw, 280px) !important; /* Significantly increased font size to match */
+    transform: scale(1) !important; /* Force rendering */
+    line-height: 1 !important; /* Override any line-height */
+  }
+  
+  /* Override CSS variables and other conflicting styles */
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(150px, 36vw, 198px) !important; /* Doubled font size */
+    margin-left: 0 !important;
+  }
+
+  .popular-matches h2 {
+    font-size: clamp(16px, 4vw, 18px) !important;
+  }
+
+  /* Small dots for iPhone 12/13/14 */
+  .slider-dots {
+    bottom: 1px !important;
+    gap: 0.5px !important;
+  }
+
+  .dot {
+    width: 0.06px !important; /* Further reduced from 0.18px */
+    height: 0.06px !important; /* Further reduced from 0.18px */
+  }
+
+  .dot.active {
+    transform: scale(1.1) !important;
+  }
+}
+
+/* iPhone 12/13/14 Pro Max (428x926) and similar large phones */
+@media (min-width: 415px) and (max-width: 428px) and (max-height: 926px) {
+  .hero-slider {
+    height: 170px !important; /* Further increased from 130px for better visibility */
+    margin-bottom: 7px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(11px, 2.8vw, 14px) !important;
+  }
+
+  .hero-description {
+    font-size: clamp(8px, 1.8vw, 10px) !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(220px, 52vw, 290px) !important; /* Significantly increased font size to match */
+    transform: scale(1) !important; /* Force rendering */
+    line-height: 1 !important; /* Override any line-height */
+  }
+  
+  /* Override CSS variables and other conflicting styles */
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(156px, 37.2vw, 204px) !important; /* Doubled font size */
+    margin-left: 0 !important;
+  }
+
+  .popular-matches h2 {
+    font-size: clamp(17px, 4.2vw, 19px) !important;
+  }
+
+  /* Small dots for iPhone Pro Max */
+  .slider-dots {
+    bottom: 1.25px !important;
+    gap: 0.5px !important;
+  }
+
+  .dot {
+    width: 0.06px !important; /* Further reduced from 0.18px */
+    height: 0.06px !important; /* Further reduced from 0.18px */
+  }
+
+  .dot.active {
+    transform: scale(1.1) !important;
+  }
+}
+
+/* ==========================================================================
+   DESKTOP NAVBAR STYLES (1024px+)
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  /* Desktop navbar - restore original desktop behavior */
+  .navbar {
+    position: sticky !important;
+    top: 0 !important;
+    height: 70px !important;
+    background: var(--header-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .navbar-container {
+    padding: var(--spacing-sm) var(--spacing-lg) !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    height: 70px !important;
+  }
+
+  .navbar-left {
+    flex: 1 !important;
+    gap: var(--spacing-lg) !important;
+  }
+
+  .nav-brand {
+    font-size: clamp(24px, 6vw, 32px) !important; /* Restored to original size */
+    margin-left: -60px !important; /* Move further to the left on desktop */
+  }
+
+  .navbar-right {
+    gap: var(--spacing-lg) !important;
+  }
+
+  .login-btn, .signup-btn {
+    padding: var(--spacing-sm) var(--spacing-md) !important;
+    font-size: var(--font-size-sm) !important;
+    min-height: 40px !important;
+  }
+
+  .hamburger-menu {
+    display: none !important; /* Hide hamburger on desktop */
+  }
+
+  .language-selector {
+    padding: var(--spacing-xs) var(--spacing-sm) !important;
+    font-size: var(--font-size-lg) !important;
+  }
+}
+
+/* ==========================================================================
+   SKYBET BRAND - SMALL SCREEN SIZE INCREASE (FINAL OVERRIDE)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Increase brand size slightly on small screens while keeping layout intact */
+  header.navbar .navbar-left .nav-brand,
+  .navbar .navbar-left .nav-brand,
+  .navbar .nav-brand,
+  .nav-brand {
+    font-size: clamp(28px, 8.5vw, 42px) !important; /* Larger than default for better prominence */
+    line-height: 1 !important;
+    letter-spacing: -0.5px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+  }
+
+  /* Ensure inner Sky/Bet parts maintain bold weight for visibility */
+  .navbar .nav-brand .brand-w,
+  .navbar .nav-brand .brand-e,
+  .nav-brand .brand-w,
+  .nav-brand .brand-e {
+    font-weight: 900 !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE SAFE AREA SUPPORT
+   ========================================================================== */
+
+@supports (padding: max(0px)) {
+  @media (max-width: 767px) {
+    .navbar {
+      padding-top: max(0px, env(safe-area-inset-top));
+    }
+
+    .mobile-bottom-nav {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .page-content {
+      padding-left: max(0px, env(safe-area-inset-left));
+      padding-right: max(0px, env(safe-area-inset-right));
+    }
+  }
+}
+
+/* ==========================================================================
+   ULTIMATE HAMBURGER MENU VISIBILITY SAFETY MEASURES
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* ULTIMATE SAFETY: Ensure hamburger menu is NEVER clipped by overflow */
+  .navbar, .navbar-container, .navbar-right {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  .navbar .hamburger-menu {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    -webkit-clip-path: none !important;
+  }
+
+  /* FINAL NUCLEAR OPTION: Force hamburger menu visibility in ALL scenarios */
+  .navbar .hamburger-menu,
+  .navbar-container .hamburger-menu,
+  .navbar-right .hamburger-menu,
+  .navbar .navbar-right .hamburger-menu,
+  .navbar-container .navbar-right .hamburger-menu,
+  .app .navbar .hamburger-menu,
+  .page-content .navbar .hamburger-menu,
+  .under-navbar .navbar .hamburger-menu,
+  .app .navbar-container .hamburger-menu,
+  .page-content .navbar-container .hamburger-menu,
+  .under-navbar .navbar-container .hamburger-menu {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+    order: 2 !important;
+  }
+}
+
+
