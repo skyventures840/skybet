@@ -15,6 +15,30 @@ const MatchMarkets = () => {
     // Track expanded/collapsed state per market key
     const [expandedByKey, setExpandedByKey] = useState({});
 
+    // Helper: normalize market keys to canonical values to dedupe aliases
+    const normalizeMarketKey = (keyRaw) => {
+        const key = (keyRaw || '').toLowerCase();
+        // Collapse lay/exchange variants
+        const base = key.replace(/_(lay|exchange)$/i, '');
+        // Unify common aliases
+        if (base === 'moneyline' || base === 'ml' || base === 'h2h_lay' || base === 'h2h_exchange') return 'h2h';
+        if (base === 'over_under' || base === 'o/u' || base === 'totals_lay' || base === 'totals_exchange') return 'totals';
+        if (base === 'handicap' || base === 'point_spread' || base === 'spreads_lay' || base === 'spreads_exchange') return 'spreads';
+        return base;
+    };
+
+    // Helper: title mapping based on normalized keys (sport-agnostic)
+    const titleForKey = (normKey) => {
+        switch (normKey) {
+            case 'h2h': return 'H2H';
+            case 'totals': return 'Total Points';
+            case 'spreads': return 'Point Spread';
+            case 'double_chance': return 'Double Chance';
+            default:
+                return (normKey || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+    };
+
     useEffect(() => {
         console.log('MatchMarkets useEffect triggered with matchId:', matchId);
         
@@ -38,7 +62,11 @@ const MatchMarkets = () => {
                 // Process bookmakers data to create markets structure
                 let processedMatchData = { ...matchData };
                 
-                if (matchData.bookmakers && matchData.bookmakers.length > 0) {
+                // Prefer backend-normalized markets if present
+                if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
+                    console.log('Using backend-normalized markets data:', matchData.markets);
+                    processedMatchData.markets = matchData.markets;
+                } else if (matchData.bookmakers && matchData.bookmakers.length > 0) {
                     console.log('Processing bookmakers data:', matchData.bookmakers);
                     console.log('Number of bookmakers:', matchData.bookmakers.length);
                     
@@ -52,38 +80,21 @@ const MatchMarkets = () => {
                         bookmaker.markets.forEach((market, marketIndex) => {
                             console.log(`Processing market ${marketIndex} from bookmaker ${bookmakerIndex}:`, market.key);
                             
-                            // Skip if we've already processed this market type
-                            if (processedMarketKeys.has(market.key)) {
+                            // Normalize key and skip if already processed
+                            const normKey = normalizeMarketKey(market.key);
+                            if (processedMarketKeys.has(normKey)) {
                                 console.log(`Skipping duplicate market: ${market.key} (already processed)`);
                                 return;
                             }
                             
-                            processedMarketKeys.add(market.key);
-                            console.log(`Adding new market: ${market.key}`);
+                            processedMarketKeys.add(normKey);
+                            console.log(`Adding new market: ${normKey}`);
                             
-                            // Create clean market title and remove verbose descriptions
-                            let marketTitle = market.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                            
-                            // Special handling for common market types
-                            if (market.key === 'h2h') {
-                                marketTitle = 'H2H';
-                                // Remove description text
-                            } else if (market.key === 'totals') {
-                                marketTitle = 'Total Goals';
-                                // Remove description text
-                            } else if (market.key === 'spreads') {
-                                marketTitle = 'Point Spread';
-                                // Remove description text
-                            } else if (market.key === 'double_chance') {
-                                marketTitle = 'Double Chance';
-                                // Remove description text
-                            } else if (market.key === 'additional') {
-                                marketTitle = 'Additional Markets';
-                                // Remove description text
-                            }
+                            // Title based on normalized key
+                            const marketTitle = titleForKey(normKey);
                             
                             markets.push({
-                                key: market.key,
+                                key: normKey,
                                 title: marketTitle,
                                 // description removed as per requirements
                                 outcomes: market.outcomes.map(outcome => ({
@@ -98,9 +109,6 @@ const MatchMarkets = () => {
                     console.log('Final processed markets (after deduplication):', markets.map(m => ({ key: m.key, title: m.title })));
                     processedMatchData.markets = markets;
                     console.log('Processed markets:', markets);
-                } else if (matchData.markets && matchData.markets.length > 0) {
-                    console.log('Using existing markets data:', matchData.markets);
-                    processedMatchData.markets = matchData.markets;
                 } else {
                     console.log('No markets or bookmakers data found');
                     processedMatchData.markets = [];
@@ -242,7 +250,9 @@ const MatchMarkets = () => {
                                     // Process bookmakers data to create markets structure
                                     let processedMatchData = { ...matchData };
                                     
-                                    if (matchData.bookmakers && matchData.bookmakers.length > 0) {
+                                    if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
+                                        processedMatchData.markets = matchData.markets;
+                                    } else if (matchData.bookmakers && matchData.bookmakers.length > 0) {
                                         const markets = [];
                                         const processedMarketKeys = new Set(); // Track processed market keys to avoid duplicates
                                         
@@ -256,38 +266,21 @@ const MatchMarkets = () => {
                                             bookmaker.markets.forEach((market, marketIndex) => {
                                                 console.log(`Retry: Processing market ${marketIndex} from bookmaker ${bookmakerIndex}:`, market.key);
                                                 
+                                                const normKey = normalizeMarketKey(market.key);
                                                 // Skip if we've already processed this market type
-                                                if (processedMarketKeys.has(market.key)) {
+                                                if (processedMarketKeys.has(normKey)) {
                                                     console.log(`Retry: Skipping duplicate market: ${market.key} (already processed)`);
                                                     return;
                                                 }
                                                 
-                                                processedMarketKeys.add(market.key);
-                                                console.log(`Retry: Adding new market: ${market.key}`);
+                                                processedMarketKeys.add(normKey);
+                                                console.log(`Retry: Adding new market: ${normKey}`);
                                                 
-                                                // Create clean market title and remove verbose descriptions
-                                                let marketTitle = market.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                                
-                                                // Special handling for common market types
-                                                if (market.key === 'h2h') {
-                                                    marketTitle = 'H2H';
-                                                    // Remove description text
-                                                } else if (market.key === 'totals') {
-                                                    marketTitle = 'Total Goals';
-                                                    // Remove description text
-                                                } else if (market.key === 'spreads') {
-                                                    marketTitle = 'Point Spread';
-                                                    // Remove description text
-                                                } else if (market.key === 'double_chance') {
-                                                    marketTitle = 'Double Chance';
-                                                    // Remove description text
-                                                } else if (market.key === 'additional') {
-                                                    marketTitle = 'Additional Markets';
-                                                    // Remove description text
-                                                }
+                                                // Title based on normalized key
+                                                const marketTitle = titleForKey(normKey);
                                                 
                                                 markets.push({
-                                                    key: market.key,
+                                                    key: normKey,
                                                     title: marketTitle,
                                                     // description removed as per requirements
                                                     outcomes: market.outcomes.map(outcome => ({
@@ -301,8 +294,6 @@ const MatchMarkets = () => {
                                         
                                         console.log('Retry: Final processed markets (after deduplication):', markets.map(m => ({ key: m.key, title: m.title })));
                                         processedMatchData.markets = markets;
-                                    } else if (matchData.markets && matchData.markets.length > 0) {
-                                        processedMatchData.markets = matchData.markets;
                                     } else {
                                         processedMatchData.markets = [];
                                     }

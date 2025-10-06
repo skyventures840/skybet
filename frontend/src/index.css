@@ -9717,29 +9717,14 @@ body {
   }
 
   /* Popular matches: increase card height, reduce container width, keep content full width */
-  .popular-matches-scroll {
-    width: 92vw !important;
-    max-width: 92vw !important;
-    margin: 0 auto !important; /* center within viewport */
-  }
   .popular-match-card {
-    min-height: 170px !important; /* taller cards for visibility */
     width: 100% !important; /* content spans full card width */
     box-sizing: border-box !important;
     padding: 16px 12px !important; /* slight inner padding */
   }
 
   /* Further narrow widths for clearer corner visibility */
-  .popular-matches-scroll {
-    width: 88vw !important;
-    max-width: 88vw !important;
-  }
-  .match-card {
-    width: 92vw !important;
-    max-width: 92vw !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
+  /* container widths handled in styles/layout.css; avoid duplicate width rules here */
 
   /* Popular matches: emphasize VS and match time on small screens */
   .popular-match-card .vs {
@@ -9771,3 +9756,5 @@ body {
     border-color: #4a4a4a !important;
   }
 }
+
+/* Extra-small screens height handled in styles/mobile-responsive.css to avoid conflicts */

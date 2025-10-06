@@ -4013,12 +4013,8 @@ html, body {
   .match-card {
     padding: 14px 18px !important; /* Optimized padding for small screens */
     margin: 0 0 6px 0 !important; /* Space between cards */
-    width: 100vw !important; /* Full viewport width */
-    max-width: 100vw !important;
-    margin-left: calc(-50vw + 50%) !important; /* Break out of container */
-    margin-right: calc(-50vw + 50%) !important;
-    left: 0 !important; /* Ensure full width positioning */
-    right: 0 !important; /* Ensure full width positioning */
+    width: 100% !important; /* Fill parent; wrappers handle full-viewport */
+    max-width: 100% !important;
     position: relative; /* Enable positioning */
     overflow: hidden !important; /* Prevent content overflow */
     display: flex;
@@ -4387,6 +4383,17 @@ html, body {
   .slide-background img {
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
+  }
+}
+
+/* ==========================================================================
+   EXTRA-SMALL MOBILE HEIGHT MERGE (≤480px)
+   Centralize card height to avoid conflicts with index.css
+   ========================================================================== */
+@media (max-width: 480px) {
+  .match-card,
+  .popular-match-card {
+    min-height: 260px !important;
   }
 }
 
