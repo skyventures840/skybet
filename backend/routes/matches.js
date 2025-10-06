@@ -83,15 +83,24 @@ router.get('/', async (req, res) => {  // Removed auth middleware
 
       const markets = {};
       let additionalMarketsCount = 0;
+      const normalizeMarketKey = (key) => {
+        const k = (key || '').toLowerCase();
+        const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
+        if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+        if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+        if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+        return noLay;
+      };
 
       firstBookmaker.markets.forEach(market => {
-        if (market.key === 'h2h') {
+        const mKey = normalizeMarketKey(market.key);
+        if (mKey === 'h2h') {
           market.outcomes.forEach(outcome => {
             if (outcome.name === odds.home_team) markets['1'] = outcome.price;
             else if (outcome.name === odds.away_team) markets['2'] = outcome.price;
             else if (outcome.name === 'Draw') markets['X'] = outcome.price;
           });
-        } else if (market.key === 'totals') {
+        } else if (mKey === 'totals') {
           // Normalize totals market to frontend keys Total/TM/TU
           if (market.outcomes && market.outcomes.length >= 2) {
             const overOutcome = market.outcomes[0];
@@ -278,15 +287,36 @@ router.get('/popular/trending', async (req, res) => {
     // Transform admin matches
     const transformedAdminMatches = adminMatches.map(match => {
       const matchObj = match.toObject();
-      
+
       // Convert odds to the expected format if needed
       let formattedOdds = matchObj.odds;
-      
+
       // If odds is a Map (from mongoose), convert to plain object
       if (matchObj.odds instanceof Map) {
         formattedOdds = {};
         for (const [key, value] of matchObj.odds.entries()) {
           formattedOdds[key] = value;
+        }
+      }
+
+      // Ensure mandatory H2H odds exist (1, X, 2) and coerce numbers
+      if (formattedOdds && typeof formattedOdds === 'object') {
+        Object.keys(formattedOdds).forEach(k => {
+          const v = formattedOdds[k];
+          if (typeof v === 'string' && v.trim() !== '') {
+            const num = Number(v);
+            formattedOdds[k] = Number.isFinite(num) ? num : v;
+          }
+        });
+        // If missing, attempt fallback from homeWin/awayWin/draw keys
+        if (formattedOdds['1'] == null && formattedOdds.homeWin != null) {
+          formattedOdds['1'] = Number(formattedOdds.homeWin);
+        }
+        if (formattedOdds['2'] == null && formattedOdds.awayWin != null) {
+          formattedOdds['2'] = Number(formattedOdds.awayWin);
+        }
+        if (formattedOdds['X'] == null && formattedOdds.draw != null) {
+          formattedOdds['X'] = Number(formattedOdds.draw);
         }
       }
 
@@ -459,45 +489,62 @@ router.get('/:matchId/markets', async (req, res) => {
         
         // Process bookmakers to create comprehensive markets structure
         if (oddsData.bookmakers && oddsData.bookmakers.length > 0) {
+          // Helper to normalize market keys and titles (collapse lay/exchange variants and aliases)
+          const normalizeMarketKey = (key) => {
+            const k = (key || '').toLowerCase();
+            // Remove generic lay suffixes and tokens
+            const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
+            // Map common aliases to canonical keys
+            if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+            if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+            if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+            if (noLay === 'double_chance') return 'double_chance';
+            if (noLay === 'draw_no_bet') return 'draw_no_bet';
+            if (noLay === 'both_teams_to_score' || noLay === 'btts') return 'both_teams_to_score';
+            return noLay;
+          };
+
+          const normalizeTitleAndDescription = (key) => {
+            let title = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            let description = `Betting market for ${key.replace(/_/g, ' ')}`;
+            if (key === 'h2h') {
+              title = 'H2H';
+              description = 'Head to Head - Pick the winner of the match';
+            } else if (key === 'totals') {
+              title = 'Total Goals';
+              description = 'Over/Under total goals in the match';
+            } else if (key === 'spreads') {
+              title = 'Point Spread';
+              description = 'Handicap betting with point spread';
+            } else if (key === 'outrights') {
+              title = 'Outright Winner';
+              description = 'Tournament or competition winner';
+            }
+            return { title, description };
+          };
+
           const markets = [];
-          const processedMarkets = new Set(); // Avoid duplicates
-          
+          const processedMarkets = new Set(); // Avoid duplicates across normalized keys
+
           oddsData.bookmakers.forEach(bookmaker => {
             bookmaker.markets.forEach(market => {
-              // Avoid duplicate markets from same bookmaker
-              if (!processedMarkets.has(market.key)) {
-                processedMarkets.add(market.key);
-                
-                // Create clean market title and description
-                let marketTitle = market.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                let marketDescription = `Betting market for ${market.key.replace(/_/g, ' ')}`;
-                
-                // Special handling for common market types
-                if (market.key === 'h2h') {
-                  marketTitle = 'H2H';
-                  marketDescription = 'Head to Head - Pick the winner of the match';
-                } else if (market.key === 'totals') {
-                  marketTitle = 'Total Goals';
-                  marketDescription = 'Over/Under total goals in the match';
-                } else if (market.key === 'spreads') {
-                  marketTitle = 'Point Spread';
-                  marketDescription = 'Handicap betting with point spread';
-                } else if (market.key === 'outrights') {
-                  marketTitle = 'Outright Winner';
-                  marketDescription = 'Tournament or competition winner';
-                }
-                
-                markets.push({
-                  key: market.key,
-                  title: marketTitle,
-                  description: marketDescription,
-                  outcomes: market.outcomes.map(outcome => ({
-                    name: outcome.name,
-                    price: outcome.price,
-                    point: outcome.point || null
-                  }))
-                });
-              }
+              const originalKey = market.key || '';
+              const normalizedKey = normalizeMarketKey(originalKey);
+              if (processedMarkets.has(normalizedKey)) return; // Already added canonical market
+              processedMarkets.add(normalizedKey);
+
+              const { title: marketTitle, description: marketDescription } = normalizeTitleAndDescription(normalizedKey);
+
+              markets.push({
+                key: normalizedKey,
+                title: marketTitle,
+                description: marketDescription,
+                outcomes: (market.outcomes || []).map(outcome => ({
+                  name: outcome.name,
+                  price: outcome.price,
+                  point: outcome.point || null
+                }))
+              });
             });
           });
           
@@ -1027,30 +1074,49 @@ router.get('/:id', async (req, res) => {
             // Process bookmakers to create markets structure for additional markets
             if (oddsData.bookmakers && oddsData.bookmakers.length > 0) {
                 const markets = [];
-                
+                const processedMarkets = new Set();
+
+                const normalizeMarketKey = (key) => {
+                    const k = (key || '').toLowerCase();
+                    const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
+                    if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+                    if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+                    if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+                    if (noLay === 'double_chance') return 'double_chance';
+                    if (noLay === 'draw_no_bet') return 'draw_no_bet';
+                    if (noLay === 'both_teams_to_score' || noLay === 'btts') return 'both_teams_to_score';
+                    return noLay;
+                };
+
+                const normalizeTitleAndDescription = (key) => {
+                    let title = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    let description = `Betting market for ${key.replace(/_/g, ' ')}`;
+                    if (key === 'h2h') {
+                        title = 'H2H';
+                        description = 'Head to Head - Pick the winner of the match';
+                    } else if (key === 'totals') {
+                        title = 'Total Goals';
+                        description = 'Over/Under total goals in the match';
+                    } else if (key === 'spreads') {
+                        title = 'Point Spread';
+                        description = 'Handicap betting with point spread';
+                    }
+                    return { title, description };
+                };
+
                 oddsData.bookmakers.forEach(bookmaker => {
-                    bookmaker.markets.forEach(market => {
-                        // Create clean market title and description
-                        let marketTitle = market.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                        let marketDescription = `Betting market for ${market.key.replace(/_/g, ' ')}`;
-                        
-                        // Special handling for common market types
-                        if (market.key === 'h2h') {
-                            marketTitle = 'H2H';
-                            marketDescription = 'Head to Head - Pick the winner of the match';
-                        } else if (market.key === 'totals') {
-                            marketTitle = 'Total Goals';
-                            marketDescription = 'Over/Under total goals in the match';
-                        } else if (market.key === 'spreads') {
-                            marketTitle = 'Point Spread';
-                            marketDescription = 'Handicap betting with point spread';
-                        }
-                        
+                    (bookmaker.markets || []).forEach(market => {
+                        const normalizedKey = normalizeMarketKey(market.key || '');
+                        if (processedMarkets.has(normalizedKey)) return;
+                        processedMarkets.add(normalizedKey);
+
+                        const { title: marketTitle, description: marketDescription } = normalizeTitleAndDescription(normalizedKey);
+
                         markets.push({
-                            key: market.key,
+                            key: normalizedKey,
                             title: marketTitle,
                             description: marketDescription,
-                            outcomes: market.outcomes.map(outcome => ({
+                            outcomes: (market.outcomes || []).map(outcome => ({
                                 name: outcome.name,
                                 price: outcome.price,
                                 point: outcome.point || null
@@ -1058,7 +1124,7 @@ router.get('/:id', async (req, res) => {
                         });
                     });
                 });
-                
+
                 transformedMatch.markets = markets;
             }
             

@@ -22,7 +22,7 @@ const SPORTS_TO_FETCH = [
   { key: 'icehockey_nhl', name: 'NHL' }
 ];
 
-const MARKETS_TO_FETCH = ['h2h', 'totals'];
+// Fetch all supported markets per sport; leave live odds to lightweight h2h
 
 /**
  * @function updateMatchStatuses
@@ -101,16 +101,15 @@ async function fetchOddsForSport(sportKey, sportName) {
     return;
   }
   
-  for (const market of MARKETS_TO_FETCH) {
-    try {
-      logger.info(`Fetching ${market} odds for ${sportName}...`);
-      await oddsApiService.getUpcomingOdds(sportKey, market);
-      logger.info(`Successfully fetched ${market} odds for ${sportName}`);
-      // Add a small delay between requests to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
-      logger.error(`Error fetching ${market} odds for ${sportName}:`, error);
-    }
+  try {
+    logger.info(`Fetching ALL supported markets for ${sportName}...`);
+    // Passing null market triggers fetching all available markets and merge-saving to DB
+    await oddsApiService.getUpcomingOdds(sportKey, null);
+    logger.info(`Successfully fetched and saved all markets for ${sportName}`);
+    // Small delay to avoid rate limiting between sports
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  } catch (error) {
+    logger.error(`Error fetching all markets for ${sportName}:`, error);
   }
 }
 

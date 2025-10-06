@@ -157,6 +157,21 @@ class OddsApiService {
 
     // Fetch odds for each market separately
     const allOddsById = {};
+    // Normalization helper to collapse lay/exchange variants and unify aliases
+    const normalizeMarketKey = (key) => {
+      const k = (key || '').toLowerCase();
+      // Remove generic lay suffixes
+      const noLay = k.replace(/_?lay$/i, '');
+      // Map common aliases to canonical keys
+      if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+      if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+      if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+      if (noLay === 'double_chance') return 'double_chance';
+      if (noLay === 'draw_no_bet') return 'draw_no_bet';
+      if (noLay === 'both_teams_to_score' || noLay === 'btts') return 'both_teams_to_score';
+      return noLay;
+    };
+
     for (const marketKey of supportedMarkets) {
       try {
         const oddsForMarket = await this._fetchAndSaveOddsForMarket(sportKey, marketKey);
@@ -170,8 +185,10 @@ class OddsApiService {
               if (existingBm) {
                 // Merge markets by key
                 for (const mkt of bm.markets) {
-                  if (!existingBm.markets.some(m => m.key === mkt.key)) {
-                    existingBm.markets.push(mkt);
+                  const normKey = normalizeMarketKey(mkt.key);
+                  const hasMarket = existingBm.markets.some(m => normalizeMarketKey(m.key) === normKey);
+                  if (!hasMarket) {
+                    existingBm.markets.push({ ...mkt, key: normKey });
                   }
                 }
               } else {
@@ -199,22 +216,87 @@ class OddsApiService {
       params: { markets: market },
     });
     const games = response.data;
-    // Save to DB as before
+    // Merge-save to DB: update or insert while preserving other markets
+    // Helper to normalize market keys consistently
+    const normalizeMarketKey = (key) => {
+      const k = (key || '').toLowerCase();
+      const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
+      if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+      if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+      if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+      return noLay;
+    };
+
+    // Preload existing odds for these games to merge efficiently
+    const gameIds = games.map(g => g.id);
+    const existingDocs = await require('../models/Odds').find({ gameId: { $in: gameIds } });
+    const existingMap = new Map(existingDocs.map(doc => [doc.gameId, doc]));
+
     const bulkOps = games.map(game => {
-      const bookmakers = game.bookmakers.map(bm => ({
+      const existing = existingMap.get(game.id);
+
+      // Build incoming bookmakers with normalized market keys
+      const incomingBookmakers = (game.bookmakers || []).map(bm => ({
         key: bm.key,
         title: bm.title,
         last_update: new Date(bm.last_update),
-        markets: bm.markets.map(mkt => ({
-          key: mkt.key,
+        markets: (bm.markets || []).map(mkt => ({
+          key: normalizeMarketKey(mkt.key),
           last_update: new Date(mkt.last_update),
-          outcomes: mkt.outcomes.map(outcome => ({
+          outcomes: (mkt.outcomes || []).map(outcome => ({
             name: outcome.name,
             price: outcome.price,
             point: outcome.point
           }))
         }))
       }));
+
+      let mergedBookmakers = incomingBookmakers;
+
+      if (existing && Array.isArray(existing.bookmakers)) {
+        // Merge with existing bookmakers/markets
+        const existingBmMap = new Map(existing.bookmakers.map(b => [b.key, b]));
+
+        mergedBookmakers = incomingBookmakers.map(inBm => {
+          const exBm = existingBmMap.get(inBm.key);
+          if (!exBm) return inBm;
+
+          const exMarkets = Array.isArray(exBm.markets) ? exBm.markets : [];
+          const exMarketMap = new Map(exMarkets.map(m => [normalizeMarketKey(m.key), m]));
+
+          const mergedMarkets = inBm.markets.map(inMkt => {
+            const normKey = normalizeMarketKey(inMkt.key);
+            const exMkt = exMarketMap.get(normKey);
+            if (!exMkt) return inMkt;
+            // Prefer incoming market (fresh last_update), but ensure outcomes exist
+            return {
+              ...inMkt,
+              key: normKey,
+              outcomes: (inMkt.outcomes && inMkt.outcomes.length > 0) ? inMkt.outcomes : (exMkt.outcomes || [])
+            };
+          });
+
+          // Add any existing markets not present in incoming set
+          for (const [normKey, exMkt] of exMarketMap.entries()) {
+            const hasIncoming = mergedMarkets.some(m => normalizeMarketKey(m.key) === normKey);
+            if (!hasIncoming) mergedMarkets.push({ ...exMkt, key: normKey });
+          }
+
+          return {
+            key: inBm.key,
+            title: inBm.title,
+            last_update: inBm.last_update,
+            markets: mergedMarkets
+          };
+        });
+
+        // Include any existing bookmakers not present in incoming
+        for (const [bmKey, exBm] of existingBmMap.entries()) {
+          const hasIncoming = mergedBookmakers.some(b => b.key === bmKey);
+          if (!hasIncoming) mergedBookmakers.push(exBm);
+        }
+      }
+
       return {
         updateOne: {
           filter: { gameId: game.id },
@@ -225,7 +307,7 @@ class OddsApiService {
               commence_time: new Date(game.commence_time),
               home_team: game.home_team,
               away_team: game.away_team,
-              bookmakers: bookmakers,
+              bookmakers: mergedBookmakers,
               lastFetched: new Date()
             }
           },

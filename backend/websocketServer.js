@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const MultiBet = require('./models/MultiBet');
 const Match = require('./models/Match');
 const Odds = require('./models/Odds');
+const mongoose = require('mongoose');
 
 class WebSocketServer {
   constructor(server) {
@@ -25,6 +26,17 @@ class WebSocketServer {
   
   // Initialize MongoDB change streams for real-time updates
   initializeChangeStreams() {
+    // Determine if change streams should be enabled
+    const mongoUri = process.env.MONGODB_URI || '';
+    const enableFlag = (process.env.ENABLE_CHANGE_STREAMS || '').toLowerCase() === 'true';
+    const uriSuggestsReplica = mongoUri.includes('replicaSet=') || mongoUri.startsWith('mongodb+srv');
+    const shouldEnable = enableFlag || uriSuggestsReplica;
+
+    if (!shouldEnable) {
+      console.warn('MongoDB change streams disabled: non-replica setup or flag not enabled');
+      return;
+    }
+
     // Odds change stream: push odds_change to relevant subscribers
     try {
       this.oddsChangeStream = Odds.watch([], { fullDocument: 'updateLookup' });
@@ -48,6 +60,10 @@ class WebSocketServer {
         } catch (err) {
           console.error('Error processing odds change stream:', err);
         }
+      });
+      // Handle change stream errors gracefully
+      this.oddsChangeStream.on('error', (err) => {
+        console.warn('Odds change stream error:', err && err.message ? err.message : err);
       });
       console.log('Initialized Odds change stream');
     } catch (err) {
@@ -84,6 +100,9 @@ class WebSocketServer {
         } catch (err) {
           console.error('Error processing match change stream:', err);
         }
+      });
+      this.matchChangeStream.on('error', (err) => {
+        console.warn('Match change stream error:', err && err.message ? err.message : err);
       });
       console.log('Initialized Match change stream');
     } catch (err) {

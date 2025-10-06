@@ -84,6 +84,18 @@ class OddsFetcher {
   mergeOddsData(allMatches) {
     const mergedMatches = {};
 
+    const normalizeMarketKey = (key) => {
+      const k = (key || '').toLowerCase();
+      const noLay = k.replace(/_?lay$/i, '');
+      if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+      if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+      if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+      if (noLay === 'double_chance') return 'double_chance';
+      if (noLay === 'draw_no_bet') return 'draw_no_bet';
+      if (noLay === 'both_teams_to_score' || noLay === 'btts') return 'both_teams_to_score';
+      return noLay;
+    };
+
     for (const match of allMatches) {
       const matchId = match.id;
       
@@ -101,11 +113,12 @@ class OddsFetcher {
         if (existingBookmaker) {
           // Merge markets for existing bookmaker
           for (const market of bookmaker.markets) {
-            const existingMarket = existingBookmaker.markets.find(m => m.key === market.key);
+            const normKey = normalizeMarketKey(market.key);
+            const existingMarket = existingBookmaker.markets.find(m => normalizeMarketKey(m.key) === normKey);
             
             if (!existingMarket) {
               // Add new market to existing bookmaker
-              existingBookmaker.markets.push(market);
+              existingBookmaker.markets.push({ ...market, key: normKey });
             } else {
               // Update existing market with better odds (lower price = better odds)
               for (const outcome of market.outcomes) {
@@ -123,7 +136,12 @@ class OddsFetcher {
           }
         } else {
           // Add new bookmaker
-          mergedMatches[matchId].bookmakers.push(bookmaker);
+          // Normalize market keys for the new bookmaker as well
+          const normalizedBookmaker = {
+            ...bookmaker,
+            markets: (bookmaker.markets || []).map(m => ({ ...m, key: normalizeMarketKey(m.key) }))
+          };
+          mergedMatches[matchId].bookmakers.push(normalizedBookmaker);
         }
       }
     }
@@ -217,4 +235,4 @@ class OddsFetcher {
   }
 }
 
-module.exports = OddsFetcher; 
+module.exports = OddsFetcher;
