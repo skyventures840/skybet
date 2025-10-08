@@ -192,9 +192,9 @@ router.post('/create', auth, [
       type: 'deposit',
       amount: paymentData.price_amount,
       method: 'crypto',
-      currency: payment.pay_currency || paymentData.pay_currency,
+      currency: (payment.pay_currency || paymentData.pay_currency || 'USD').toUpperCase(),
       status: 'pending',
-      description: `Crypto deposit via ${payment.pay_currency || paymentData.pay_currency}`,
+      description: `Crypto deposit via ${(payment.pay_currency || paymentData.pay_currency || 'USD').toUpperCase()}`,
       metadata: {
         paymentId: payment.payment_id,
         orderId: orderId,
