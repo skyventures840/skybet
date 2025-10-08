@@ -79,6 +79,10 @@ router.post('/create', auth, [
       price_amount: parseFloat(amount),
       price_currency: 'USD', // Fiat currency for pricing
       pay_currency: currency.toUpperCase(), // Crypto currency for payment
+      // Ensure NOWPayments performs conversion when pricing in fiat and paying in crypto
+      is_need_exchange: 'USD' !== currency.toUpperCase(),
+      // Lock rate so UI amount matches payment quote
+      is_fixed_rate: true,
       order_id: orderId,
       order_description: description || 'Betting Payment',
       ipn_callback_url: nowpayments.config.callbackUrl,
