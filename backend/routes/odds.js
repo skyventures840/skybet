@@ -15,7 +15,7 @@ const oddsService = new ComprehensiveOddsService();
 router.get('/fetch-all-sports-markets-with-results', async (req, res) => {
 const {
     regions = 'us', 
-    markets = 'h2h,totals,spreads', 
+    markets = 'all', 
     primaryBookmaker = 'fanduel', 
     fallbackBookmaker = 'betmgm', 
     daysFrom = 1 
@@ -46,7 +46,7 @@ router.get('/sport/:sportKey/markets-with-results', async (req, res) => {
   const { sportKey } = req.params;
   const { 
     regions = 'us', 
-    markets = 'h2h,totals,spreads', 
+    markets = 'all', 
     primaryBookmaker = 'fanduel', 
     fallbackBookmaker = 'betmgm', 
     daysFrom = 1 
@@ -77,7 +77,7 @@ router.get('/match/:matchId/markets-with-results', async (req, res) => {
   const { matchId } = req.params;
   const { 
     regions = 'us', 
-    markets = 'h2h,totals,spreads', 
+    markets = 'all', 
     primaryBookmaker = 'fanduel', 
     fallbackBookmaker = 'betmgm' 
   } = req.query;

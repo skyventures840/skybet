@@ -28,16 +28,23 @@ const config = {
   callbackUrl: process.env.NOWPAYMENTS_CALLBACK_URL || `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/callback`,
 };
 
+const USE_MOCK = process.env.USE_MOCK_PAYMENTS === 'true';
+
 // Helper function to make API requests
 async function makeApiRequest(endpoint, method = 'GET', data = null) {
   try {
+    // Build headers safely; omit x-api-key if not set
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (config.apiKey) {
+      headers['x-api-key'] = config.apiKey;
+    }
+
     const response = await axios({
       method,
       url: `${config.apiUrl}${endpoint}`,
-      headers: {
-        'x-api-key': config.apiKey,
-        'Content-Type': 'application/json',
-      },
+      headers,
       data,
     });
     return response.data;
@@ -64,10 +71,21 @@ async function makeApiRequest(endpoint, method = 'GET', data = null) {
 // Check API Status
 async function checkApiStatus() {
   try {
+    if (USE_MOCK) {
+      const mock = { message: 'OK (mock)' };
+      logger.info('Mock API status returned:', mock);
+      return mock;
+    }
     const status = await makeApiRequest('/v1/status');
     logger.info('API status checked:', status);
     return status;
   } catch (error) {
+    // In mock mode or local dev without keys, return a friendly status
+    if (USE_MOCK) {
+      const mock = { message: 'OK (mock-fallback)' };
+      logger.info('Mock fallback API status returned:', mock);
+      return mock;
+    }
     logger.error('Failed to check API status:', error.message);
     throw error;
   }
@@ -76,10 +94,20 @@ async function checkApiStatus() {
 // Get Available Currencies
 async function getAvailableCurrencies() {
   try {
+    if (USE_MOCK) {
+      const mockCurrencies = ['BTC', 'ETH', 'USDT', 'USDC', 'LTC', 'BCH', 'XRP'];
+      logger.info('Mock currencies returned:', mockCurrencies);
+      return mockCurrencies;
+    }
     const currencies = await makeApiRequest('/v1/currencies');
     logger.info('Available currencies fetched:', currencies);
     return currencies;
   } catch (error) {
+    if (USE_MOCK) {
+      const mockCurrencies = ['BTC', 'ETH', 'USDT', 'USDC', 'LTC', 'BCH', 'XRP'];
+      logger.info('Mock fallback currencies returned:', mockCurrencies);
+      return mockCurrencies;
+    }
     logger.error('Failed to get currencies:', error.message);
     throw error;
   }
@@ -156,10 +184,28 @@ function calculateMockPayAmount(usdAmount, currency) {
 // Get Payment Status
 async function getPaymentStatus(paymentId) {
   try {
+    if (USE_MOCK || (paymentId && String(paymentId).startsWith('mock_'))) {
+      const mockStatus = {
+        payment_id: paymentId,
+        payment_status: 'finished',
+        pay_amount: 0,
+        pay_currency: 'USDT'
+      };
+      logger.info('Mock payment status returned:', mockStatus);
+      return mockStatus;
+    }
     const status = await makeApiRequest(`/v1/payment/${paymentId}`);
     logger.info('Payment status fetched:', status);
     return status;
   } catch (error) {
+    if (USE_MOCK) {
+      const mockStatus = {
+        payment_id: paymentId,
+        payment_status: 'waiting'
+      };
+      logger.info('Mock fallback payment status returned:', mockStatus);
+      return mockStatus;
+    }
     logger.error('Failed to get payment status:', error.message);
     throw error;
   }
@@ -167,13 +213,25 @@ async function getPaymentStatus(paymentId) {
 
 // Verify IPN Signature
 function verifyIpnSignature(body, receivedSignature) {
-  const sortedBody = JSON.stringify(body, Object.keys(body).sort());
-  const computedSignature = crypto
-    .createHmac('sha512', config.ipnSecret)
-    .update(sortedBody)
-    .digest('hex');
-  
-  return computedSignature === receivedSignature;
+  try {
+    if (USE_MOCK) {
+      logger.info('Mock mode enabled; accepting IPN without signature verification');
+      return true;
+    }
+    if (!config.ipnSecret) {
+      logger.error('IPN secret is not set; rejecting IPN');
+      return false;
+    }
+    const sortedBody = JSON.stringify(body, Object.keys(body).sort());
+    const computedSignature = crypto
+      .createHmac('sha512', config.ipnSecret)
+      .update(sortedBody)
+      .digest('hex');
+    return computedSignature === receivedSignature;
+  } catch (err) {
+    logger.error('IPN signature verification error:', err.message);
+    return false;
+  }
 }
 
 module.exports = {
@@ -184,4 +242,4 @@ module.exports = {
   getPaymentStatus,
   verifyIpnSignature,
   logger
-}; 
+};

@@ -101,6 +101,20 @@ router.post('/create', auth, [
       // Try to create payment with NOWPayments
       payment = await nowpayments.createPayment(paymentData);
       
+      // If NOWPayments did not provide an address immediately, try fetching status
+      if (!payment.pay_address || !payment.pay_currency) {
+        try {
+          const statusResp = await nowpayments.getPaymentStatus(payment.payment_id);
+          payment.pay_address = payment.pay_address || statusResp.pay_address;
+          payment.pay_currency = payment.pay_currency || statusResp.pay_currency;
+          payment.payin_extra_id = payment.payin_extra_id || statusResp.payin_extra_id || statusResp.payinExtraId;
+          payment.payment_url = payment.payment_url || statusResp.payment_url || statusResp.paymentUrl;
+          payment.invoice_url = payment.invoice_url || statusResp.invoice_url || statusResp.invoiceUrl;
+        } catch (statusErr) {
+          nowpayments.logger.warn('Address not available after create; status fetch failed', statusErr.message);
+        }
+      }
+      
       // Save payment to database
       paymentRecord = await Payment.createPayment({
         userId,
@@ -110,8 +124,9 @@ router.post('/create', auth, [
         amount: paymentData.price_amount,
         currency: paymentData.price_currency,
         payAmount: payment.pay_amount,
-        payCurrency: payment.pay_currency,
-        payAddress: payment.pay_address,
+        payCurrency: payment.pay_currency || paymentData.pay_currency,
+        // Address may not be present immediately; store empty string to allow later update
+        payAddress: payment.pay_address || '',
         payinExtraId: payment.payin_extra_id,
         paymentExtraId: payment.payment_extra_id,
         purchaseId: payment.purchase_id,
@@ -196,6 +211,9 @@ router.post('/create', auth, [
       status: payment.payment_status
     });
 
+    // If we still don't have an address, inform frontend to use hosted page or poll status
+    const isManualProcessing = !payment.pay_address && !process.env.USE_MOCK_PAYMENTS;
+
     res.json({
       success: true,
       payment: {
@@ -212,7 +230,11 @@ router.post('/create', auth, [
         priceAmount: payment.price_amount,
         priceCurrency: payment.price_currency,
         orderDescription: payment.order_description,
-        isMockPayment: payment.payment_id && payment.payment_id.startsWith('mock_')
+        payinExtraId: payment.payin_extra_id,
+        paymentUrl: payment.payment_url,
+        invoiceUrl: payment.invoice_url,
+        isMockPayment: payment.payment_id && payment.payment_id.startsWith('mock_'),
+        isManualProcessing
       }
     });
   } catch (error) {
@@ -355,4 +377,4 @@ router.post('/callback', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
