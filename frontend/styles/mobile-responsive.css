@@ -904,6 +904,7 @@ html, body {
   }
 
   .hamburger-line {
+    display: block !important; /* Ensure width/height apply to span */
     width: 22px !important; /* Match screenshot proportion */
     height: 3px !important; /* Keep thick and readable */
     background: #000000 !important; /* black for maximum visibility */
@@ -1622,8 +1623,12 @@ html, body {
 @media (max-width: 767px) {
   /* Hero section with proper margins and full width */
 
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: 400px !important; /* unify with layout/index for consistent visibility */
+  }
+
   .hero-slider {
-    height: 250px !important; /* Increased from 180px for better visibility */
     width: 100vw !important;
     margin: 0 !important;
     margin-bottom: 6px !important;
@@ -1635,10 +1640,24 @@ html, body {
     max-width: 100vw !important;
   }
 
+  .slides-wrapper {
+    display: flex !important;
+    height: 100% !important;
+    width: 100% !important; /* ensure non-zero width on iOS */
+    will-change: transform;
+  }
+
+  .slide {
+    flex: 0 0 100% !important;
+    height: 100% !important;
+    position: relative !important;
+  }
+
   .slide-background img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
   }
 
   .hero-content {
@@ -4807,6 +4826,41 @@ html, body {
   }
   .popular-match-card {
     min-height: 280px !important;
+  }
+}
+
+/* ==========================================================================
+   FINAL OVERRIDE: Hamburger icon thickness for small screens (≤767px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Make bars thicker and more visible */
+  .hamburger-line {
+    display: block !important;
+    width: 28px !important;
+    height: 6px !important;
+    background: #ffffff !important; /* white for maximum contrast on dark nav */
+    margin: 5px 0 !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure active state keeps the same thickness/visibility */
+  .hamburger-menu.active .hamburger-line {
+    width: 28px !important;
+    height: 6px !important;
+    background: #ffffff !important;
+  }
+
+  /* Remove grey button background so bars sit on the dark header */
+  .hamburger-menu {
+    background: transparent !important;
+    border: none !important;
+  }
+  .hamburger-menu:hover,
+  .hamburger-menu:active,
+  .hamburger-menu.active {
+    background: transparent !important;
+    border: none !important;
   }
 }
 
