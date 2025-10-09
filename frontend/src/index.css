@@ -6335,6 +6335,14 @@ body {
   margin-bottom: 4px;
 }
 
+/* Small screen height increases for hero and popular matches */
+@media (max-width: 767px) {
+  .hero-slider { height: clamp(260px, 55vh, 420px); }
+  .popular-matches-section { min-height: 220px; }
+  .popular-matches-scroll { max-height: 280px; }
+  .popular-match-card { min-height: 280px; }
+}
+
 .match-subcategory {
   color: #0f8e0f;
   font-size: 16px;
