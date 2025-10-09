@@ -95,7 +95,12 @@ async function checkApiStatus() {
 async function getAvailableCurrencies() {
   try {
     if (USE_MOCK) {
-      const mockCurrencies = ['BTC', 'ETH', 'USDT', 'USDC', 'LTC', 'BCH', 'XRP'];
+      const mockCurrencies = [
+        'BTC','ETH','USDT','USDC','LTC','XRP',
+        'DOGE','TRX','ADA','SOL','MATIC','BNB',
+        'DOT','DAI','LINK','AVAX','XMR','XLM',
+        'DASH','ZEC'
+      ];
       logger.info('Mock currencies returned:', mockCurrencies);
       return mockCurrencies;
     }
@@ -104,7 +109,12 @@ async function getAvailableCurrencies() {
     return currencies;
   } catch (error) {
     if (USE_MOCK) {
-      const mockCurrencies = ['BTC', 'ETH', 'USDT', 'USDC', 'LTC', 'BCH', 'XRP'];
+      const mockCurrencies = [
+        'BTC','ETH','USDT','USDC','LTC','XRP',
+        'DOGE','TRX','ADA','SOL','MATIC','BNB',
+        'DOT','DAI','LINK','AVAX','XMR','XLM',
+        'DASH','ZEC'
+      ];
       logger.info('Mock fallback currencies returned:', mockCurrencies);
       return mockCurrencies;
     }
@@ -158,10 +168,24 @@ function generateMockAddress(currency) {
   const addresses = {
     'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
     'ETH': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f',
+    'USDT': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f',
+    'USDC': '0x3f5CE5FBFe3E9af3971dD833D26BA9B5C936f0bE',
     'LTC': 'LTC1234567890abcdef1234567890abcdef12345678',
-    'BCH': 'bitcoincash:qp3wjpa3tjlj042z2wv7hahsldgwhwy0rq9sywjpyy',
     'XRP': 'rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH',
-    'USDT': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f'
+    'DOGE': 'D9y1wK8P1Qf9iJxk3Jm6n3sTqQ7r8pY2xA',
+    'TRX': 'TWx1Yw9xkYy2Zz3Aa4Bb5Cc6Dd7Ee8Ff9G',
+    'ADA': 'addr1qxy2kgdy5ne8m9q7g8w7ka7t3g4jxy0wq4r3v2qhlh9vt0pk3f',
+    'SOL': '7Q2h6f1dSgVYz1rEoCZcFfB5Wk9nXhQqPpHn8sYkL2o',
+    'MATIC': '0x000000000000000000000000000000000000dead',
+    'BNB': '0x000000000000000000000000000000000000beef',
+    'DOT': '14qViLJfdGaP4EeHnDyJbEGQysnCpwk3rK',
+    'DAI': '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+    'LINK': '0x514910771AF9Ca656af840dff83E8264EcF986CA',
+    'AVAX': '0x000000000000000000000000000000000000avax',
+    'XMR': '44AFFq5kSiGBoZ...mockmoneroaddress',
+    'XLM': 'GBRPYHIL2C3Z...MOCKSTELLARPUBLICKEY',
+    'DASH': 'Xw7Dc7WnEZN7r1A1UsjWmYdG9Dxyz12345',
+    'ZEC': 't1ZcashMockAddress1234567890abcdef'
   };
   return addresses[currency.toUpperCase()] || addresses['BTC'];
 }
@@ -169,12 +193,26 @@ function generateMockAddress(currency) {
 function calculateMockPayAmount(usdAmount, currency) {
   // Mock exchange rates for demonstration
   const mockRates = {
-    'BTC': 45000,   // 1 BTC = $45,000
-    'ETH': 2500,    // 1 ETH = $2,500
-    'LTC': 100,     // 1 LTC = $100
-    'BCH': 300,     // 1 BCH = $300
-    'XRP': 0.5,     // 1 XRP = $0.50
-    'USDT': 1       // 1 USDT = $1
+    'BTC': 45000,
+    'ETH': 2500,
+    'USDT': 1,
+    'USDC': 1,
+    'LTC': 100,
+    'XRP': 0.5,
+    'DOGE': 0.15,
+    'TRX': 0.1,
+    'ADA': 0.4,
+    'SOL': 150,
+    'MATIC': 0.6,
+    'BNB': 300,
+    'DOT': 6,
+    'DAI': 1,
+    'LINK': 12,
+    'AVAX': 30,
+    'XMR': 160,
+    'XLM': 0.12,
+    'DASH': 30,
+    'ZEC': 20
   };
   
   const rate = mockRates[currency.toUpperCase()] || mockRates['BTC'];
