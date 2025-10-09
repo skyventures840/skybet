@@ -4776,7 +4776,7 @@ html, body {
    ====================================================================== */
 @media (max-width: 767px) {
   .hero-slider .slider-container {
-    min-height: clamp(260px, 55vh, 420px) !important;
+    min-height: clamp(320px, 65vh, 520px) !important;
   }
 
   .popular-matches-section {
