@@ -114,17 +114,38 @@ class WebSocketServer {
   extractBasicOddsFromBookmakers(bookmakers, homeTeam, awayTeam) {
     try {
       if (!Array.isArray(bookmakers) || bookmakers.length === 0) return null;
-      const bookmakerWithH2H = bookmakers.find(bm => Array.isArray(bm.markets) && bm.markets.some(m => m.key === 'h2h'));
-      if (!bookmakerWithH2H) return null;
-      const h2hMarket = bookmakerWithH2H.markets.find(m => m.key === 'h2h');
-      if (!h2hMarket || !Array.isArray(h2hMarket.outcomes)) return null;
+      const bm = bookmakers.find(b => Array.isArray(b.markets) && b.markets.length > 0);
+      if (!bm) return null;
+      const markets = bm.markets || [];
       const odds = {};
-      h2hMarket.outcomes.forEach(outcome => {
-        if (outcome.name === homeTeam) odds['1'] = outcome.price;
-        else if (outcome.name === awayTeam) odds['2'] = outcome.price;
-        else if (outcome.name === 'Draw') odds['X'] = outcome.price;
-      });
-      return odds;
+      // Prefer H2H, fallback to spreads and totals
+      const h2hMarket = markets.find(m => m.key === 'h2h');
+      if (h2hMarket && Array.isArray(h2hMarket.outcomes)) {
+        h2hMarket.outcomes.forEach(outcome => {
+          if (outcome.name === homeTeam) odds['1'] = outcome.price;
+          else if (outcome.name === awayTeam) odds['2'] = outcome.price;
+          else if (outcome.name === 'Draw') odds['X'] = outcome.price;
+        });
+      }
+      const spreadsMarket = markets.find(m => m.key === 'spreads');
+      if (spreadsMarket && Array.isArray(spreadsMarket.outcomes)) {
+        const home = spreadsMarket.outcomes.find(o => o.name === homeTeam);
+        const away = spreadsMarket.outcomes.find(o => o.name === awayTeam);
+        const line = home?.point ?? away?.point;
+        if (line != null) odds['handicapLine'] = line;
+        if (typeof home?.price === 'number') odds['homeHandicap'] = home.price;
+        if (typeof away?.price === 'number') odds['awayHandicap'] = away.price;
+      }
+      const totalsMarket = markets.find(m => m.key === 'totals');
+      if (totalsMarket && Array.isArray(totalsMarket.outcomes)) {
+        const over = totalsMarket.outcomes.find(o => /over/i.test(o.name));
+        const under = totalsMarket.outcomes.find(o => /under/i.test(o.name));
+        const total = over?.point ?? under?.point;
+        if (total != null) odds['Total'] = total;
+        if (typeof over?.price === 'number') odds['TM'] = over.price;
+        if (typeof under?.price === 'number') odds['TU'] = under.price;
+      }
+      return Object.keys(odds).length > 0 ? odds : null;
     } catch (err) {
       console.error('Error extracting basic odds:', err);
       return null;
@@ -429,12 +450,26 @@ class WebSocketServer {
           };
 
           firstBookmaker.markets.forEach(market => {
-            if (market.key === 'h2h') {
+            if (market.key === 'h2h' && Array.isArray(market.outcomes)) {
               market.outcomes.forEach(outcome => {
                 if (outcome.name === matchObj.homeTeam) oddsStructure.default.odds['1'] = outcome.price;
                 else if (outcome.name === matchObj.awayTeam) oddsStructure.default.odds['2'] = outcome.price;
                 else if (outcome.name === 'Draw') oddsStructure.default.odds['X'] = outcome.price;
               });
+            } else if (market.key === 'spreads' && Array.isArray(market.outcomes)) {
+              const home = market.outcomes.find(o => o.name === matchObj.homeTeam);
+              const away = market.outcomes.find(o => o.name === matchObj.awayTeam);
+              const line = home?.point ?? away?.point;
+              if (line != null) oddsStructure.default.odds['handicapLine'] = line;
+              if (typeof home?.price === 'number') oddsStructure.default.odds['homeHandicap'] = home.price;
+              if (typeof away?.price === 'number') oddsStructure.default.odds['awayHandicap'] = away.price;
+            } else if (market.key === 'totals' && Array.isArray(market.outcomes)) {
+              const over = market.outcomes.find(o => /over/i.test(o.name));
+              const under = market.outcomes.find(o => /under/i.test(o.name));
+              const total = over?.point ?? under?.point;
+              if (total != null) oddsStructure.default.odds['Total'] = total;
+              if (typeof over?.price === 'number') oddsStructure.default.odds['TM'] = over.price;
+              if (typeof under?.price === 'number') oddsStructure.default.odds['TU'] = under.price;
             }
           });
         }

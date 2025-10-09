@@ -165,8 +165,9 @@ async function fetchLiveOdds() {
         
         const apiSportKey = sportKeyMap[sport] || sport;
         
-        logger.info(`Fetching live odds for ${sport} (API key: ${apiSportKey})...`);
-        await oddsApiService.getUpcomingOdds(apiSportKey, 'h2h');
+        logger.info(`Fetching live odds for ${sport} (API key: ${apiSportKey}) across all markets...`);
+        // Pass null to fetch and merge all supported markets for live matches
+        await oddsApiService.getUpcomingOdds(apiSportKey, null);
         
         // Add delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));

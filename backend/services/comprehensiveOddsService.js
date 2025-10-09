@@ -55,6 +55,24 @@ class ComprehensiveOddsService {
     'double_chance'
   ];
 
+  normalizeRegions(regions) {
+    if (!regions) return 'us';
+    if (regions === 'all') return 'us,us2,uk,eu,au';
+    return regions;
+  }
+
+  async buildMarketsListForSport(sportKey, markets) {
+    if (markets === 'all') {
+      const apiM = await this.fetchMarketsForSport(sportKey);
+      const intersection = (apiM || []).filter(m => this.COMPREHENSIVE_MARKETS.includes(m));
+      if (intersection && intersection.length > 0) return intersection;
+      if (Array.isArray(apiM) && apiM.length > 0) return apiM;
+      // Fallback core markets when API markets are unavailable (e.g., 404)
+      return ['h2h','spreads','totals','outrights'];
+    }
+    return (markets || '').split(',').filter(Boolean);
+  }
+
   // Helper function to fetch all sports
   async fetchSports() {
     const url = `${this.baseUrl}/sports?apiKey=${this.apiKey}`;
@@ -112,8 +130,23 @@ class ComprehensiveOddsService {
   }
 
   // Helper function to fetch odds for a sport
-  async fetchOdds(sport, regions = 'us', markets = 'h2h,totals,spreads', bookmakers = 'fanduel,betmgm') {
-    const url = `${this.baseUrl}/sports/${sport}/odds?apiKey=${this.apiKey}&regions=${regions}&markets=${markets}&oddsFormat=decimal&bookmakers=${bookmakers}`;
+  async fetchOdds(
+    sport,
+    regions = 'all',
+    markets = 'all',
+    bookmakers = '',
+    oddsFormat = 'decimal',
+    commenceTimeFrom,
+    commenceTimeTo
+  ) {
+    const regionsParam = this.normalizeRegions(regions);
+    const marketsParam = markets === 'all' ? 'h2h,spreads,totals,outrights' : markets; // API requires explicit markets list
+    let url = `${this.baseUrl}/sports/${sport}/odds?apiKey=${this.apiKey}&regions=${regionsParam}&markets=${marketsParam}&oddsFormat=${oddsFormat}`;
+    if (bookmakers) {
+      url += `&bookmakers=${bookmakers}`;
+    }
+    if (commenceTimeFrom) url += `&commenceTimeFrom=${encodeURIComponent(commenceTimeFrom)}`;
+    if (commenceTimeTo) url += `&commenceTimeTo=${encodeURIComponent(commenceTimeTo)}`;
     try {
       const response = await axios.get(url);
       return response.data;
@@ -123,12 +156,151 @@ class ComprehensiveOddsService {
     }
   }
 
+  // Cross-sport upcoming odds
+  async fetchUpcomingOdds(
+    regions = 'all',
+    markets = 'all',
+    bookmakers = '',
+    oddsFormat = 'decimal',
+    commenceTimeFrom,
+    commenceTimeTo
+  ) {
+    const regionsParam = this.normalizeRegions(regions);
+    const marketsParam = markets === 'all' ? 'h2h,spreads,totals,outrights' : markets; // API requires explicit markets list
+    let url = `${this.baseUrl}/sports/upcoming/odds?apiKey=${this.apiKey}&regions=${regionsParam}&markets=${marketsParam}&oddsFormat=${oddsFormat}`;
+    if (bookmakers) {
+      url += `&bookmakers=${bookmakers}`;
+    }
+    if (commenceTimeFrom) url += `&commenceTimeFrom=${encodeURIComponent(commenceTimeFrom)}`;
+    if (commenceTimeTo) url += `&commenceTimeTo=${encodeURIComponent(commenceTimeTo)}`;
+    try {
+      const response = await axios.get(url);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching upcoming odds: ${error.message}`);
+      throw new Error(`Error fetching upcoming odds: ${error.message}`);
+    }
+  }
+
+  // Event-specific odds for a sport
+  async fetchEventOdds(
+    sport,
+    eventId,
+    regions = 'all',
+    markets = 'all',
+    bookmakers = '',
+    oddsFormat = 'decimal'
+  ) {
+    if (!sport) throw new Error('sport is required');
+    if (!eventId) throw new Error('eventId is required');
+    const regionsParam = this.normalizeRegions(regions);
+    const marketsParam = markets === 'all' ? 'h2h,spreads,totals,outrights' : markets; // API requires explicit markets list
+    let url = `${this.baseUrl}/sports/${sport}/events/${eventId}/odds?apiKey=${this.apiKey}&regions=${regionsParam}&markets=${marketsParam}&oddsFormat=${oddsFormat}`;
+    if (bookmakers) {
+      url += `&bookmakers=${bookmakers}`;
+    }
+    try {
+      const response = await axios.get(url);
+      return response.data; // Expected to be a single event object
+    } catch (error) {
+      console.error(`Error fetching event odds for ${sport}/${eventId}: ${error.message}`);
+      throw new Error(`Error fetching event odds: ${error.message}`);
+    }
+  }
+
+  async fetchUpcomingOddsAllMarkets(
+    regions,
+    markets = 'all',
+    bookmakers = '',
+    oddsFormat = 'decimal',
+    commenceTimeFrom,
+    commenceTimeTo,
+    primaryBookmaker = 'fanduel',
+    fallbackBookmaker = 'betmgm'
+  ) {
+    const regionsParam = this.normalizeRegions(regions);
+    let merged = [];
+    const marketsList = markets === 'all' ? this.COMPREHENSIVE_MARKETS : (markets || '').split(',').filter(Boolean);
+    for (const mkt of marketsList) {
+      try {
+        const data = await this.fetchUpcomingOdds(regionsParam, mkt, bookmakers, oddsFormat, commenceTimeFrom, commenceTimeTo);
+        merged = this.mergeEventsAcrossCalls(merged, data, primaryBookmaker, fallbackBookmaker);
+      } catch (err) {
+        console.warn(`Upcoming odds fetch failed for market ${mkt}: ${err.message}`);
+      }
+    }
+    return merged;
+  }
+
+  async fetchSportOddsAllMarkets(
+    sport,
+    regions,
+    markets = 'all',
+    primaryBookmaker = 'fanduel',
+    fallbackBookmaker = 'betmgm',
+    bookmakers = 'fanduel,betmgm',
+    oddsFormat = 'decimal',
+    commenceTimeFrom,
+    commenceTimeTo
+  ) {
+    const regionsParam = this.normalizeRegions(regions);
+    const marketsList = await this.buildMarketsListForSport(sport, markets);
+    let merged = [];
+    for (const mkt of marketsList) {
+      try {
+        const oddsData = await this.fetchOddsWithFallback(sport, regionsParam, mkt, primaryBookmaker, fallbackBookmaker, oddsFormat, commenceTimeFrom, commenceTimeTo);
+        merged = this.mergeEventsAcrossCalls(merged, oddsData, primaryBookmaker, fallbackBookmaker);
+      } catch (err) {
+        console.warn(`Sport odds fetch failed for ${sport}/${mkt}: ${err.message}`);
+      }
+    }
+    return merged;
+  }
+
+  async fetchEventOddsAllMarkets(
+    sport,
+    eventId,
+    regions,
+    markets = 'all',
+    primaryBookmaker = 'fanduel',
+    fallbackBookmaker = 'betmgm',
+    bookmakers = 'fanduel,betmgm',
+    oddsFormat = 'decimal'
+  ) {
+    const regionsParam = this.normalizeRegions(regions);
+    const marketsList = await this.buildMarketsListForSport(sport, markets);
+    let mergedForMatch = [];
+    for (const mkt of marketsList) {
+      try {
+        const oddsData = await this.fetchOddsWithFallback(sport, regionsParam, mkt, primaryBookmaker, fallbackBookmaker, oddsFormat);
+        const match = Array.isArray(oddsData) ? oddsData.find(ev => ev.id === eventId) : null;
+        if (match) {
+          mergedForMatch = this.mergeEventsAcrossCalls(mergedForMatch, [match], primaryBookmaker, fallbackBookmaker);
+        }
+      } catch (err) {
+        console.warn(`Event odds fetch failed for ${sport}/${eventId}/${mkt}: ${err.message}`);
+      }
+    }
+    const mergedData = this.mergeBookmakerData(mergedForMatch, primaryBookmaker, fallbackBookmaker);
+    return mergedData[0] || null;
+  }
+
   // Try primary bookmaker first; only call fallback if primary yields no usable markets
-  async fetchOddsWithFallback(sport, regions, market, primaryBookmaker, fallbackBookmaker) {
+  async fetchOddsWithFallback(sport, regions, market, primaryBookmaker, fallbackBookmaker, oddsFormat = 'decimal', commenceTimeFrom, commenceTimeTo) {
+    // First attempt: fetch all bookmakers by omitting the filter
+    let allBooksData = [];
+    try {
+      allBooksData = await this.fetchOdds(sport, regions, market, '', oddsFormat, commenceTimeFrom, commenceTimeTo);
+    } catch (err) {
+      allBooksData = [];
+    }
+    const hasAnyMarkets = Array.isArray(allBooksData) && allBooksData.some(ev => Array.isArray(ev.bookmakers) && ev.bookmakers.some(b => Array.isArray(b.markets) && b.markets.length > 0));
+    if (hasAnyMarkets) return allBooksData;
+
     // Primary attempt
     let primaryData = [];
     try {
-      primaryData = await this.fetchOdds(sport, regions, market, primaryBookmaker);
+      primaryData = await this.fetchOdds(sport, regions, market, primaryBookmaker, oddsFormat, commenceTimeFrom, commenceTimeTo);
     } catch (err) {
       primaryData = [];
     }
@@ -138,7 +310,7 @@ class ComprehensiveOddsService {
     // Fallback attempt only if primary had no markets
     let fallbackData = [];
     try {
-      fallbackData = await this.fetchOdds(sport, regions, market, fallbackBookmaker);
+      fallbackData = await this.fetchOdds(sport, regions, market, fallbackBookmaker, oddsFormat, commenceTimeFrom, commenceTimeTo);
     } catch (err) {
       fallbackData = [];
     }
@@ -146,11 +318,19 @@ class ComprehensiveOddsService {
   }
 
   // Helper function to fetch scores/results for a sport
-  async fetchScores(sport, daysFrom = 1) {
-    const url = `${this.baseUrl}/sports/${sport}/scores?apiKey=${this.apiKey}&daysFrom=${daysFrom}`;
+  async fetchScores(sport, daysFrom = 1, eventIds) {
+    let url = `${this.baseUrl}/sports/${sport}/scores?apiKey=${this.apiKey}&daysFrom=${daysFrom}`;
+    if (eventIds && Array.isArray(eventIds) && eventIds.length > 0) {
+      url += `&eventIds=${encodeURIComponent(eventIds.join(','))}`;
+    }
     try {
       const response = await axios.get(url);
-      return response.data;
+      const data = response.data;
+      if (eventIds && Array.isArray(eventIds) && eventIds.length > 0) {
+        const idSet = new Set(eventIds);
+        return data.filter(ev => idSet.has(ev.id));
+      }
+      return data;
     } catch (error) {
       console.warn(`Error fetching scores for ${sport}: ${error.message}`);
       return []; // Return empty array as fallback
@@ -173,37 +353,60 @@ class ComprehensiveOddsService {
 
   // Helper function to merge bookmaker data, prioritizing primary bookmaker
   mergeBookmakerData(eventData, primaryBookmaker = 'fanduel', fallbackBookmaker = 'betmgm') {
+    const PREFERRED_BOOKMAKERS = [
+      'fanduel','draftkings','betmgm','caesars','pointsbetus','williamhill_us',
+      'unibet_us','betrivers','superbook','ballybet','twinspires',
+      'betonlineag','lowvig','mybookieag',
+      // UK/EU/AU coverage
+      'williamhill_uk','bet365','ladbrokes','skybet','unibet_uk','betfair','pinnacle','sportsbet_au'
+    ];
     eventData.forEach(event => {
       if (!event.bookmakers || event.bookmakers.length === 0) {
         event.bookmakers = [];
         return;
       }
-      
+
       const primary = event.bookmakers.find(b => b.key === primaryBookmaker);
       const fallback = event.bookmakers.find(b => b.key === fallbackBookmaker);
+
+      // Union of market keys across all bookmakers with available outcomes
+      const marketKeys = new Set();
+      event.bookmakers.forEach(bm => {
+        (bm.markets || []).forEach(m => {
+          if (Array.isArray(m.outcomes) && m.outcomes.length > 0) {
+            marketKeys.add(m.key);
+          }
+        });
+      });
+
+      // Choose outcomes per market with precedence: primary -> fallback -> preferred -> any
       const mergedMarkets = [];
-
-      const allMarkets = new Set();
-      if (primary?.markets) primary.markets.forEach(m => allMarkets.add(m.key));
-      if (fallback?.markets) fallback.markets.forEach(m => allMarkets.add(m.key));
-
-      allMarkets.forEach(market => {
-        const primaryMarket = primary?.markets.find(m => m.key === market);
-        const fallbackMarket = fallback?.markets.find(m => m.key === market);
-
-        if (primaryMarket?.outcomes?.length > 0) {
-          mergedMarkets.push({ key: market, outcomes: primaryMarket.outcomes });
-        } else if (fallbackMarket?.outcomes?.length > 0) {
-          mergedMarkets.push({ key: market, outcomes: fallbackMarket.outcomes });
+      marketKeys.forEach(marketKey => {
+        const fromPrimary = primary?.markets?.find(m => m.key === marketKey && Array.isArray(m.outcomes) && m.outcomes.length > 0);
+        const fromFallback = fallback?.markets?.find(m => m.key === marketKey && Array.isArray(m.outcomes) && m.outcomes.length > 0);
+        const fromPreferred = event.bookmakers.find(b => PREFERRED_BOOKMAKERS.includes(b.key))?.markets?.find(m => m.key === marketKey && Array.isArray(m.outcomes) && m.outcomes.length > 0);
+        let fromAny = null;
+        if (!fromPrimary && !fromFallback && !fromPreferred) {
+          for (const b of event.bookmakers) {
+            const m = (b.markets || []).find(x => x.key === marketKey && Array.isArray(x.outcomes) && x.outcomes.length > 0);
+            if (m) { fromAny = m; break; }
+          }
+        }
+        const chosenMarket = fromPrimary || fromFallback || fromPreferred || fromAny;
+        if (chosenMarket) {
+          mergedMarkets.push({ key: marketKey, outcomes: chosenMarket.outcomes });
         }
       });
 
-      event.bookmakers = [{
-        key: primary ? primaryBookmaker : (fallback ? fallbackBookmaker : ''),
-        title: primary ? primary.title : (fallback ? fallback.title : ''),
-        last_update: primary ? primary.last_update : (fallback ? fallback.last_update : ''),
+      // Representative bookmaker metadata; prefer primary/fallback, else preferred, else any with markets
+      const representative = primary || fallback || event.bookmakers.find(b => PREFERRED_BOOKMAKERS.includes(b.key) && Array.isArray(b.markets) && b.markets.length > 0) || event.bookmakers.find(b => Array.isArray(b.markets) && b.markets.length > 0) || null;
+
+      event.bookmakers = representative ? [{
+        key: representative.key,
+        title: representative.title,
+        last_update: representative.last_update,
         markets: mergedMarkets
-      }];
+      }] : [];
     });
     return eventData;
   }

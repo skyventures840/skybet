@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const Odds = require('../models/Odds');
 const Match = require('../models/Match');
 const ComprehensiveOddsService = require('../services/comprehensiveOddsService');
-// Logger removed during cleanup - using console for now
+
 
 // Initialize the comprehensive odds service
 const oddsService = new ComprehensiveOddsService();
@@ -14,7 +14,7 @@ const oddsService = new ComprehensiveOddsService();
 // GET /api/odds/fetch-all-sports-markets-with-results - Comprehensive odds and results API
 router.get('/fetch-all-sports-markets-with-results', async (req, res) => {
 const {
-    regions = 'us', 
+    regions = 'all', 
     markets = 'all', 
     primaryBookmaker = 'fanduel', 
     fallbackBookmaker = 'betmgm', 
@@ -45,7 +45,7 @@ const {
 router.get('/sport/:sportKey/markets-with-results', async (req, res) => {
   const { sportKey } = req.params;
   const { 
-    regions = 'us', 
+    regions = 'all', 
     markets = 'all', 
     primaryBookmaker = 'fanduel', 
     fallbackBookmaker = 'betmgm', 
@@ -76,7 +76,7 @@ router.get('/sport/:sportKey/markets-with-results', async (req, res) => {
 router.get('/match/:matchId/markets-with-results', async (req, res) => {
   const { matchId } = req.params;
   const { 
-    regions = 'us', 
+    regions = 'all', 
     markets = 'all', 
     primaryBookmaker = 'fanduel', 
     fallbackBookmaker = 'betmgm' 
@@ -168,6 +168,67 @@ router.post('/betslip-status-updates', async (req, res) => {
       success: false,
       error: `Error updating betslip status: ${error.message}`
     });
+  }
+});
+
+// NEW: GET /api/odds/upcoming/odds - Cross-sport upcoming odds
+router.get('/upcoming/odds', async (req, res) => {
+  try {
+    const { regions = 'all', markets = 'all', commenceTimeFrom, commenceTimeTo, oddsFormat = 'decimal', bookmakers = 'fanduel,betmgm' } = req.query;
+    const events = markets === 'all'
+      ? await oddsService.fetchUpcomingOddsAllMarkets(regions, markets, bookmakers, oddsFormat, commenceTimeFrom, commenceTimeTo)
+      : await oddsService.fetchUpcomingOdds(regions, markets, bookmakers, oddsFormat, commenceTimeFrom, commenceTimeTo);
+    return res.json(events);
+  } catch (error) {
+    console.error('Error fetching upcoming odds:', error);
+    return res.status(500).json({ success: false, error: `Failed to fetch upcoming odds: ${error.message}` });
+  }
+});
+
+// NEW: GET /api/odds/sport/:sportKey/odds - Direct odds for a sport
+router.get('/sport/:sportKey/odds', async (req, res) => {
+  try {
+    const { sportKey } = req.params;
+    const { regions = 'all', markets = 'all', commenceTimeFrom, commenceTimeTo, oddsFormat = 'decimal', bookmakers = 'fanduel,betmgm' } = req.query;
+    const events = markets === 'all'
+      ? await oddsService.fetchSportOddsAllMarkets(sportKey, regions, markets, 'fanduel', 'betmgm', bookmakers, oddsFormat, commenceTimeFrom, commenceTimeTo)
+      : await oddsService.fetchOdds(sportKey, regions, markets, bookmakers, oddsFormat, commenceTimeFrom, commenceTimeTo);
+    return res.json(events);
+  } catch (error) {
+    console.error(`Error fetching odds for sport ${req.params.sportKey}:`, error);
+    return res.status(500).json({ success: false, error: `Failed to fetch sport odds: ${error.message}` });
+  }
+});
+
+// NEW: GET /api/odds/sport/:sportKey/events/:eventId/odds - Event-specific odds
+router.get('/sport/:sportKey/events/:eventId/odds', async (req, res) => {
+  try {
+    const { sportKey, eventId } = req.params;
+    const { regions = 'all', markets = 'all', oddsFormat = 'decimal', bookmakers = 'fanduel,betmgm' } = req.query;
+    const event = markets === 'all'
+      ? await oddsService.fetchEventOddsAllMarkets(sportKey, eventId, regions, markets, 'fanduel', 'betmgm', bookmakers, oddsFormat)
+      : await oddsService.fetchEventOdds(sportKey, eventId, regions, markets, bookmakers, oddsFormat);
+    return res.json(event);
+  } catch (error) {
+    console.error(`Error fetching event odds for ${req.params.sportKey}/${req.params.eventId}:`, error);
+    return res.status(500).json({ success: false, error: `Failed to fetch event odds: ${error.message}` });
+  }
+});
+
+// NEW: GET /api/odds/sport/:sportKey/scores - Results/Scores
+router.get('/sport/:sportKey/scores', async (req, res) => {
+  try {
+    const { sportKey } = req.params;
+    const { daysFrom = 1, eventIds } = req.query;
+    let eventIdsArr = undefined;
+    if (eventIds) {
+      eventIdsArr = typeof eventIds === 'string' ? eventIds.split(',').filter(Boolean) : eventIds;
+    }
+    const events = await oddsService.fetchScores(sportKey, Number(daysFrom), eventIdsArr);
+    return res.json(events);
+  } catch (error) {
+    console.error(`Error fetching scores for sport ${req.params.sportKey}:`, error);
+    return res.status(500).json({ success: false, error: `Failed to fetch scores: ${error.message}` });
   }
 });
 

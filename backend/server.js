@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -29,7 +29,7 @@ const startCronJobs = require('./cron');
 const { healthMonitor, isServerHealthy, updateCronStatus, incrementErrorCount } = require('./middleware/healthMonitor');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT_BACKEND || process.env.PORT || 10000;
 
 // Security middleware
 app.use(helmet({
@@ -211,80 +211,77 @@ app.use('*', (req, res) => {
   });
 });
 
-// Connect to MongoDB
-const mongoURI = process.env.MONGODB_URI || process.env.MONGODB_EXTERNAL_URI;
-
-if (!mongoURI) {
-  console.error('❌ MONGODB_URI environment variable is not set');
-  console.error('Available environment variables:');
-  console.error('- MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
-  console.error('- MONGODB_EXTERNAL_URI:', process.env.MONGODB_EXTERNAL_URI ? 'SET' : 'NOT SET');
-  console.error('- NODE_ENV:', process.env.NODE_ENV);
-  process.exit(1);
-}
-
-console.log('🔗 Attempting to connect to MongoDB...');
-console.log('📍 MongoDB URI configured:', mongoURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Hide credentials in logs
-
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 30000,
-  connectTimeoutMS: 30000,
-})
-.then(() => {
-  console.log('Connected to MongoDB');
-  
-  // Start HTTP server
+// Helper to start HTTP and WebSocket servers (with or without DB)
+function startHttpAndWsServers() {
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-  
-  // Initialize WebSocket server
+
   const wsServer = new WebSocketServer(server);
-  
-  // Make WebSocket server globally available
   global.websocketServer = wsServer;
-  
-  // Export WebSocket server for use in routes
   module.exports.io = wsServer;
-  
-  // Start WebSocket heartbeat
   wsServer.startHeartbeat();
-  
-  // Start cron jobs
   startCronJobs();
-  
+
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
     wsServer.shutdown();
     server.close(() => {
       console.log('HTTP server closed');
-      mongoose.connection.close(() => {
-        console.log('MongoDB connection closed');
+      if (mongoose.connection && mongoose.connection.readyState !== 0) {
+        mongoose.connection.close(() => {
+          console.log('MongoDB connection closed');
+          process.exit(0);
+        });
+      } else {
         process.exit(0);
-      });
+      }
     });
   });
-  
+
   process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully');
     wsServer.shutdown();
     server.close(() => {
       console.log('HTTP server closed');
-      mongoose.connection.close(() => {
-        console.log('MongoDB connection closed');
+      if (mongoose.connection && mongoose.connection.readyState !== 0) {
+        mongoose.connection.close(() => {
+          console.log('MongoDB connection closed');
+          process.exit(0);
+        });
+      } else {
         process.exit(0);
-      });
+      }
     });
   });
-  
-})
-.catch((err) => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
+}
+
+// Connect to MongoDB if configured; otherwise start server in degraded mode
+const mongoURI = process.env.MONGODB_URI || process.env.MONGODB_EXTERNAL_URI;
+
+if (mongoURI) {
+  console.log('🔗 Attempting to connect to MongoDB...');
+  console.log('📍 MongoDB URI configured:', mongoURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
+
+  mongoose.connect(mongoURI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 30000,
+    connectTimeoutMS: 30000,
+  })
+  .then(() => {
+    console.log('Connected to MongoDB');
+    startHttpAndWsServers();
+  })
+  .catch((err) => {
+    console.warn('⚠️ Failed to connect to MongoDB, starting server without DB:', err && err.message ? err.message : err);
+    startHttpAndWsServers();
+  });
+} else {
+  console.warn('⚠️ MONGODB_URI not set; starting server without DB connection');
+  startHttpAndWsServers();
+}
 
 module.exports = app;

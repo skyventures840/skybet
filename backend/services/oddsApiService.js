@@ -42,7 +42,7 @@ class OddsApiService {
       baseURL: config.oddsApi.baseUrl,
       timeout: parseInt(process.env.ODDS_API_TIMEOUT, 10) || 10000, // Default to 10 seconds if not set
       params: {
-        api_key: config.oddsApi.apiKey,
+        apiKey: config.oddsApi.apiKey,
         regions: 'us,us2,uk,eu,au', // All available regions
         // markets: 'h2h,spreads,totals,outrights', // All available markets - now dynamically fetched
         oddsFormat: 'decimal', // decimal | american
@@ -293,26 +293,16 @@ class OddsApiService {
     } catch (err) {
       // If we cannot determine applicability, continue with cautious fallback
     }
-    // Try bookmakers sequentially; only proceed to next if no data from the first
-    const BOOKMAKER_ORDER = [
-      'fanduel','draftkings','betmgm','caesars','pointsbetus','unibet_us',
-      'ballybet','betrivers','superbook','foxbet','williamhill_us','twinspires',
-      'betonlineag','lowvig','mybookieag'
-    ];
+    // Fetch all available bookmakers for this sport/market and regions
     let games = [];
-    for (const bm of BOOKMAKER_ORDER) {
-      try {
-        const response = await this.client.get(`/sports/${sportKey}/odds`, {
-          params: { markets: market, bookmakers: bm },
-        });
-        games = response.data || [];
-        if (Array.isArray(games) && games.length > 0) {
-          break;
-        }
-      } catch (err) {
-        // Continue to next bookmaker on error
-        continue;
-      }
+    try {
+      const response = await this.client.get(`/sports/${sportKey}/odds`, {
+        params: { markets: market },
+      });
+      games = response.data || [];
+    } catch (err) {
+      // On error, return empty list and allow caller to proceed
+      games = [];
     }
     if (!Array.isArray(games)) games = [];
     // Merge-save to DB: update or insert while preserving other markets

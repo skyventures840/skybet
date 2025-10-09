@@ -103,12 +103,23 @@ router.get('/', async (req, res) => {  // Removed auth middleware
         } else if (mKey === 'totals') {
           // Normalize totals market to frontend keys Total/TM/TU
           if (market.outcomes && market.outcomes.length >= 2) {
-            const overOutcome = market.outcomes[0];
-            const underOutcome = market.outcomes[1];
-            const point = overOutcome.point || underOutcome.point;
-            if (point) markets['Total'] = point;
+            const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0];
+            const underOutcome = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1];
+            const point = overOutcome?.point ?? underOutcome?.point;
+            if (point != null) markets['Total'] = point;
             if (overOutcome && typeof overOutcome.price === 'number') markets['TM'] = overOutcome.price;
             if (underOutcome && typeof underOutcome.price === 'number') markets['TU'] = underOutcome.price;
+          }
+          additionalMarketsCount++;
+        } else if (mKey === 'spreads') {
+          // Normalize spreads market to handicap keys
+          if (Array.isArray(market.outcomes)) {
+            const home = market.outcomes.find(o => o.name === odds.home_team);
+            const away = market.outcomes.find(o => o.name === odds.away_team);
+            const line = home?.point ?? away?.point;
+            if (line != null) markets['handicapLine'] = line;
+            if (typeof home?.price === 'number') markets['homeHandicap'] = home.price;
+            if (typeof away?.price === 'number') markets['awayHandicap'] = away.price;
           }
           additionalMarketsCount++;
         } else {
@@ -259,12 +270,29 @@ router.get('/popular/trending', async (req, res) => {
       let additionalMarketsCount = 0;
 
       firstBookmaker.markets.forEach(market => {
-        if (market.key === 'h2h') {
+        const key = (market.key || '').toLowerCase();
+        if (key === 'h2h' && Array.isArray(market.outcomes)) {
           market.outcomes.forEach(outcome => {
             if (outcome.name === odds.home_team) markets['1'] = outcome.price;
             else if (outcome.name === odds.away_team) markets['2'] = outcome.price;
             else if (outcome.name === 'Draw') markets['X'] = outcome.price;
           });
+        } else if (key === 'totals' && Array.isArray(market.outcomes)) {
+          const over = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0];
+          const under = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1];
+          const total = over?.point ?? under?.point;
+          if (total != null) markets['Total'] = total;
+          if (typeof over?.price === 'number') markets['TM'] = over.price;
+          if (typeof under?.price === 'number') markets['TU'] = under.price;
+          additionalMarketsCount++;
+        } else if (key === 'spreads' && Array.isArray(market.outcomes)) {
+          const home = market.outcomes.find(o => o.name === odds.home_team);
+          const away = market.outcomes.find(o => o.name === odds.away_team);
+          const line = home?.point ?? away?.point;
+          if (line != null) markets['handicapLine'] = line;
+          if (typeof home?.price === 'number') markets['homeHandicap'] = home.price;
+          if (typeof away?.price === 'number') markets['awayHandicap'] = away.price;
+          additionalMarketsCount++;
         } else {
           additionalMarketsCount++;
         }
