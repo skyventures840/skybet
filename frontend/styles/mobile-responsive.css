@@ -101,6 +101,7 @@ html, body {
     box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
   }
 
+
   .login-btn, .signup-btn {
     padding: 8px 10px !important;
     font-size: 12px !important;
@@ -854,7 +855,7 @@ html, body {
     align-items: center !important;
     width: 32px !important; /* Increased size for better visibility */
     height: 32px !important; /* Increased size for better visibility */
-    background: #3a3a3a !important; /* Visible grey background for contrast */
+    background: #f3f0f0 !important; /* Visible grey background for contrast */
     border: 1px solid rgba(255, 255, 255, 0.08) !important; /* subtle outline */
     border-radius: 8px !important; /* Keep shape for hit area */
     cursor: pointer !important;
