@@ -2196,11 +2196,11 @@ html, body {
     display: grid;
     grid-template-columns: 1fr;
     gap: 0 !important; /* No space between matches */
-    width: 150vw !important; /* Match hero section width */
-    max-width: 150vw !important;
+    width: 100% !important; /* Fit within container */
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important; /* No padding for full width */
-    overflow: visible !important; /* Remove all scroll bars */
+    overflow: hidden !important; /* Prevent scroll bars */
   }
 
   .match-card {
@@ -2210,15 +2210,15 @@ html, body {
     margin-bottom: 8px; /* Space between cards */
     cursor: pointer;
     position: relative;
-    width: 100vw !important; /* Match hero section width */
-    max-width: 100vw !important;
+    width: 100% !important; /* Fit within container to avoid horizontal scroll */
+    max-width: 100% !important;
     margin-left: 0 !important; /* Remove negative margins */
     margin-right: 0 !important; /* Remove negative margins */
     box-sizing: border-box !important;
     overflow: hidden !important; /* Prevent content overflow */
     left: 0 !important;
     right: 0 !important;
-    padding: 16px 20px !important; /* Increased padding for better spacing */
+    padding: 12px 12px !important; /* Slightly reduced padding for tighter fit */
     display: flex;
     flex-direction: column;
     gap: 0; /* Remove gap for single row layout */
@@ -2768,7 +2768,7 @@ html, body {
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.8);
-    z-index: 9999;
+    z-index: 99999;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2928,6 +2928,72 @@ html, body {
     
     .wheel-modal-body {
       max-height: calc(95vh - 70px);
+    }
+  }
+
+  /* Mobile fullscreen overrides for Wheel modal */
+  @media (max-width: 767px) {
+    .wheel-modal-overlay { padding: 0 !important; }
+    .wheel-modal-content {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+
+    .wheel-modal-header {
+      padding: clamp(12px, 3.5vw, 18px) !important;
+      min-height: 52px !important;
+    }
+
+    .wheel-modal-body {
+      flex: 1 1 auto !important;
+      max-height: none !important;
+      height: calc(100vh - 52px) !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Fit wheel prominently in fullscreen */
+    .wheel-modal-body .wheel-of-fortune {
+      padding: 0 !important;
+      background: var(--card-bg);
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      overflow: visible !important;
+    }
+
+    .wheel-modal-body .wheel-container {
+      margin: 0 auto !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-height: 60vh !important;
+      box-sizing: border-box !important;
+      overflow: visible !important;
+    }
+
+    .wheel-modal-body .wheel {
+      width: 100vw !important;
+      height: 100vw !important;
+      max-width: 100vw !important;
+      max-height: 100vw !important;
+      position: relative !important;
+      overflow: visible !important;
+    }
+
+    .wheel-modal-body .wheel-pointer {
+      position: absolute !important;
+      z-index: 100001 !important;
+      pointer-events: none !important;
     }
   }
 

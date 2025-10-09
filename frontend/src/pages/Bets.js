@@ -125,13 +125,14 @@ const Bets = () => {
   // Removed legacy status helpers (color/icon) since redesigned UI no longer uses them
 
   const toggleBetExpansion = (betId) => {
-    const newExpandedBets = new Set(expandedBets);
-    if (newExpandedBets.has(betId)) {
-      newExpandedBets.delete(betId);
+    // Enforce single-open accordion behavior
+    if (expandedBets.has(betId)) {
+      // Collapse if the same bet is clicked
+      setExpandedBets(new Set());
     } else {
-      newExpandedBets.add(betId);
+      // Open only the clicked bet, close others
+      setExpandedBets(new Set([betId]));
     }
-    setExpandedBets(newExpandedBets);
   };
 
   const formatOdds = (odds) => {
@@ -288,12 +289,7 @@ const Bets = () => {
                 const lostCount = displayMatches.filter(m => normalizeStatus(m.status) === 'lost').length;
                 const totalCount = displayMatches.length || 1;
 
-                const getMatchType = (match) => {
-                  // Default to 1x2 if selection is typical, else use bet market
-                  const sel = String(match.selection || '').toUpperCase();
-                  if (['1', 'X', '2'].includes(sel)) return '1x2';
-                  return bet.market || 'Market';
-                };
+                // getMatchType removed since Type column is no longer used
 
                 const getFtResult = (match) => {
                   // Prefer structured result scores if present
@@ -310,23 +306,26 @@ const Bets = () => {
 
                 return (
                   <div key={bet.id} className={`bet-card ${bet.status} ${isExpanded ? 'expanded' : 'collapsed'}`}>
-                    {/* Collapsed Summary */}
-                    <div
-                      className="bet-summary-collapsed"
-                      onClick={() => toggleBetExpansion(bet.id)}
-                    >
-                      <div className="bet-summary-info">
-                        <div className="bet-summary-title">#{bet.id?.slice(-6) || 'N/A'} • {formatDate(bet.createdAt)}</div>
-                        <div className="bet-summary-meta">{isMultibet ? `${displayMatches.length} events • ${bet.market || 'Parlay'}` : `${bet.market || 'Single'} bet`}</div>
+                    {/* Collapsed Summary (hidden when expanded) */}
+                    {!isExpanded && (
+                      <div
+                        className="bet-summary-collapsed"
+                        onClick={() => toggleBetExpansion(bet.id)}
+                      >
+                        <div className="bet-summary-info">
+                          <div className="bet-summary-title">#{bet.id?.slice(-6) || 'N/A'} • {formatDate(bet.createdAt)}</div>
+                        </div>
+                        <div className="bet-summary-amounts">
+                          <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
+                          <span className={`bet-status status-${(bet.status || 'pending').toLowerCase()}`}>
+                            {(() => {
+                              const s = (bet.status || 'pending').toLowerCase();
+                              return s === 'won' ? 'Won' : s === 'lost' ? 'Lost' : s === 'void' ? 'Void' : 'Pending';
+                            })()}
+                          </span>
+                        </div>
                       </div>
-                      <div className="bet-summary-amounts">
-                        <span className="bet-summary-stake">${formatAmount(bet.stake)}</span>
-                        <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
-                      </div>
-                      <button className={`bet-expand-btn ${isExpanded ? 'expanded' : ''}`} aria-label="Expand bet">
-                        ▼
-                      </button>
-                    </div>
+                    )}
 
                     {/* Expanded Content */}
                     {isExpanded && (
@@ -339,7 +338,7 @@ const Bets = () => {
                           </div>
                           <div className="betslip-header-item">
                             <span className="betslip-header-label">Possible Payout</span>
-                            <span className="betslip-header-value underlined">${formatAmount(bet.potentialWin)}</span>
+                            <span className="betslip-header-value">${formatAmount(bet.potentialWin)}</span>
                           </div>
                           <div className="betslip-header-item">
                             <span className="betslip-header-label">Won/Lost/Total</span>
@@ -352,7 +351,6 @@ const Bets = () => {
                           <thead>
                             <tr>
                               <th>Match</th>
-                              <th>Type</th>
                               <th>Pick</th>
                               <th>FT Results</th>
                               <th>Outcome</th>
@@ -368,7 +366,6 @@ const Bets = () => {
                                     <span className="away-team">{match.awayTeam}</span>
                                   </div>
                                 </td>
-                                <td>{getMatchType(match)}</td>
                                 <td className="selection">
                                   {match.homeTeam && match.awayTeam ? (
                                     <>

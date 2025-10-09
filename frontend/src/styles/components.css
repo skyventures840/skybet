@@ -553,6 +553,28 @@
   cursor: pointer;
 }
 
+/* Compact summary in collapsed accordion header */
+.account-page .bet-summary-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.account-page .bet-summary-compact .bet-id {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.account-page .bet-summary-compact .bet-time {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.account-page .bet-summary-compact .bet-possible-win {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 .account-page .bet-header .match-teams {
   font-size: 1rem;
 }
@@ -731,4 +753,38 @@
 .account-page .selection-item {
   color: var(--text-secondary);
   line-height: 1.4;
+}
+
+/* Scoped status badge colors for My Bets page */
+.bets-page .bet-status {
+  font-weight: 500;
+  font-size: 13px;
+  padding: 0;
+  border-radius: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  color: #333;
+}
+
+.bets-page .bet-status.status-pending {
+  color: #333;
+  background: none;
+}
+
+.bets-page .bet-status.status-won {
+  color: #333;
+  background: none;
+}
+
+.bets-page .bet-status.status-lost {
+  color: #333;
+  background: none;
+}
+
+.bets-page .bet-status.status-void {
+  color: #333;
+  background: none;
 }

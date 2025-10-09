@@ -424,6 +424,15 @@
 
 /* Desktop layout - Keep original fixed layout for 1025px+ */
 @media (min-width: 1025px) {
+  /* Navbar: increase height to fit content comfortably */
+  .navbar {
+    min-height: 80px;
+  }
+  .navbar-container {
+    padding-top: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+  }
+
   .under-navbar {
     max-width: none;
     margin: 0;
@@ -448,6 +457,44 @@
   .sidebar {
     width: 280px;
   }
+
+  /* Popular matches: reduce strip height and add presentable radius */
+  .popular-matches-section,
+  .popular-matches-box {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .popular-matches-scroll {
+    max-height: 240px;
+    overflow-y: hidden;
+  }
+  .popular-match-card {
+    min-height: 160px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    padding: var(--spacing-md);
+  }
+
+  /* Hero section: add radius and clip overflow */
+  .hero-slider,
+  .hero-slider .slider-container {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /* Match cards: fit container width and avoid overflow */
+  .match-card,
+  .match-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    position: relative;
+  }
+  /* Bring card forward above its container */
+  .match-card { z-index: var(--z-fixed); }
+  .match-container { z-index: var(--z-sticky); }
 }
 
 /* Mobile/Tablet optimizations - Only for screens below 1024px */
@@ -482,10 +529,12 @@
   .hero-slider .slider-container,
   .hero-slider .slides-wrapper,
   .hero-slider .slide {
-    width: 100% !important;
-    max-width: 120% !important;
-    margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
 
@@ -500,13 +549,35 @@
     padding: 0 !important; /* outer containers edge-to-edge */
   }
   .popular-matches-scroll {
-    overflow-x: hidden !important; /* arrows still work via programmatic scroll, scrollbar hidden */
+    overflow-x: auto !important; /* allow full card content to be visible */
+    -webkit-overflow-scrolling: touch;
+    max-height: 220px !important; /* increase container height on small screens */
+    display: flex !important; /* lay cards horizontally */
+    gap: var(--spacing-sm) !important;
   }
   .popular-match-card {
     margin: 0 !important;
-    width: 100% !important;
-    max-width: 120% !important;
-    padding: clamp(18px, 6vw, 28px) !important; /* move content further inward */
+    width: max-content !important; 
+    min-width: 100% !important; 
+    max-width: none !important; /* remove cap so content can fully display */
+    flex: 0 0 auto !important; /* prevent shrinking in horizontal layout */
+    min-height: 220px !important; /* increase height to fully display content */
+    padding: clamp(20px, 6vw, 30px) !important; /* move content further inward */
+    padding-left: clamp(30px, 40vw, 60px) !important; /* shift text slightly left */
+  }
+
+  /* Ensure match card content isn't clipped inside popular matches */
+  .popular-matches-scroll .match-card {
+    overflow: visible !important;
+  }
+
+  /* Increase navbar height on small screens */
+  .navbar {
+    min-height: 64px;
+  }
+  .navbar-container {
+    padding-top: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
   }
 
   /* Matches section: full-width and zero margins */
@@ -522,10 +593,18 @@
     padding: 0 !important; /* edge-to-edge containers */
     overflow-x: hidden !important;
   }
+  /* Ensure card renders above container on small screens */
+  .match-card { position: relative; z-index: var(--z-fixed); }
+  .match-container { position: relative; z-index: var(--z-sticky); }
   /* Compact header padding for small screens */
   .section-header,
   .popular-matches-header {
     padding: 0 clamp(18px, 6vw, 28px) !important; /* move titles further inward */
+  }
+
+  /* Nudge popular matches header text slightly left on small screens */
+  .popular-matches-header {
+    padding-left: clamp(12px, 4vw, 22px) !important;
   }
   /* Compact card content padding for small screens */
   .match-card {
@@ -581,7 +660,7 @@
     padding-left: clamp(18px, 6vw, 28px) !important; /* move content further inward while full-width */
     padding-right: clamp(18px, 6vw, 28px) !important;
     box-sizing: border-box !important;
-    overflow-x: hidden !important;
+    overflow-x: auto !important; /* allow horizontal scroll when needed */
   }
 
   /* Cards fill their parent which now spans the viewport */
@@ -589,8 +668,8 @@
   .popular-match-card {
     width: 100% !important;
     max-width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    margin-left: 2px !important;
+    margin-right: 2px !important;
   }
 
   /* Ensure headers don’t add side padding that reintroduces gutters */

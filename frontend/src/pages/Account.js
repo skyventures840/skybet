@@ -513,18 +513,15 @@ const Account = () => {
                       onClick={() => toggleExpanded(bet.id)}
                       aria-expanded={!!expandedMap[bet.id]}
                     >
-                          <div className="bet-match">
-                            <div className="match-teams">
-                              {bet.match?.homeTeam} vs {bet.match?.awayTeam}
-                            </div>
-                            <div className="match-competition">
-                              {bet.match?.competition}
-                            </div>
-                          </div>
+                      <div className="bet-summary-compact">
+                        <span className="bet-id">#{bet.id}</span>
+                        <span className="bet-time">{formatDate(bet.createdAt)}</span>
+                        <span className="bet-possible-win">${formatAmount(bet.potentialWin)}</span>
+                      </div>
                       <div 
                         className={`bet-status status-${(bet.status || '').toLowerCase()}`}
                       >
-                            {bet.result?.outcome?.toUpperCase() || bet.status.toUpperCase()}
+                        {bet.result?.outcome?.toUpperCase() || bet.status.toUpperCase()}
                       </div>
                       <span className={`expand-arrow ${expandedMap[bet.id] ? 'expanded' : ''}`}>▼</span>
                     </div>
