@@ -643,7 +643,7 @@
 /* Mobile hero slider visibility fixes: ensure wrapper expands and slides are visible */
 @media (max-width: 767px) {
   .hero-slider { position: relative; overflow: hidden; }
-  .hero-slider .slider-container { position: relative; min-height: clamp(180px, 40vh, 320px); }
+  .hero-slider .slider-container { position: relative; min-height: clamp(320px, 65vh, 520px); }
 
   /* Allow wrapper to expand to fit all slides horizontally */
   .hero-slider .slides-wrapper {
@@ -655,10 +655,21 @@
     will-change: transform;
   }
 
-  /* Each slide occupies full viewport width */
+  /* Each slide occupies full viewport width; reset margins and width overrides */
   .hero-slider .slide {
     flex: 0 0 100% !important;
     position: relative;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure wrapper isn't constrained or shifted by negative margins */
+  .hero-slider .slides-wrapper {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
   }
 
   .hero-slider .slide-background { position: absolute; inset: 0; }
