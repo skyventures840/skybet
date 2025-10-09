@@ -670,6 +670,15 @@
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
+    min-width: max-content !important;
+  }
+
+  /* Remove negative margins and 100vw forcing from hero container on mobile */
+  .hero-slider,
+  .hero-slider .slider-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
   }
 
   .hero-slider .slide-background { position: absolute; inset: 0; }
