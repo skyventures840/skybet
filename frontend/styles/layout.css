@@ -10,6 +10,30 @@
 }
 
 /* ========================================================================
+   Mobile Fixed Hero Height (≤767px)
+   Ensure slides fully occupy a clear fixed height
+   ======================================================================== */
+@media (max-width: 767px) {
+  /* Fixed height for hero container */
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: 400px !important;
+  }
+
+  /* Make wrapper and slides fill the fixed height */
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    height: 100% !important;
+  }
+
+  /* Ensure background image and overlay fill height */
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+}
+/* ========================================================================
    Mobile Height Overrides (≤767px)
    Mirrors index.css small-screen increases for consistency
    ======================================================================== */

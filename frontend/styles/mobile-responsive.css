@@ -24,6 +24,25 @@ html, body {
   min-width: 0 !important;
 }
 
+/* ======================================================================
+   Mobile Fixed Hero Height (≤767px)
+   Mirror fixed height so slides fill it consistently
+   ====================================================================== */
+@media (max-width: 767px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: 400px !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    height: 100% !important;
+  }
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+}
 #root, .app, .page-content, .content-wrapper, .main-content {
   width: 100% !important;
   max-width: 100% !important;
