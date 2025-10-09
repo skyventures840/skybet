@@ -20,16 +20,30 @@ const NowPaymentsDeposit = () => {
     { code: 'BTC', name: 'Bitcoin', icon: '₿' },
     { code: 'ETH', name: 'Ethereum', icon: 'Ξ' },
     { code: 'USDT', name: 'Tether', icon: '₮' },
+    { code: 'USDC', name: 'USD Coin', icon: '＄' },
     { code: 'LTC', name: 'Litecoin', icon: 'Ł' },
-    { code: 'BCH', name: 'Bitcoin Cash', icon: '₿' },
-    { code: 'XRP', name: 'Ripple', icon: '✕' }
+    { code: 'XRP', name: 'Ripple', icon: '✕' },
+    { code: 'DOGE', name: 'Dogecoin', icon: 'Ð' },
+    { code: 'TRX', name: 'Tron', icon: 'TRX' },
+    { code: 'ADA', name: 'Cardano', icon: 'ADA' },
+    { code: 'SOL', name: 'Solana', icon: '◎' },
+    { code: 'MATIC', name: 'Polygon', icon: 'M' },
+    { code: 'BNB', name: 'BNB (BSC)', icon: 'BNB' },
+    { code: 'DOT', name: 'Polkadot', icon: 'DOT' },
+    { code: 'DAI', name: 'Dai', icon: '◈' },
+    { code: 'LINK', name: 'Chainlink', icon: '🔗' },
+    { code: 'AVAX', name: 'Avalanche', icon: 'AVAX' },
+    { code: 'XMR', name: 'Monero', icon: 'XMR' },
+    { code: 'XLM', name: 'Stellar', icon: '★' },
+    { code: 'DASH', name: 'Dash', icon: 'D' },
+    { code: 'ZEC', name: 'Zcash', icon: 'Z' },
   ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!amount || parseFloat(amount) < 10) {
-      setError('Minimum deposit amount is $10');
+    if (!amount || parseFloat(amount) < 1) {
+      setError('Minimum deposit amount is $1');
       return;
     }
 
@@ -139,6 +153,101 @@ const NowPaymentsDeposit = () => {
     });
   };
 
+  // Helpers for standardized crypto URIs
+  const toUnit = (amount, decimals) => {
+    const [whole = '0', frac = ''] = String(amount).split('.');
+    const fracPadded = (frac + '0'.repeat(decimals)).slice(0, decimals);
+    const normalized = `${whole}${fracPadded}`.replace(/^0+/, '') || '0';
+    return normalized;
+  };
+
+  const buildPaymentUri = (pay) => {
+    const currency = String(pay.payCurrency || selectedCurrency).toUpperCase();
+    const address = pay.payAddress;
+    const amount = pay.payAmount; // crypto amount in its native units (decimal)
+    const memoTag = pay.payinExtraId; // for XRP and similar
+
+    if (currency === 'ETH') {
+      // EIP-681: explicit mainnet chainId @1 and value in wei
+      const wei = toUnit(amount, 18);
+      return `ethereum:${address}@1?value=${wei}`;
+    }
+    if (currency === 'USDT') {
+      // EIP-681 ERC20 transfer on Ethereum mainnet (USDT)
+      const USDT_CONTRACT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+      const units = toUnit(amount, 6);
+      return `ethereum:${USDT_CONTRACT}@1/transfer?address=${address}&uint256=${units}`;
+    }
+    if (currency === 'USDC') {
+      const USDC_CONTRACT = '0xA0b86991c6218b36c1d19D4a2e9eB0cE3606eB48';
+      const units = toUnit(amount, 6);
+      return `ethereum:${USDC_CONTRACT}@1/transfer?address=${address}&uint256=${units}`;
+    }
+    if (currency === 'DAI') {
+      const DAI_CONTRACT = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
+      const units = toUnit(amount, 18);
+      return `ethereum:${DAI_CONTRACT}@1/transfer?address=${address}&uint256=${units}`;
+    }
+    if (currency === 'LINK') {
+      const LINK_CONTRACT = '0x514910771AF9Ca656af840dff83E8264EcF986CA';
+      const units = toUnit(amount, 18);
+      return `ethereum:${LINK_CONTRACT}@1/transfer?address=${address}&uint256=${units}`;
+    }
+    if (currency === 'BTC') {
+      // BIP-21
+      return `bitcoin:${address}?amount=${amount}`;
+    }
+    if (currency === 'LTC') {
+      return `litecoin:${address}?amount=${amount}`;
+    }
+    if (currency === 'XRP') {
+      const base = `ripple:${address}?amount=${amount}`;
+      return memoTag ? `${base}&dt=${memoTag}` : base;
+    }
+    if (currency === 'DOGE') {
+      return `dogecoin:${address}?amount=${amount}`;
+    }
+    if (currency === 'TRX') {
+      return `tron:${address}?amount=${amount}`;
+    }
+    if (currency === 'ADA') {
+      return `cardano:${address}?amount=${amount}`;
+    }
+    if (currency === 'SOL') {
+      return `solana:${address}?amount=${amount}`;
+    }
+    if (currency === 'MATIC') {
+      const wei = toUnit(amount, 18);
+      return `ethereum:${address}@137?value=${wei}`;
+    }
+    if (currency === 'BNB') {
+      const wei = toUnit(amount, 18);
+      return `ethereum:${address}@56?value=${wei}`;
+    }
+    if (currency === 'DOT') {
+      return `polkadot:${address}?amount=${amount}`;
+    }
+    if (currency === 'AVAX') {
+      const wei = toUnit(amount, 18);
+      return `ethereum:${address}@43114?value=${wei}`;
+    }
+    if (currency === 'XMR') {
+      return `monero:${address}?amount=${amount}`;
+    }
+    if (currency === 'XLM') {
+      // Stellar SEP-7 style
+      return `web+stellar:pay?destination=${address}&amount=${amount}`;
+    }
+    if (currency === 'DASH') {
+      return `dash:${address}?amount=${amount}`;
+    }
+    if (currency === 'ZEC') {
+      return `zcash:${address}?amount=${amount}`;
+    }
+    // Fallback
+    return `${currency.toLowerCase()}:${address}?amount=${amount}`;
+  };
+
   if (success && payment) {
     return (
       <div className="deposit-section">
@@ -198,7 +307,7 @@ const NowPaymentsDeposit = () => {
 
               <div className="qr-code-container">
                 <QRCode
-                  value={`${payment.payCurrency}:${payment.payAddress}${payment.payinExtraId ? `?memo=${payment.payinExtraId}` : ''}`}
+                  value={buildPaymentUri(payment)}
                   size={220}
                   level="H"
                   includeMargin={true}
@@ -299,4 +408,4 @@ const NowPaymentsDeposit = () => {
   );
 };
 
-export default NowPaymentsDeposit; 
+export default NowPaymentsDeposit;

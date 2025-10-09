@@ -17,7 +17,7 @@
   /* Fixed height for hero container */
   .hero-slider,
   .hero-slider .slider-container {
-    height: 480px !important;
+    height: 260px !important;
   }
 
   /* Make wrapper and slides fill the fixed height */
@@ -40,7 +40,7 @@
 @media (max-width: 767px) {
   /* Taller hero for small screens */
   .hero-slider .slider-container {
-    min-height: clamp(360px, 70vh, 560px) !important;
+    min-height: clamp(220px, 55vh, 360px) !important;
   }
 
   /* Increase popular matches container height */
@@ -667,7 +667,7 @@
 /* Mobile hero slider visibility fixes: ensure wrapper expands and slides are visible */
 @media (max-width: 767px) {
   .hero-slider { position: relative; overflow: hidden; }
-  .hero-slider .slider-container { position: relative; min-height: clamp(360px, 70vh, 560px); }
+  .hero-slider .slider-container { position: relative; min-height: clamp(220px, 55vh, 360px); }
 
   /* Allow wrapper to expand to fit all slides horizontally */
   .hero-slider .slides-wrapper {
