@@ -47,6 +47,16 @@
     -webkit-font-smoothing: antialiased;
     -webkit-transform: translateZ(0);
   }
+  /* iOS Safari: ensure hero images render inside transformed containers */
+  .hero-slider .slides-wrapper {
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+  }
+  .hero-slider .slide-background img {
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
   
   /* Fix for iOS Safari flexbox issues */
   .navbar-container,
