@@ -12,3 +12,5 @@
 {"level":"error","message":"Failed to create payment:","timestamp":"2025-10-09T16:45:57.643Z"}
 {"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-09T18:06:52.263Z"}
 {"level":"error","message":"Failed to create payment:","timestamp":"2025-10-09T18:06:52.264Z"}
+{"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-10T04:08:15.271Z"}
+{"level":"error","message":"Failed to create payment:","timestamp":"2025-10-10T04:08:15.273Z"}
