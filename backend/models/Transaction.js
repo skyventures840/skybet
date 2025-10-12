@@ -25,7 +25,7 @@ const transactionSchema = new mongoose.Schema({
   },
   currency: {
     type: String,
-    enum: ['USD', 'BTC', 'ETH', 'LTC', 'USDT', 'BNB'],
+    trim: true,
     default: 'USD'
   },
   walletAddress: {
