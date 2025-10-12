@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import MatchCard from '../components/MatchCard';
+import SubcategoryMatchCard from '../components/SubcategoryMatchCard';
 import apiService from '../services/api';
+import { computeFullLeagueTitle } from '../utils/leagueTitle';
 
 const Soccer = () => {
   const [matches, setMatches] = useState([]);
@@ -83,20 +84,25 @@ const Soccer = () => {
     const now = new Date();
     return data
       .filter(match => {
-        const sportKey = (match.sport || '').toLowerCase();
-        // Only soccer-like sports
-        const isSoccer = sportKey.includes('soccer');
+        // Determine sport from sport_key or sport fields strictly
+        const rawKey = (match.sport_key || match.sport || match.sport_title || '').toLowerCase();
+        const firstToken = rawKey.split('_')[0] || '';
+        const isSoccer = firstToken === 'soccer' || rawKey === 'soccer';
+        // Exclude any mis-labeled leagues that clearly belong to other sports
+        const leagueLower = String(match.league || match.sport_title || '').toLowerCase();
+        // Also guard against truncated or variant labels like "boxi"
+        const isClearlyNonSoccer = /\bboxing\b|\bboxi\b|\bmma\b|\bufc\b|\brugby\b/.test(leagueLower);
         // Only pre-match upcoming items
         const start = new Date(match.startTime);
         const isUpcoming = (match.status || 'upcoming') === 'upcoming' && start > now;
-        return isSoccer && isUpcoming;
+        return isSoccer && isUpcoming && !isClearlyNonSoccer;
       })
       .map(match => {
         const oddsObj = match.odds || {};
         const start = new Date(match.startTime);
 
         // Ensure basic odds are numbers when present
-        ['1','2','X','TM','TU','Total','1X','12','2X'].forEach(k => {
+        ['1','2','X','1X','12','2X'].forEach(k => {
           if (oddsObj && oddsObj[k] != null) {
             const num = Number(oddsObj[k]);
             oddsObj[k] = Number.isFinite(num) ? num : oddsObj[k];
@@ -109,12 +115,19 @@ const Soccer = () => {
         }
 
         const additionalMarkets = Number(match.additionalMarkets || 0);
-        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] && oddsObj[key] > 0).length;
+        const ignoredLineKeys = ['Total','total','handicapLine','handicap_line'];
+        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] && oddsObj[key] > 0 && !ignoredLineKeys.includes(key)).length;
         const additionalOddsCount = Math.max(0, additionalMarkets - displayedOddsCount);
 
+        // Derive country from explicit field or sport_key second token
+        const sportKey = String(match.sport_key || '').toLowerCase();
+        const tokens = sportKey.split('_').filter(Boolean);
+        const derivedCountry = match.country || (tokens.length > 1 ? tokens[1] : '') || '';
         return {
           id: match.id,
-          league: match.league || match.sport || 'Soccer',
+          league: match.league || match.competition || match.tournament || 'Other',
+          country: derivedCountry,
+          sport_key: match.sport_key || '',
           time: start.toLocaleString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
@@ -137,8 +150,8 @@ const Soccer = () => {
       setLoading(true);
       setError(null);
       
-      // Fetch unified matches from API
-      const response = await apiService.getMatches();
+      // Fetch matches filtered by sport key from API (server-side filter)
+      const response = await apiService.getMatchesByKey('soccer');
       const apiMatches = response.data.matches || [];
 
       // Transform to frontend format
@@ -164,9 +177,8 @@ const Soccer = () => {
             '1X': 1.65,
             '12': 1.45,
             '2X': 1.55,
-            'Total': 2.5,
-            'TM': 1.75,
-            'TU': 2.05
+            'Over (2.5)': 1.75,
+            'Under (2.5)': 2.05
           },
           additionalOdds: '+156'
         },
@@ -183,9 +195,8 @@ const Soccer = () => {
             '1X': 1.45,
             '12': 1.35,
             '2X': 1.85,
-            'Total': 3.5,
-            'TM': 1.95,
-            'TU': 1.80
+            'Over (3.5)': 1.95,
+            'Under (3.5)': 1.80
           },
           additionalOdds: '+234'
         }
@@ -203,18 +214,44 @@ const Soccer = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Group matches by subcategory
+  // Canonical mappings for major soccer competitions
+  const subcategoryMappings = {
+    'EPL': ['Premier League', 'English Premier League', 'EPL', 'England Premier League'],
+    'Serie A': ['Serie A', 'Italian Serie A', 'Italy Serie A'],
+    'Bundesliga': ['Bundesliga', 'German Bundesliga', 'Germany Bundesliga'],
+    'La Liga': ['La Liga', 'Spanish La Liga', 'Spain La Liga'],
+    'Ligue 1': ['Ligue 1', 'French Ligue 1', 'France Ligue One'],
+    'Champions League': ['UEFA Champions League', 'Champions League', 'UCL'],
+    'Europa League': ['UEFA Europa League', 'Europa League', 'UEL'],
+    'MLS': ['Major League Soccer', 'MLS']
+  };
+
+  // Group matches by canonicalized subcategory
   const groupMatchesBySubcategory = () => {
     const groupedMatches = {};
-    
+
+    const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
+    const computeCanonicalSubcategory = (m) => {
+      const leagueNorm = normalize(m.league);
+      for (const [canonical, variations] of Object.entries(subcategoryMappings)) {
+        for (const v of variations) {
+          const vNorm = normalize(v);
+          if (vNorm && leagueNorm === vNorm) {
+            return canonical;
+          }
+        }
+      }
+      return m.league || 'Other';
+    };
+
     filteredMatches.forEach(match => {
-      const subcategoryKey = match.league || 'Other';
+      const subcategoryKey = computeCanonicalSubcategory(match);
       if (!groupedMatches[subcategoryKey]) {
         groupedMatches[subcategoryKey] = [];
       }
       groupedMatches[subcategoryKey].push(match);
     });
-    
+
     return groupedMatches;
   };
 
@@ -279,20 +316,23 @@ const Soccer = () => {
         </div>
 
         <div className="matches-grid">
-          {Object.entries(groupedMatches).map(([subcategory, matches]) => (
-            <div key={subcategory} className="subcategory-group">
-              <h3 className="subcategory-title">{subcategory}</h3>
-              {matches.map(match => (
-                <MatchCard 
-                  key={match.id} 
-                  match={match} 
-                  sport="Soccer"
-                  league={match.league}
-                  subcategory={subcategory}
-                />
-              ))}
-            </div>
-          ))}
+          {Object.entries(groupedMatches).map(([subcategory, matches]) => {
+            const first = matches[0] || {};
+            const groupTitle = first.fullLeagueTitle || computeFullLeagueTitle({
+              sportKeyOrName: first.sport_key || first.sport || 'Soccer',
+              country: first.country || subcategory || '',
+              leagueName: first.league || subcategory,
+              fallbackSportTitle: 'Soccer'
+            });
+            return (
+              <SubcategoryMatchCard
+                key={subcategory}
+                subcategory={groupTitle}
+                matches={matches}
+                sport="Soccer"
+              />
+            );
+          })}
         </div>
       </div>
     </div>

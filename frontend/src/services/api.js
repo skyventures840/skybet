@@ -202,8 +202,8 @@ const apiService = {
   // Leagues
   getLeagues: () => api.get('/admin/leagues'),
   createLeague: (data) => api.post('/admin/leagues', data),
-  // Add this new method to the apiService object
-  getMatchesByKey: (sportKey) => api.get(`/matches/sport/${sportKey}`),
+  // Fetch matches by sport key (public, no auth); cache briefly
+  getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
   getMatchMarkets: (matchId) => api.get(`/matches/${matchId}/markets`),
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>

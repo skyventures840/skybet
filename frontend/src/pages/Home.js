@@ -9,7 +9,6 @@ const Home = () => {
   const [matches, setMatches] = useState([]);
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [popularMatches, setPopularMatches] = useState([]);
-  // Removed unused expandedSubcategories to satisfy linter
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,7 +79,8 @@ const Home = () => {
 
   // Mapping from sidebar names to possible values in the data
   const sidebarToDataMap = {
-    'Football / Soccer': ['Soccer', 'Football'],
+    'Soccer': ['Soccer'],
+    'American Football': ['Football', 'american football', 'americanfootball', 'nfl', 'college football', 'ncaaf', 'cfl'],
     'Hockey': ['Hockey', 'NHL', 'KHL', 'AHL', 'SHL', 'Liiga', 'DEL', 'NLA'],
     'NHL': ['NHL'],
     'KHL': ['KHL'],
@@ -99,6 +99,36 @@ const Home = () => {
     // Add more mappings as needed for other sports/leagues
   };
 
+  // Strict sport token map for exact matching (first token of sport_key)
+  const strictSportTokenMap = {
+    'Soccer': 'soccer',
+    'American Football': 'americanfootball',
+    'Basketball': 'basketball',
+    'Baseball': 'baseball',
+    'Tennis': 'tennis',
+    'Ice Hockey': 'icehockey',
+    'Hockey': 'hockey',
+    'Cricket': 'cricket',
+    'Boxing': 'boxing',
+    'MMA': 'mma',
+    'Volleyball': 'volleyball',
+    'Rugby': 'rugby',
+    'Rugby League': 'rugbyleague',
+    'Aussie Rules': 'aussierules',
+    'Handball': 'handball',
+    'Table tennis': 'tabletennis'
+  };
+
+  // Optional: keywords that clearly indicate other sports (to guard mislabels)
+  const nonSportKeywordsBySport = {
+    'Soccer': [/\bboxing\b/i, /\bboxi\b/i, /\bmma\b/i, /\brugby\b/i],
+    'American Football': [/\bsoccer\b/i, /\brugby\b/i],
+    'Basketball': [/\bice hockey\b/i, /\bhockey\b/i],
+    'Ice Hockey': [/\bbasketball\b/i],
+    'Boxing': [/\bsoccer\b/i, /\bmma\b/i],
+    'MMA': [/\bsoccer\b/i, /\bboxing\b/i]
+  };
+ 
   // Enhanced subcategory mapping for better fallback filtering
   const subcategoryMappings = {
     'EPL': ['Premier League', 'English Premier League', 'EPL', 'England Premier League'],
@@ -110,10 +140,29 @@ const Home = () => {
     'Champions League': ['UEFA Champions League', 'Champions League', 'UCL'],
     'Europa League': ['UEFA Europa League', 'Europa League', 'UEL'],
     'MLS': ['Major League Soccer', 'MLS'],
+    // American Football
     'NFL': ['National Football League', 'NFL'],
+    'NCAAF': ['NCAA Football', 'College Football', 'NCAAF'],
+    'CFL': ['Canadian Football League', 'CFL'],
+    // Basketball
     'NBA': ['National Basketball Association', 'NBA'],
+    'EuroLeague': ['EuroLeague', 'Euro League', 'Euroliga'],
+    // Baseball
     'MLB': ['Major League Baseball', 'MLB'],
-    'NHL': ['National Hockey League', 'NHL']
+    // Ice Hockey
+    'NHL': ['National Hockey League', 'NHL'],
+    'KHL': ['Kontinental Hockey League', 'KHL'],
+    'AHL': ['American Hockey League', 'AHL'],
+    'SHL': ['Swedish Hockey League', 'SHL'],
+    'Liiga': ['Finnish Liiga', 'Liiga'],
+    'DEL': ['Deutsche Eishockey Liga', 'DEL'],
+    'NLA': ['National League A', 'NLA'],
+    // Tennis
+    'ATP': ['Association of Tennis Professionals', 'ATP'],
+    'WTA': ['Women’s Tennis Association', 'WTA'],
+    'Wimbledon': ['Wimbledon'],
+    'US Open': ['US Open', 'U.S. Open'],
+    'French Open': ['French Open', 'Roland Garros']
   };
 
   // Filter matches based on search term, date, sidebar filter, and subcategory
@@ -122,28 +171,47 @@ const Home = () => {
 
     // Sidebar filter
     if (selectedSidebarFilter) {
-      const mappedValues = sidebarToDataMap[selectedSidebarFilter] || [selectedSidebarFilter];
-      filtered = filtered.filter(match =>
-        mappedValues.some(val =>
-          (match.sport && match.sport.toLowerCase().includes(val.toLowerCase())) ||
-          (match.league && match.league.toLowerCase().includes(val.toLowerCase())) ||
-          (match.subcategory && match.subcategory.toLowerCase().includes(val.toLowerCase()))
-        )
-      );
+      const strictToken = strictSportTokenMap[selectedSidebarFilter];
+      if (strictToken) {
+        // Strict filter: exact sport token match, plus optional mislabel guards
+        const guards = nonSportKeywordsBySport[selectedSidebarFilter] || [];
+        filtered = filtered.filter(match => {
+          const sportToken = String(match.sport || '').toLowerCase().split('_')[0];
+          const leagueLower = String(match.league || '').toLowerCase();
+          const subLower = String(match.subcategory || '').toLowerCase();
+          const violatesGuard = guards.some(re => re.test(leagueLower) || re.test(subLower));
+          return sportToken === strictToken && !violatesGuard;
+        });
+      } else {
+        // Fallback to inclusive mapping for non-strict items (sub-leagues etc.)
+        const mappedValues = sidebarToDataMap[selectedSidebarFilter] || [selectedSidebarFilter];
+        filtered = filtered.filter(match =>
+          mappedValues.some(val =>
+            (match.sport && match.sport.toLowerCase().includes(val.toLowerCase())) ||
+            (match.league && match.league.toLowerCase().includes(val.toLowerCase())) ||
+            (match.subcategory && match.subcategory.toLowerCase().includes(val.toLowerCase()))
+          )
+        );
+      }
     }
 
-    // Subcategory filter - only apply if a subcategory is selected
+    // Subcategory filter - strict matching when a subcategory is selected
     if (selectedSubcategory) {
+      const strictTokenForSport = strictSportTokenMap[selectedSidebarFilter];
+      const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
+      const variations = (subcategoryMappings[selectedSubcategory] || [selectedSubcategory]).map(normalize);
+
       filtered = filtered.filter(match => {
-        // Get possible subcategory variations from mapping
-        const subcategoryVariations = subcategoryMappings[selectedSubcategory] || [selectedSubcategory];
-        
-        // Check if any variation matches in subcategory or league fields
-        return subcategoryVariations.some(variation => 
-          (match.subcategory && match.subcategory.toLowerCase().includes(variation.toLowerCase())) ||
-          (match.league && match.league.toLowerCase().includes(variation.toLowerCase())) ||
-          (match.sport_title && match.sport_title.toLowerCase().includes(variation.toLowerCase()))
-        );
+        // Require strict sport token match if available
+        const sportToken = String(match.sport || '').toLowerCase().split('_')[0];
+        if (strictTokenForSport && sportToken !== strictTokenForSport) return false;
+
+        const leagueNorm = normalize(match.league);
+        const subcatNorm = normalize(match.subcategory);
+        const sportTitleNorm = normalize(match.sport_title);
+
+        // Strict equality against canonical variations
+        return variations.some(v => v && (leagueNorm === v || subcatNorm === v || sportTitleNorm === v));
       });
     }
 
@@ -180,9 +248,7 @@ const Home = () => {
     setFilteredMatches(filtered);
   }, [matches, searchTerm, selectedDate, selectedSidebarFilter, selectedSubcategory]);
 
-  // Removed unused toggleSubcategory to satisfy linter
-
-  // Helper function to create a unique key for a match
+ 
   const createMatchKey = (match) => {
     if (!match) return null;
     
@@ -296,6 +362,7 @@ const Home = () => {
           id: match.id || match._id,
           league: match.league || '',  // Ensure league is passed through
           subcategory: match.subcategory || '',  // Ensure subcategory is passed through
+          startTime: match.startTime,
           time: new Date(match.startTime).toLocaleTimeString('en-US', { 
             hour: '2-digit', 
             minute: '2-digit' 
@@ -303,7 +370,9 @@ const Home = () => {
           homeTeam: match.homeTeam,
           awayTeam: match.awayTeam,
           odds: match.odds || {},
-          sport: match.sport || ''
+          sport: match.sport || '',
+          country: match.country || '',
+          fullLeagueTitle: match.fullLeagueTitle || ''
         }));
       
       // Deduplicate popular matches as well
@@ -368,11 +437,14 @@ const Home = () => {
           id: match.id || match._id,
           league: match.league || '',
           subcategory: match.subcategory || '',
+          startTime: match.startTime,
           time: new Date(match.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           homeTeam: match.homeTeam,
           awayTeam: match.awayTeam,
           odds: match.odds || {},
-          sport: match.sport || ''
+          sport: match.sport || '',
+          country: match.country || '',
+          fullLeagueTitle: match.fullLeagueTitle || ''
         }));
         const uniquePopular = deduplicateMatches(transformedPopular);
         if (uniquePopular && uniquePopular.length > 0) {
@@ -440,6 +512,7 @@ const Home = () => {
         id: match.id || match._id,
         league: match.league || '',
         subcategory: match.subcategory || '',
+        startTime: match.startTime,
         time: new Date(match.startTime).toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit' 
@@ -447,7 +520,9 @@ const Home = () => {
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
         odds: match.odds || {},
-        sport: match.sport || ''
+        sport: match.sport || '',
+        country: match.country || '',
+        fullLeagueTitle: match.fullLeagueTitle || ''
       }));
       
       const uniquePopularMatches = deduplicateMatches(transformedPopular);
@@ -459,48 +534,49 @@ const Home = () => {
     }
   };
 
-  // Group matches by subcategory with deduplication
+  // Group matches by subcategory with canonicalization and deduplication
   const groupMatchesBySubcategory = () => {
     const groupedMatches = {};
-    
-    // Create a map to track unique matches within each subcategory
     const subcategoryUniqueMatches = {};
-    
-    filteredMatches.forEach(match => {
-      // Use subcategory if available, otherwise try to extract from league name
-      let subcategoryKey = match.subcategory;
-      
-      if (!subcategoryKey || subcategoryKey === match.league) {
-        // Try to extract a meaningful subcategory from the league name
-        if (match.league && match.league.includes('.')) {
-          subcategoryKey = match.league.split('.').pop().trim();
-        } else if (match.league) {
-          subcategoryKey = match.league;
-        } else {
-          subcategoryKey = 'Other';
+
+    const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
+
+    const computeCanonicalSubcategory = (m) => {
+      const leagueNorm = normalize(m.league);
+      const subNorm = normalize(m.subcategory);
+      for (const [canonical, variations] of Object.entries(subcategoryMappings)) {
+        for (const v of variations) {
+          const vNorm = normalize(v);
+          if (vNorm && (leagueNorm === vNorm || subNorm === vNorm)) {
+            return canonical;
+          }
         }
       }
-      
+      if (m.league && m.league.includes('.')) {
+        return m.league.split('.').pop().trim();
+      }
+      if (m.league) return m.league;
+      if (m.subcategory) return m.subcategory;
+      return 'Other';
+    };
+
+    filteredMatches.forEach(match => {
+      const subcategoryKey = computeCanonicalSubcategory(match);
       if (!groupedMatches[subcategoryKey]) {
         groupedMatches[subcategoryKey] = [];
         subcategoryUniqueMatches[subcategoryKey] = new Set();
       }
-      
-      // Create a unique key for this match within the subcategory
       const matchKey = `${match.homeTeam}_${match.awayTeam}_${match.startTime}`;
-      
-      // Only add if this match hasn't been seen in this subcategory
       if (!subcategoryUniqueMatches[subcategoryKey].has(matchKey)) {
         subcategoryUniqueMatches[subcategoryKey].add(matchKey);
-      groupedMatches[subcategoryKey].push(match);
+        groupedMatches[subcategoryKey].push(match);
       }
     });
-    
-    // Log deduplication results
+
     Object.entries(groupedMatches).forEach(([subcategory, matches]) => {
       console.log(`[DEBUG] Subcategory "${subcategory}": ${matches.length} unique matches`);
     });
-    
+
     return groupedMatches;
   };
 

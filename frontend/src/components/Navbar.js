@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faBars } from '@fortawesome/free-solid-svg-icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
@@ -114,6 +116,14 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
                   {username}
                 </Link>
               </div>
+              {/* Place hamburger next to the profile section */}
+              <button
+                className={`hamburger-menu ${isSidebarOpen ? 'active' : ''}`}
+                onClick={toggleSidebar}
+                aria-label="Toggle sidebar menu"
+              >
+                <FontAwesomeIcon icon={faBars} aria-hidden="true" />
+              </button>
               <button onClick={handleLogout} className="logout-btn">
                 Logout
               </button>
@@ -126,19 +136,16 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
               <Link to="/signup" className="signup-btn">
                 Sign Up
               </Link>
+              {/* Place hamburger next to auth buttons for logged-out state */}
+              <button
+                className={`hamburger-menu ${isSidebarOpen ? 'active' : ''}`}
+                onClick={toggleSidebar}
+                aria-label="Toggle sidebar menu"
+              >
+                <FontAwesomeIcon icon={faBars} aria-hidden="true" />
+              </button>
             </div>
           )}
-          
-          {/* Hamburger Menu Icon */}
-          <button 
-            className={`hamburger-menu ${isSidebarOpen ? 'active' : ''}`}
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar menu"
-          >
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-          </button>
         </div>
       </div>
     </header>

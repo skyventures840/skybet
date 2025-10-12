@@ -4557,45 +4557,56 @@ body {
     width: 100%;
   }
 
-  /* Odds Headers Grid Layout - Perfect Alignment */
+  /* Odds Headers Grid Layout - Right aligned, fixed columns for perfect vertical match */
   .odds-headers-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px; /* Increased gap between headers for better spacing */
+    grid-template-columns: repeat(3, 60px);
+    gap: 16px; /* increased spacing between headers */
     margin-bottom: 8px;
-    width: 200px; /* Increased width to accommodate gaps */
-    margin-left: 20%; /* Move headers 20% to the left */
-    margin-right: 80px; /* Space for additional markets icon */
-    position: relative;
+    width: calc(3 * 60px + 2 * 16px); /* keep width in sync with gap */
+    justify-content: end; /* push grid to the right side */
+    margin-left: auto; /* right-anchored block */
+    margin-right: 12px; /* slight left shift */
   }
   
   .odds-header {
     font-size: 14px;
     font-weight: 700;
     color: var(--text-primary);
-    text-align: center;
+    text-align: right; /* align header labels to the right edge */
     padding: 4px 0;
     line-height: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-end; /* visually align to the right */
     justify-content: center;
-    width: 60px;
+    width: 60px; /* match grid column width for perfect alignment */
     min-width: 60px;
     max-width: 60px;
     margin: 0;
     box-sizing: border-box;
   }
   
-  /* Odds Buttons Grid Layout - Aligned with Headers */
+  /* Odds Buttons Grid Layout - Fixed columns, slightly inset from right */
   .odds-buttons-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px; /* Increased gap between buttons for better spacing */
-    width: 200px; /* Increased width to accommodate gaps */
-    margin-left: 20%; /* Move buttons 20% to the left to align with headers */
-    margin-right: 80px; /* Space for additional markets icon */
-    position: relative;
+    grid-template-columns: repeat(3, 60px);
+    gap: 16px; /* match headers gap for perfect alignment */
+    width: calc(3 * 60px + 2 * 16px); /* keep width in sync with gap */
+    justify-content: end; /* align buttons grid to the right */
+    margin-left: auto; /* right-anchored block */
+    margin-right: 12px; /* slight left shift aligned with headers */
+  }
+  
+  /* Regular Match Card: slight inward inset while maintaining perfect alignment */
+  .match-container .odds-headers-container {
+    grid-template-columns: repeat(3, 60px) 12px; /* imaginary right column to push block inward */
+    width: calc(3 * 60px + 2 * 16px + 12px); /* keep width synced with gap and inset */
+  }
+
+  .match-container .odds-buttons-container {
+    grid-template-columns: repeat(3, 60px) 12px; /* identical imaginary column to align with headers */
+    width: calc(3 * 60px + 2 * 16px + 12px);
   }
   
   /* Odds Button Group Container */
@@ -8883,7 +8894,7 @@ body {
 
 /* Live Match Styling */
 .live-match {
-  border: 2px solid #ff4444 !important;
+  border: none !important;
   background: linear-gradient(135deg, #1a1a1a 0%, #2a1a1a 100%) !important;
   position: relative;
   overflow: hidden;

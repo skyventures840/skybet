@@ -128,11 +128,19 @@ const Football = () => {
           oddsObj['X'] = 25.00; // Default high odds for draw in football
         }
 
-        // Add totals market if available and valid
+        // Add totals as Over/Under with line in parentheses; do not expose raw 'Total' line
         if (totalsMarket && totalsMarket.outcomes && totalsMarket.outcomes.length >= 2) {
-          oddsObj['Total'] = totalsMarket.outcomes[0]?.point || null;
-          oddsObj['TM'] = totalsMarket.outcomes[0]?.price || null;
-          oddsObj['TU'] = totalsMarket.outcomes[1]?.price || null;
+          const overOutcome = totalsMarket.outcomes.find(o => (o.name || '').toLowerCase().startsWith('over')) || totalsMarket.outcomes[0];
+          const underOutcome = totalsMarket.outcomes.find(o => (o.name || '').toLowerCase().startsWith('under')) || totalsMarket.outcomes[1] || null;
+          const point = (overOutcome && overOutcome.point != null) ? overOutcome.point : (underOutcome && underOutcome.point != null ? underOutcome.point : null);
+          if (overOutcome && overOutcome.price) {
+            const label = point != null ? `Over (${point})` : 'Over';
+            oddsObj[label] = overOutcome.price;
+          }
+          if (underOutcome && underOutcome.price) {
+            const label = point != null ? `Under (${point})` : 'Under';
+            oddsObj[label] = underOutcome.price;
+          }
         }
 
         // Only return match if we have at least basic odds
@@ -141,7 +149,8 @@ const Football = () => {
         }
 
         // Count additional markets
-        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] !== null).length;
+        const ignoredLineKeys = ['Total','total','handicapLine','handicap_line'];
+        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] !== null && !ignoredLineKeys.includes(key)).length;
         const totalAvailableMarkets = bookmaker.markets.filter(market => 
           market.outcomes && market.outcomes.length > 0 && 
           market.outcomes.some(outcome => outcome.price > 0)

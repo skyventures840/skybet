@@ -782,13 +782,14 @@
   }
 
   .qr-code-container {
-    padding: 15px 10px;
+    padding: 16px 12px;
     margin-top: 15px;
+    border-radius: 20px;
   }
 
   .qr-code-container svg {
-    width: 180px !important;
-    height: 180px !important;
+    width: 170px !important;
+    height: 170px !important;
     padding: 8px;
   }
 
@@ -882,6 +883,12 @@
 
   .payment-success h2 {
     font-size: 16px;
+  }
+
+  .qr-code-container {
+    padding: 12px 8px;
+    border-radius: 18px;
+    margin-top: 12px;
   }
 
   .qr-code-container svg {

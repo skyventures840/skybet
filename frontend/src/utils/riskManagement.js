@@ -139,8 +139,18 @@ export const assessOddsRisk = (match, odds, oddsType) => {
     riskLevel = 'medium';
   }
   
-  const shouldDisable = riskLevel === 'high';
-  
+  // Only lock live odds for truly high-risk scenarios
+  const isLive = match?.isLive || match?.status === 'live';
+  let shouldDisable;
+  if (isLive) {
+    // For live matches, disable ONLY when the live state is obviously risky
+    // i.e., outcome is obvious based on score/time
+    shouldDisable = riskFactors.includes('live_match_obvious');
+  } else {
+    // Pre-match: disable when overall risk is high
+    shouldDisable = riskLevel === 'high';
+  }
+
   return {
     shouldDisable,
     reason: riskFactors.length > 0 ? riskFactors.join(', ') : null,

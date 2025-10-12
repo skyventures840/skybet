@@ -320,7 +320,22 @@ const LiveBetting = () => {
                   <div className="league-header live-league-header">
                     <div className="league-title">
                       <span className="arrow">▲</span>
-                      {league}
+                      {(() => {
+                        const first = matches && matches[0] ? matches[0] : {};
+                        const sport = first.sport || first.sport_title;
+                        const country = first.subcategory || first.country;
+                        const norm = (s) => (s || '').toString().trim().replace(/[.·]+$/,'');
+                        const parts = [norm(sport), norm(country), norm(league)].filter(Boolean);
+                        // If league already contains country, skip country to avoid duplication
+                        const finalParts = parts.filter((p, idx) => {
+                          if (idx === 1 && parts[2] && parts[2].toLowerCase().includes(p.toLowerCase())) return false;
+                          return true;
+                        });
+                        const title = Array.from(new Set(finalParts.map(p => p.toLowerCase())))
+                          .map(lower => finalParts.find(p => p.toLowerCase() === lower))
+                          .join(' · ');
+                        return title;
+                      })()}
                     </div>
                     {/* Odds Headers - Aligned with respective odds */}
                     {commonOddsTypes.map(oddsType => (

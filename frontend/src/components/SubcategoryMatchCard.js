@@ -7,7 +7,6 @@ import { assessOddsRisk } from '../utils/riskManagement';
 const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const [isFavorited, setIsFavorited] = useState(false);
     const [expanded, setExpanded] = useState(true);
 
     const addToBetslip = (match, betType, odds) => {
@@ -99,43 +98,6 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
         return null;
     };
 
-    // Get basic odds types (1, X, 2) - maximum 3
-    const getBasicOddsTypes = (match) => {
-        if (!match.odds) return [];
-        
-        const basicTypes = ['1', 'X', '2'];
-        const availableBasicTypes = [];
-        
-        // Handle Map-based odds structure (new structure)
-        if (match.odds instanceof Map || (match.odds && typeof match.odds.get === 'function')) {
-            basicTypes.forEach(type => {
-                const odds = match.odds.get ? match.odds.get(type) : match.odds[type];
-                if (odds && typeof odds === 'number' && odds > 0) {
-                    availableBasicTypes.push(type);
-                }
-            });
-        }
-        // Handle nested odds structure (from matchesSeed.js)
-        else if (match.odds.default && match.odds.default.odds) {
-            basicTypes.forEach(type => {
-                const odds = match.odds.default.odds[type];
-                if (odds && typeof odds === 'number' && odds > 0) {
-                    availableBasicTypes.push(type);
-                }
-            });
-        } else {
-            // Handle flat odds structure (from transformed API data)
-            basicTypes.forEach(type => {
-                const odds = match.odds[type];
-                if (odds && typeof odds === 'number' && odds > 0) {
-                    availableBasicTypes.push(type);
-                }
-            });
-        }
-        
-        // Return maximum of 3 basic odds types
-        return availableBasicTypes.slice(0, 3);
-    };
 
     // Get all available odds types for additional markets count
     const getAllBasicOddsTypes = () => {
@@ -173,20 +135,6 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
         return Array.from(allTypes);
     };
 
-    // Get all unique odds types from all matches for additional markets count
-    const getAllOddsTypes = () => {
-        const allOddsTypes = new Set();
-        validMatches.forEach(match => {
-            if (match.odds) {
-                Object.keys(match.odds).forEach(oddsType => {
-                    if (match.odds[oddsType] && match.odds[oddsType] > 0) {
-                        allOddsTypes.add(oddsType);
-                    }
-                });
-            }
-        });
-        return Array.from(allOddsTypes);
-    };
 
     const hasValidOdds = (match) => {
         if (!match.odds) return false;
@@ -203,8 +151,9 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
     // Inline MatchRow component
     const MatchRow = ({ match, basicOddsTypes }) => {
         // Calculate additional markets count (all odds minus basic odds)
+        const ignoredLineKeys = new Set(['Total','total','handicapLine','handicap_line']);
         const allMatchOddsTypes = Object.keys(match.odds || {}).filter(key => 
-            match.odds[key] && match.odds[key] > 0
+            match.odds[key] && match.odds[key] > 0 && !ignoredLineKeys.has(key)
         );
         const additionalMarketsCount = Math.max(0, allMatchOddsTypes.length - basicOddsTypes.length);
         

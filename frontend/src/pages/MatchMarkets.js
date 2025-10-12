@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import apiService from '../services/api';
+import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 
 const MatchMarkets = () => {
     const { matchId } = useParams();
@@ -15,29 +16,8 @@ const MatchMarkets = () => {
     // Track expanded/collapsed state per market key
     const [expandedByKey, setExpandedByKey] = useState({});
 
-    // Helper: normalize market keys to canonical values to dedupe aliases
-    const normalizeMarketKey = (keyRaw) => {
-        const key = (keyRaw || '').toLowerCase();
-        // Collapse lay/exchange variants
-        const base = key.replace(/_(lay|exchange)$/i, '');
-        // Unify common aliases
-        if (base === 'moneyline' || base === 'ml' || base === 'h2h_lay' || base === 'h2h_exchange') return 'h2h';
-        if (base === 'over_under' || base === 'o/u' || base === 'totals_lay' || base === 'totals_exchange') return 'totals';
-        if (base === 'handicap' || base === 'point_spread' || base === 'spreads_lay' || base === 'spreads_exchange') return 'spreads';
-        return base;
-    };
-
-    // Helper: title mapping based on normalized keys (sport-agnostic)
-    const titleForKey = (normKey) => {
-        switch (normKey) {
-            case 'h2h': return 'H2H';
-            case 'totals': return 'Total Points';
-            case 'spreads': return 'Point Spread';
-            case 'double_chance': return 'Double Chance';
-            default:
-                return (normKey || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        }
-    };
+    // Title helper from shared util
+    const titleForKey = (normKey) => getMarketTitle(normKey);
 
     useEffect(() => {
         console.log('MatchMarkets useEffect triggered with matchId:', matchId);
@@ -65,13 +45,13 @@ const MatchMarkets = () => {
                 // Prefer backend-normalized markets if present
                 if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
                     console.log('Using backend-normalized markets data:', matchData.markets);
-                    processedMatchData.markets = matchData.markets;
+                    // Deduplicate and merge aliases into consistent groups
+                    processedMatchData.markets = mergeAndNormalizeMarkets(matchData.markets, matchData);
                 } else if (matchData.bookmakers && matchData.bookmakers.length > 0) {
                     console.log('Processing bookmakers data:', matchData.bookmakers);
                     console.log('Number of bookmakers:', matchData.bookmakers.length);
                     
-                    const markets = [];
-                    const processedMarketKeys = new Set(); // Track processed market keys to avoid duplicates
+                    const aggregated = new Map(); // key -> { key, title, outcomes: [] }
                     
                     matchData.bookmakers.forEach((bookmaker, bookmakerIndex) => {
                         console.log(`Processing bookmaker ${bookmakerIndex}:`, bookmaker.key, bookmaker.title);
@@ -80,34 +60,41 @@ const MatchMarkets = () => {
                         bookmaker.markets.forEach((market, marketIndex) => {
                             console.log(`Processing market ${marketIndex} from bookmaker ${bookmakerIndex}:`, market.key);
                             
-                            // Normalize key and skip if already processed
                             const normKey = normalizeMarketKey(market.key);
-                            if (processedMarketKeys.has(normKey)) {
-                                console.log(`Skipping duplicate market: ${market.key} (already processed)`);
-                                return;
-                            }
-                            
-                            processedMarketKeys.add(normKey);
-                            console.log(`Adding new market: ${normKey}`);
-                            
-                            // Title based on normalized key
                             const marketTitle = titleForKey(normKey);
-                            
-                            markets.push({
-                                key: normKey,
-                                title: marketTitle,
-                                // description removed as per requirements
-                                outcomes: market.outcomes.map(outcome => ({
-                                    name: outcome.name,
-                                    price: outcome.price,
-                                    point: outcome.point || null
-                                }))
-                            });
+                            const existing = aggregated.get(normKey);
+                            const incomingOutcomes = (market.outcomes || []).map(outcome => ({
+                                name: outcome.name,
+                                price: outcome.price,
+                                point: outcome.point || null
+                            }));
+                            if (!existing) {
+                                aggregated.set(normKey, {
+                                    key: normKey,
+                                    title: marketTitle,
+                                    outcomes: incomingOutcomes
+                                });
+                            } else {
+                                // Merge outcomes, dedupe by name+point
+                                const bySig = new Map();
+                                [...existing.outcomes, ...incomingOutcomes].forEach(o => {
+                                    const sig = `${(o.name||'').toLowerCase()}|${o.point ?? ''}`;
+                                    if (!bySig.has(sig)) bySig.set(sig, o);
+                                    else {
+                                        // Prefer outcome with valid price
+                                        const prev = bySig.get(sig);
+                                        if ((!prev.price || prev.price <= 0) && o.price && o.price > 0) {
+                                            bySig.set(sig, o);
+                                        }
+                                    }
+                                });
+                                existing.outcomes = Array.from(bySig.values());
+                            }
                         });
                     });
-                    
+                    const markets = Array.from(aggregated.values());
                     console.log('Final processed markets (after deduplication):', markets.map(m => ({ key: m.key, title: m.title })));
-                    processedMatchData.markets = markets;
+                    processedMatchData.markets = normalizeOutcomeLabels(markets, matchData);
                     console.log('Processed markets:', markets);
                 } else {
                     console.log('No markets or bookmakers data found');
@@ -130,6 +117,134 @@ const MatchMarkets = () => {
             setLoading(false);
         }
     }, [matchId, location.search]);
+
+    // Merge and normalize markets when backend provides markets array
+    const mergeAndNormalizeMarkets = (markets, matchData) => {
+        const aggregated = new Map();
+        markets.forEach(m => {
+            const normKey = normalizeMarketKey(m.key || m.title);
+            const title = titleForKey(normKey);
+            const incomingOutcomes = (m.outcomes || []).map(o => ({
+                name: o.name,
+                price: o.price,
+                point: o.point || null
+            }));
+            const existing = aggregated.get(normKey);
+            if (!existing) {
+                aggregated.set(normKey, { key: normKey, title, outcomes: incomingOutcomes });
+            } else {
+                const bySig = new Map();
+                [...existing.outcomes, ...incomingOutcomes].forEach(o => {
+                    const sig = `${(o.name||'').toLowerCase()}|${o.point ?? ''}`;
+                    if (!bySig.has(sig)) bySig.set(sig, o);
+                    else {
+                        const prev = bySig.get(sig);
+                        if ((!prev.price || prev.price <= 0) && o.price && o.price > 0) bySig.set(sig, o);
+                    }
+                });
+                existing.outcomes = Array.from(bySig.values());
+            }
+        });
+        return normalizeOutcomeLabels(Array.from(aggregated.values()), matchData);
+    };
+
+    // Standardize outcome labels inside grouped markets
+    const normalizeOutcomeLabels = (markets, matchData) => {
+        const homeName = matchData.homeTeam || matchData.home_team || 'Home';
+        const awayName = matchData.awayTeam || matchData.away_team || 'Away';
+        return markets.map(m => {
+            if (m.key === 'winner') {
+                // Map common labels to Home/Away/Draw
+                m.outcomes = m.outcomes.map(o => {
+                    let name = (o.name || '').toLowerCase();
+                    if (['home','home win','homewin','1'].includes(name)) return { ...o, name: homeName };
+                    if (['away','away win','awaywin','2'].includes(name)) return { ...o, name: awayName };
+                    if (['draw','x','tie'].includes(name)) return { ...o, name: 'Draw' };
+                    return o;
+                });
+                // Deduplicate by name
+                const byName = new Map();
+                m.outcomes.forEach(o => {
+                    const key = (o.name || '').toLowerCase();
+                    if (!byName.has(key)) byName.set(key, o);
+                    else if ((!byName.get(key).price || byName.get(key).price <= 0) && o.price && o.price > 0) byName.set(key, o);
+                });
+                m.outcomes = Array.from(byName.values());
+            }
+            if (m.key === 'totals' || (m.key || '').includes('totals')) {
+                // Normalize Over/Under labels across all totals variants (incl. alternates, team totals)
+                m.outcomes = m.outcomes.map(o => {
+                    let name = (o.name || '').toLowerCase();
+                    // Replace generic team tokens with actual names for team totals
+                    name = name.replace(/\bhome\b/g, homeName.toLowerCase()).replace(/\baway\b/g, awayName.toLowerCase());
+                    // Detect Over/Under anywhere in the name
+                    const isOver = /(\bover\b|\bov\b|\bo\b)/.test(name);
+                    const isUnder = /(\bunder\b|\bun\b|\bu\b)/.test(name);
+                    if (isOver) {
+                        // Preserve any prefix (e.g., team name), capitalize Over, append point
+                        const replaced = name.replace(/\bover\b|\bov\b|\bo\b/i, 'Over');
+                        const display = o.point != null && !/\([^)]*\)/.test(replaced) ? `${replaced} (${o.point})` : replaced;
+                        return { ...o, name: display.replace(/^\w/, c => c.toUpperCase()), point: null };
+                    }
+                    if (isUnder) {
+                        const replaced = name.replace(/\bunder\b|\bun\b|\bu\b/i, 'Under');
+                        const display = o.point != null && !/\([^)]*\)/.test(replaced) ? `${replaced} (${o.point})` : replaced;
+                        return { ...o, name: display.replace(/^\w/, c => c.toUpperCase()), point: null };
+                    }
+                    return o;
+                });
+                // Deduplicate by Over/Under plus team context (so Home/Away totals don't merge)
+                const bySig = new Map();
+                m.outcomes.forEach(o => {
+                    const n = (o.name || '').toLowerCase();
+                    const teamCtx = n.startsWith(homeName.toLowerCase()) ? 'home' : (n.startsWith(awayName.toLowerCase()) ? 'away' : '');
+                    const base = n.includes('over') ? `${teamCtx}over` : (n.includes('under') ? `${teamCtx}under` : n);
+                    if (!bySig.has(base)) bySig.set(base, o);
+                    else if ((!bySig.get(base).price || bySig.get(base).price <= 0) && o.price && o.price > 0) bySig.set(base, o);
+                });
+                // Keep only Over/Under outcomes; drop any generic 'Total' lines or others
+                m.outcomes = Array.from(bySig.values()).filter(o => {
+                    const n = (o.name || '').toLowerCase();
+                    return n.includes('over') || n.includes('under');
+                });
+                // Ensure title for base totals market is 'Totals'
+                if (m.key === 'totals') {
+                    m.title = 'Totals';
+                }
+            }
+            if (m.key === 'spreads') {
+                // Unify Handicap: one market with Home and Away outcomes, show point in brackets
+                const normalized = [];
+                m.outcomes.forEach(o => {
+                    const raw = (o.name || '').toLowerCase();
+                    const isHome = raw.includes('home') || raw === (homeName || '').toLowerCase();
+                    const isAway = raw.includes('away') || raw === (awayName || '').toLowerCase();
+                    const signPoint = o.point != null ? (o.point >= 0 ? `+${o.point}` : `${o.point}`) : null;
+                    if (isHome) {
+                        normalized.push({ ...o, name: signPoint ? `${homeName} (${signPoint})` : `${homeName}`, point: null });
+                    } else if (isAway) {
+                        normalized.push({ ...o, name: signPoint ? `${awayName} (${signPoint})` : `${awayName}`, point: null });
+                    } else {
+                        // Fallback: keep name but move point into brackets
+                        const label = signPoint ? `${o.name} (${signPoint})` : (o.name || '');
+                        normalized.push({ ...o, name: label, point: null });
+                    }
+                });
+                // Deduplicate to one Home and one Away entry, prefer priced outcomes
+                const bySide = new Map();
+                normalized.forEach(o => {
+                    const lower = (o.name || '').toLowerCase();
+                    const key = lower.includes((homeName || '').toLowerCase()) ? 'home' : (lower.includes((awayName || '').toLowerCase()) ? 'away' : lower);
+                    if (!bySide.has(key)) bySide.set(key, o);
+                    else if ((!bySide.get(key).price || bySide.get(key).price <= 0) && o.price && o.price > 0) bySide.set(key, o);
+                });
+                m.outcomes = Array.from(bySide.values());
+                // Ensure title is correct
+                m.title = 'Handicap';
+            }
+            return m;
+        });
+    };
 
     // Initialize expanded state when match data is loaded
     useEffect(() => {
@@ -169,7 +284,7 @@ const MatchMarkets = () => {
             league: match.league || match.sport_title,
             startTime: match.startTime || match.commence_time,
             market: marketKey,
-            marketDisplay: (marketKey || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            marketDisplay: getMarketTitle(marketKey),
             selection: outcome.name,
             odds: outcome.price,
             stake: 0,
@@ -293,7 +408,8 @@ const MatchMarkets = () => {
                                         });
                                         
                                         console.log('Retry: Final processed markets (after deduplication):', markets.map(m => ({ key: m.key, title: m.title })));
-                                        processedMatchData.markets = markets;
+                                        // Normalize outcome labels to consolidate markets like winner (1x2), totals, spreads
+                                        processedMatchData.markets = normalizeOutcomeLabels(markets, matchData);
                                     } else {
                                         processedMatchData.markets = [];
                                     }
@@ -363,7 +479,24 @@ const MatchMarkets = () => {
             <div className="match-info-card">
                 <div className="match-teams">
                     <h2>{match.homeTeam || match.home_team} vs {match.awayTeam || match.away_team}</h2>
-                    <p className="match-league">{match.league || match.sport_title}</p>
+                    <p className="match-league">
+                      {(() => {
+                        const sport = match.sport || match.sport_title;
+                        const country = match.subcategory || match.country;
+                        const league = match.league || match.competition || match.tournament;
+                        const norm = (s) => (s || '').toString().trim().replace(/[.·]+$/,'');
+                        const parts = [norm(sport), norm(country), norm(league)].filter(Boolean);
+                        // If league already contains country, skip country to avoid duplication
+                        const finalParts = parts.filter((p, idx) => {
+                          if (idx === 1 && parts[2] && parts[2].toLowerCase().includes(p.toLowerCase())) return false;
+                          return true;
+                        });
+                        const title = Array.from(new Set(finalParts.map(p => p.toLowerCase())))
+                          .map(lower => finalParts.find(p => p.toLowerCase() === lower))
+                          .join(' · ');
+                        return title;
+                      })()}
+                    </p>
                     <p className="match-time">{formatMatchTime(match.startTime || match.commence_time)}</p>
                 </div>
                 

@@ -4,8 +4,9 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
+import { computeFullLeagueTitle } from '../utils/leagueTitle';
 
-const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true }) => {
+const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
     if (!match) return null;
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -122,8 +123,8 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
             awayTeam: matchInfo.awayTeam,
             league: matchInfo.league || league,
             startTime: matchInfo.startTime,
-            market: 'h2h',
-            marketDisplay: 'H2H',
+            market: 'winner',
+            marketDisplay: 'Winner',
             selection: betType,
             type: betType,
             odds: odds,
@@ -256,15 +257,7 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
         }
     };
 
-    const handleAdditionalMarketsClick = (e) => {
-        e.stopPropagation();
-        const matchId = match._id || match.id;
-        if (matchId) {
-            navigate(`/match/${matchId}/markets`);
-        } else {
-            console.error('Invalid match ID format');
-        }
-    };
+    // Removed handler for additional markets navigation as the button was removed
 
     const handleTeamsClick = (e) => {
         e.stopPropagation();
@@ -276,10 +269,19 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
         }
     };
 
-    // Format the full league title with sport, country, and league name
-    const fullLeagueTitle = subcategory ? 
-        `${subcategory}. ${league}` : 
-        league;
+    // Compute league title using unified backend-like logic (Sport.Country.League)
+    const sportName = sport || match.sport || '';
+    const sportKeyOrName = match.sport_key || sportName;
+    const country = match.country || match.subcategory || '';
+    const leagueName = league || match.league || '';
+    const computedLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName,
+        country,
+        leagueName,
+        fallbackSportTitle: match.sport_title || match.sport || ''
+    });
+
+    const fullLeagueTitle = match.fullLeagueTitle || computedLeagueTitle || leagueName;
 
     // Removed unused formatMatchTime helper
 
@@ -384,12 +386,14 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
                             <img className="team-flag" src={match.awayTeamFlag} alt="" />
                             {match.awayTeam}
                         </div>
-                        {/* Show market type and bookmaker */}
-                        <div className="match-market-info" style={{ fontSize: '0.9em', color: '#666', marginTop: 2 }}>
-                          {match.market && <span>Market: {match.market}</span>}
-                          {match.market && match.bookmaker && <span> | </span>}
-                          {match.bookmaker && <span>Bookmaker: {match.bookmaker}</span>}
-                        </div>
+                        {/* Show market type and bookmaker for non-live matches only */}
+                        {!isLiveMatch && (match.market || match.bookmaker) && (
+                          <div className="match-market-info" style={{ fontSize: '0.9em', color: '#666', marginTop: 2 }}>
+                            {match.market && <span>Market: {match.market}</span>}
+                            {match.market && match.bookmaker && <span> | </span>}
+                            {match.bookmaker && <span>Bookmaker: {match.bookmaker}</span>}
+                          </div>
+                        )}
                     </div>
                     
                     {/* Score and Odds on the same line */}
@@ -445,19 +449,7 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
                             })}
                         </div>
                     </div>
-                    {/* Show additional markets button if there are more odds types */}
-                    {additionalMarketsTotal > 0 && (
-                        <div className="additional-markets-container">
-                        <button 
-                            className="more-markets-button" 
-                            title="View all betting markets"
-                            onClick={handleAdditionalMarketsClick}
-                        >
-                            <span className="more-markets-icon">+</span>
-                            <span className="more-markets-count">{additionalMarketsTotal}</span>
-                        </button>
-                        </div>
-                    )}
+                    {/* Removed additional markets button and container */}
                 </div>
                 {canShowVideo && showVideoSection && (
                   <div style={{ marginTop: 8, border: '1px solid #2d2d2d', borderRadius: 8, padding: 8 }} onClick={(e) => e.stopPropagation()}>
@@ -468,27 +460,15 @@ const MatchCard = ({ match, sport, league, subcategory, showLeagueHeader = true 
                       startTime={match.startTime}
                       videoDisplayControl={match.videoDisplayControl}
                     />
-                    {/* Additional match section controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                      <div style={{ color: '#ccc', fontSize: 12 }}>
-                        {additionalMarketsTotal > 0 ? `+${additionalMarketsTotal}` : ''}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          className="more-markets-button"
-                          title="View all markets"
-                          onClick={(e) => { e.stopPropagation(); handleAdditionalMarketsClick(e); }}
-                        >
-                          View all markets
-                        </button>
-                        <button
-                          className="favorite-btn"
-                          title="Close"
-                          onClick={(e) => { e.stopPropagation(); setShowVideoSection(false); }}
-                        >
-                          ✕
-                        </button>
-                      </div>
+                    {/* Additional match section controls - removed markets count and button */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 8 }}>
+                      <button
+                        className="favorite-btn"
+                        title="Close"
+                        onClick={(e) => { e.stopPropagation(); setShowVideoSection(false); }}
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 )}

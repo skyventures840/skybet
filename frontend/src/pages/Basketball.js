@@ -114,11 +114,19 @@ const Basketball = () => {
           '2': outcomes[1]?.price || null
         };
 
-        // Add totals market if available and valid
+        // Add totals as Over/Under with line in parentheses; do not expose raw 'Total' line
         if (totalsMarket && totalsMarket.outcomes && totalsMarket.outcomes.length >= 2) {
-          oddsObj['Total'] = totalsMarket.outcomes[0]?.point || null;
-          oddsObj['TM'] = totalsMarket.outcomes[0]?.price || null;
-          oddsObj['TU'] = totalsMarket.outcomes[1]?.price || null;
+          const overOutcome = totalsMarket.outcomes.find(o => (o.name || '').toLowerCase().startsWith('over')) || totalsMarket.outcomes[0];
+          const underOutcome = totalsMarket.outcomes.find(o => (o.name || '').toLowerCase().startsWith('under')) || totalsMarket.outcomes[1] || null;
+          const point = (overOutcome && overOutcome.point != null) ? overOutcome.point : (underOutcome && underOutcome.point != null ? underOutcome.point : null);
+          if (overOutcome && overOutcome.price) {
+            const label = point != null ? `Over (${point})` : 'Over';
+            oddsObj[label] = overOutcome.price;
+          }
+          if (underOutcome && underOutcome.price) {
+            const label = point != null ? `Under (${point})` : 'Under';
+            oddsObj[label] = underOutcome.price;
+          }
         }
 
         // Only return match if we have at least basic odds
@@ -186,9 +194,8 @@ const Basketball = () => {
             '1X': 1.45,
             '12': 1.22,
             '2X': 1.18,
-            'Total': 225.5,
-            'TM': 1.88,
-            'TU': 1.87
+            'Over (225.5)': 1.88,
+            'Under (225.5)': 1.87
           },
           additionalOdds: '+156',
           sport: 'Basketball'
@@ -206,9 +213,8 @@ const Basketball = () => {
             '1X': 1.38,
             '12': 1.25,
             '2X': 1.32,
-            'Total': 145.5,
-            'TM': 1.92,
-            'TU': 1.83
+            'Over (145.5)': 1.92,
+            'Under (145.5)': 1.83
           },
           additionalOdds: '+78',
           sport: 'Basketball'

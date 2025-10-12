@@ -215,30 +215,14 @@ const Sidebar = ({ closeSidebar }) => {
   };
 
   const sportsData = [
-    // Football / Soccer (merged)
+    // Soccer (only soccer leagues)
     {
-      name: 'Football / Soccer',
+      name: 'Soccer',
       icon: '⚽',
-      path: '/football',
+      path: '/soccer',
       count: 1105,
       isExpandable: true,
       subItems: [
-        // Football subcategories
-        { name: 'EPL', count: 0, path: '/football/epl' },
-        { name: 'Serie A', count: 0, path: '/football/serie-a' },
-        { name: 'Bundesliga', count: 0, path: '/football/bundesliga' },
-        { name: 'La Liga', count: 0, path: '/football/la-liga' },
-        { name: 'Ligue 1', count: 0, path: '/football/ligue-1' },
-        { name: 'UEFA Champions League', count: 0, path: '/football/uefa-champions-league' },
-        { name: 'UEFA Europa League', count: 0, path: '/football/uefa-europa-league' },
-        { name: 'MLS', count: 0, path: '/football/mls' },
-        { name: 'Copa Libertadores', count: 0, path: '/football/copa-libertadores' },
-        { name: 'Copa Sudamericana', count: 0, path: '/football/copa-sudamericana' },
-        { name: 'CFL', path: '/football/cfl' },
-        { name: 'NCAAF', path: '/football/ncaaf' },
-        { name: 'NFL', path: '/football/nfl' },
-        { name: 'NFL Preseason', path: '/football/nfl-preseason' },
-        // Soccer subcategories
         { name: 'Argentina Primera Division', path: '/soccer/argentina-primera-division' },
         { name: 'Belgium First Division A', path: '/soccer/belgium-first-division-a' },
         { name: 'Brazil Campeonato', path: '/soccer/brazil-campeonato' },
@@ -266,6 +250,30 @@ const Sidebar = ({ closeSidebar }) => {
         { name: 'Sweden Allsvenskan', path: '/soccer/sweden-allsvenskan' },
         { name: 'UEFA Champs League Qualification', path: '/soccer/uefa-champs-league-qualification' },
         { name: 'USA MLS', path: '/soccer/usa-mls' },
+        { name: 'UEFA Champions League', path: '/soccer/uefa-champions-league' },
+        { name: 'UEFA Europa League', path: '/soccer/uefa-europa-league' },
+        { name: 'EPL', path: '/soccer/epl' },
+        { name: 'Serie A', path: '/soccer/serie-a' },
+        { name: 'Bundesliga', path: '/soccer/bundesliga' },
+        { name: 'La Liga', path: '/soccer/la-liga' },
+        { name: 'Ligue 1', path: '/soccer/ligue-1' },
+        { name: 'MLS', path: '/soccer/mls' },
+        { name: 'Copa Libertadores', path: '/soccer/copa-libertadores' },
+        { name: 'Copa Sudamericana', path: '/soccer/copa-sudamericana' },
+      ]
+    },
+    // American Football (NFL, NCAAF, CFL)
+    {
+      name: 'American Football',
+      icon: '🏈',
+      path: '/football',
+      count: 161,
+      isExpandable: true,
+      subItems: [
+        { name: 'NFL', path: '/football/nfl' },
+        { name: 'NFL Preseason', path: '/football/nfl-preseason' },
+        { name: 'NCAAF', path: '/football/ncaaf' },
+        { name: 'CFL', path: '/football/cfl' },
       ]
     },
     // Hockey (field hockey)
@@ -430,7 +438,6 @@ const Sidebar = ({ closeSidebar }) => {
     { name: 'Skiing', icon: '⛷️', path: '/skiing', count: 1, isExpandable: true, subItems: [] },
     { name: 'Mini football', icon: '🥅', path: '/mini-football', count: 22, isExpandable: true, subItems: [] },
     { name: 'Beach football', icon: '🏖️', path: '/beach-football', count: 9, isExpandable: true, subItems: [] },
-    { name: 'American football', icon: '🏈', path: '/american-football', count: 161, isExpandable: true, subItems: [] },
     { name: 'Billiards', icon: '🎱', path: '/billiards', count: 4, isExpandable: true, subItems: [] },
     { name: 'Snooker', icon: '🎱', path: '/snooker', count: 3, isExpandable: true, subItems: [] },
     { name: 'Cycling', icon: '🚴', path: '/cycling', count: 6, isExpandable: true, subItems: [] },

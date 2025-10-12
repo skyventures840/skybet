@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
+import { computeFullLeagueTitle } from '../utils/leagueTitle';
 
 const PopularMatches = ({ matches }) => {
   const dispatch = useDispatch();
@@ -81,11 +82,31 @@ const PopularMatches = ({ matches }) => {
         <button className="slider-btn prev-btn popular-slider-btn" onClick={scrollLeft} title="Scroll left">&#8249;</button>
         <button className="slider-btn next-btn popular-slider-btn" onClick={scrollRight} title="Scroll right">&#8250;</button>
         <div className="popular-matches-scroll" ref={scrollRef}>
-          {displayedMatches.map((match) => (
+          {displayedMatches.map((match) => {
+            const sportName = match.sport || match.sport_title || '';
+            const sportKeyOrName = match.sport_key || sportName;
+            const country = match.country || match.subcategory || '';
+            const league = match.league || match.competition || match.tournament || '';
+            const fullLeagueTitle = match.fullLeagueTitle || computeFullLeagueTitle({
+              sportKeyOrName,
+              country,
+              leagueName: league,
+              fallbackSportTitle: match.sport_title || match.sport || ''
+            });
+            return (
             <div key={match.id || match._id} className="popular-match-card">
-              <div className="match-league">{match.league}</div>
-              <div className="match-subcategory">{match.subcategory}</div>
-              <div className="match-time">{match.time}</div>
+              <div className="match-league">{fullLeagueTitle}</div>
+              {/* Date + Time display placed directly under league title */}
+              <div className="match-time">
+                {(() => {
+                  const dt = match.startTime ? new Date(match.startTime) : null;
+                  const dateStr = dt ? dt.toLocaleDateString() : '';
+                  const timeStr = dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (match.time || '');
+                  return (
+                    <span>{dateStr} {timeStr}</span>
+                  );
+                })()}
+              </div>
               <div className="match-teams-container">
                 <span className="team-name">{match.homeTeam}</span>
                 <span className="vs">vs</span>
@@ -127,8 +148,8 @@ const PopularMatches = ({ matches }) => {
                   );
                 })}
               </div>
-            </div>
-          ))}
+            </div>);
+          })}
         </div>
       </div>
     </div>

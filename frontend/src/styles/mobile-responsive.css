@@ -24,6 +24,26 @@ html, body {
   min-width: 0 !important;
 }
 
+/* ==========================================================================
+   Popular Matches & Hero Dots: Mobile tweaks (≤767px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Popular matches league title in green */
+  .popular-match-card .match-league {
+    color: var(--primary-green) !important;
+  }
+
+  /* Smaller hero pagination dots on mobile */
+  .hero-slider .slider-dots {
+    bottom: 3px !important;
+    gap: 3px !important;
+  }
+  .hero-slider .dot {
+    width: 3px !important;
+    height: 3px !important;
+  }
+}
+
 /* ======================================================================
    Mobile Fixed Hero Height (≤767px)
    Mirror fixed height so slides fill it consistently
@@ -31,7 +51,7 @@ html, body {
 @media (max-width: 767px) {
   .hero-slider,
   .hero-slider .slider-container {
-    height: 480px !important;
+    height: 200px !important;
   }
   .hero-slider .slides-wrapper,
   .hero-slider .slide {
@@ -41,6 +61,29 @@ html, body {
   .hero-slider .slide-background img,
   .hero-slider .slide-overlay {
     height: 100% !important;
+  }
+
+  /* Make hero slider span full viewport width on small screens */
+  .hero-slider,
+  .hero-slider .slider-container,
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .hero-slider { left: 0 !important; right: 0 !important; }
+  .hero-slider .slide-background { position: absolute !important; inset: 0 !important; }
+  .hero-slider .slide-overlay { position: absolute !important; inset: 0 !important; }
+  .hero-slider .slide-background img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
   }
 }
 #root, .app, .page-content, .content-wrapper, .main-content {
@@ -63,9 +106,9 @@ html, body {
   .navbar .navbar-left .nav-brand,
   .navbar-left .nav-brand,
   .nav-brand {
-    font-size: clamp(320px, 80vw, 640px) !important;
-    line-height: 0.8 !important;
-    letter-spacing: -3px !important;
+    font-size: var(--font-size-2xl) !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
   }
 
   /* When logged in: keep profile + hamburger, hide logout button */
@@ -88,17 +131,19 @@ html, body {
   }
 
   .hamburger-menu {
-    width: 36px !important;
-    height: 36px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 
   .hamburger-line {
-    width: 22px !important;
-    height: 3px !important;
-    background: #000000 !important; /* black for maximum visibility */
-    margin: 3px 0 !important;
+    width: 26px !important;
+    height: 4px !important;
+    background: #b73e3e !important; /* black for maximum visibility */
+    margin: 4px 0 !important;
     border-radius: 3px !important;
-    box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
   }
 
 
@@ -853,15 +898,17 @@ html, body {
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    width: 32px !important; /* Increased size for better visibility */
-    height: 32px !important; /* Increased size for better visibility */
+    width: 44px !important; /* Larger touch target for mobile */
+    height: 44px !important; /* Larger touch target for mobile */
+    min-width: 44px !important;
+    min-height: 44px !important;
     background: #f3f0f0 !important; /* Visible grey background for contrast */
-    border: 1px solid rgba(255, 255, 255, 0.08) !important; /* subtle outline */
-    border-radius: 8px !important; /* Keep shape for hit area */
+    border: 1px solid rgba(255, 255, 255, 0.12) !important; /* subtle outline */
+    border-radius: 10px !important; /* Slightly larger for comfortable hit area */
     cursor: pointer !important;
     padding: 0 !important;
     z-index: 1001 !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.2s ease-out !important;
     flex-shrink: 0 !important;
     margin-left: 6px !important; /* Add breathing room from auth/buttons */
     margin-right: 12px !important; /* Ensure clear contrast from edge */
@@ -894,13 +941,29 @@ html, body {
   }
 
   .hamburger-menu:hover {
-    background: #4a4a4a !important; /* slightly lighter on hover */
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    background: #e6e3e3 !important; /* slightly lighter on hover */
+    border-color: rgba(255, 255, 255, 0.18) !important;
     transform: scale(1.05);
   }
 
   .hamburger-menu:active {
     transform: scale(0.95);
+  }
+
+  .hamburger-menu:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.25) !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Ensure hamburger sits right next to profile/auth blocks on mobile */
+  .user-section .hamburger-menu,
+  .auth-buttons .hamburger-menu {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1001 !important;
+    margin-left: 6px !important;
   }
 
   .hamburger-line {
@@ -941,17 +1004,18 @@ html, body {
   .navbar-right {
     display: flex !important;
     align-items: center !important;
-    gap: 4px !important;
+    gap: 6px !important;
     flex-shrink: 0 !important;
-    flex: 0 0 45% !important; /* Shift group left by reducing width */
+    flex: 0 1 auto !important; /* Allow natural sizing so items stay visible */
     min-width: 0 !important;
     overflow: visible !important; /* Ensure hamburger is always visible */
     position: relative !important;
-    width: 45% !important; /* Explicit reduced width */
-    max-width: 45% !important; /* Limit to 45% */
-    margin-left: auto !important; /* Push to the right side */
-    margin-right: 24px !important; /* Leave a clear right margin */
-    justify-content: space-between !important; /* Distribute space between auth buttons and hamburger */
+    width: auto !important;
+    max-width: none !important;
+    margin-left: auto !important; /* Keep group on right side */
+    margin-right: 8px !important; /* Reduce right margin to avoid clipping */
+    justify-content: flex-end !important; /* Keep items together on the right */
+    flex-wrap: nowrap !important; /* Prevent wrapping that can hide the hamburger */
   }
 
   /* Language selector - hide on very small screens to save space */
@@ -961,11 +1025,12 @@ html, body {
 
   .auth-buttons {
     display: flex !important;
-    gap: 3px !important;
+    gap: 6px !important;
     align-items: center !important;
     flex-shrink: 0 !important;
-    order: 1 !important; /* Position on the left side of navbar-right */
-    margin-left: -10px !important; /* Move further left to give hamburger more space */
+    order: 1 !important; /* Keep to the left of the hamburger */
+    margin-left: 0 !important;
+    flex-wrap: nowrap !important;
   }
 
   .login-btn, .signup-btn {
@@ -1625,19 +1690,24 @@ html, body {
 
   .hero-slider,
   .hero-slider .slider-container {
-    height: 480px !important; /* unify with layout/index for consistent visibility */
+    height: 220px !important; /* further reduced fixed height for small screens */
+    min-height: 220px !important;
+    max-height: 220px !important;
   }
 
   .hero-slider {
-    width: 100vw !important;
+    width: 100% !important; /* Fit exactly available container width */
+    max-width: 100% !important; /* Prevent overflow beyond parent */
+    min-width: 0 !important;
     margin: 0 !important;
     margin-bottom: 6px !important;
     position: relative;
     overflow: hidden;
-    border-radius: 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px; /* rounded corners for the border */
     left: 0 !important;
     right: 0 !important;
-    max-width: 100vw !important;
+    box-sizing: border-box !important;
   }
 
   .slides-wrapper {
@@ -1694,7 +1764,7 @@ html, body {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(0, 0, 0, 0.7);
+    background: transparent;
     color: white;
     border: none;
     width: 12px; /* Reduced from 20px */
@@ -1719,7 +1789,7 @@ html, body {
 
   .hero-slider .prev-arrow:hover,
   .hero-slider .next-arrow:hover {
-    background: rgba(0, 255, 136, 0.8);
+    background: transparent;
     transform: translateY(-50%) scale(1.1);
   }
 
@@ -1751,6 +1821,30 @@ html, body {
   .dot:hover {
     background: rgba(255, 255, 255, 0.6);
   }
+}
+
+/* Final mobile hero overrides: ensure visibility and full-width image fit */
+@media (max-width: 767px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    height: 240px !important; /* further increased fixed height */
+    min-height: 240px !important;
+    max-height: 240px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+
+  .hero-slider .slide-background { position: absolute !important; inset: 0 !important; }
+  .hero-slider .slide-background img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; transform: scale(1.08) !important; transform-origin: center center !important; }
 }
 
 /* ==========================================================================
@@ -2334,6 +2428,56 @@ html, body {
     flex-shrink: 0;
   }
 
+  /* Subcategory header: ensure visibility similar to league header */
+  .subcategory-match-card {
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    margin-bottom: 12px !important;
+    background: transparent !important;
+  }
+
+  .subcategory-header {
+    background: #4CAF50 !important;
+    color: white !important;
+    padding: 16px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    border-radius: 8px 8px 0 0 !important;
+    box-sizing: border-box !important;
+    min-height: 52px !important;
+    width: 100% !important;
+  }
+
+  .subcategory-title {
+    flex: 1 1 auto !important;
+    font-weight: 700 !important;
+    font-size: clamp(16px, 4vw, 18px) !important;
+    display: flex !important;
+    align-items: center !important;
+    color: white !important;
+    margin: 0 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    line-height: 1.3 !important;
+  }
+
+  .subcategory-title .arrow {
+    font-size: 10px !important;
+    color: #DFF2E1 !important;
+    margin-right: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Reduce clutter: hide odds headers inside subcategory header on mobile */
+  .subcategory-header .odds-header,
+  .subcategory-header .odds-headers-container {
+    display: none !important;
+  }
+
   /* Match container with proper layout - full width */
   .match-container {
     background: white;
@@ -2423,18 +2567,20 @@ html, body {
     margin-left: 0 !important;
   }
 
-  /* Odds section positioned to the right with proper column alignment */
+  /* Odds section centered alignment for popular matches */
   .match-odds {
     display: flex;
-    gap: 8px; /* Increased gap between odds buttons */
+    gap: 8px; /* Gap between odds buttons */
     flex-shrink: 0;
     align-items: center;
-    min-width: 160px; /* Increased width for better spacing */
-    justify-content: flex-end;
+    min-width: 160px; /* Ensure enough width for three buttons */
+    justify-content: center; /* Center the 1 X 2 buttons */
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible;
-    margin-left: auto; /* Push odds to the far right */
+    margin-left: 0 !important; /* Remove right alignment push */
+    margin-right: 0 !important;
+    width: 100%; /* Allow centering within card width */
   }
 
   .odds-button {
@@ -2459,6 +2605,35 @@ html, body {
     overflow: hidden;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
     width: 100%; /* Take full available width */
+  }
+
+  /* Ensure perfect vertical alignment: label above odds, centered */
+  .popular-odds-button {
+    gap: 2px; /* Tight spacing between label and value */
+  }
+  .popular-odds-button .odds-header {
+    display: block;
+    text-align: center;
+    font-size: clamp(10px, 2.4vw, 12px);
+    font-weight: 700;
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+    height: 14px; /* Fixed to align across buttons */
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    color: var(--text-muted);
+  }
+  .popular-odds-button .odds-value {
+    display: block;
+    text-align: center;
+    font-size: clamp(11px, 2.6vw, 13px);
+    font-weight: 800;
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+    min-height: 16px; /* Fixed to align across buttons */
   }
 
   .odds-button:hover {
@@ -3513,14 +3688,14 @@ html, body {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.45);
+    background: transparent;
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     z-index: 5;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: none;
   }
   .popular-slider-btn.prev-btn { left: 8px; }
   .popular-slider-btn.next-btn { right: 8px; }
@@ -3533,9 +3708,9 @@ html, body {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.5);
+    background: transparent;
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border: none;
     z-index: 6;
   }
   .hero-slider .prev-btn { left: 10px; }
@@ -3543,7 +3718,7 @@ html, body {
 
   /* Increase hero slide visual width by slightly scaling background image */
   .hero-slider .slide-background img {
-    transform: scale(1.06);
+    transform: scale(1.08);
     transform-origin: center;
   }
 
@@ -4190,22 +4365,22 @@ html, body {
   }
 
   /* Typography ultra-compact */
-  h1 { font-size: clamp(14px, 3.5vw, 16px) !important; }
-  h2 { font-size: clamp(12px, 3vw, 14px) !important; }
-  h3 { font-size: clamp(10px, 2.5vw, 12px) !important; }
-  h4 { font-size: clamp(9px, 2.2vw, 11px) !important; }
-  h5 { font-size: clamp(8px, 2vw, 10px) !important; }
-  h6 { font-size: clamp(7px, 1.8vw, 9px) !important; }
-  
-  body { font-size: clamp(10px, 2.5vw, 12px) !important; }
-  
-  .btn { font-size: clamp(9px, 2.2vw, 11px) !important; }
-  .form-input, .form-select, .form-textarea { font-size: clamp(10px, 2.5vw, 12px) !important; }
-  
-  .match-card .team-name { font-size: clamp(9px, 2.2vw, 11px) !important; }
-  .match-card .team-score { font-size: clamp(10px, 2.5vw, 12px) !important; }
-  .match-card .match-league { font-size: clamp(7px, 1.8vw, 9px) !important; }
-  .match-card .match-time { font-size: clamp(7px, 1.8vw, 9px) !important; }
+  h1 { font-size: var(--font-size-4xl) !important; }
+  h2 { font-size: var(--font-size-3xl) !important; }
+  h3 { font-size: var(--font-size-2xl) !important; }
+  h4 { font-size: var(--font-size-xl) !important; }
+  h5 { font-size: var(--font-size-lg) !important; }
+  h6 { font-size: var(--font-size-base) !important; }
+
+  body { font-size: var(--font-size-base) !important; }
+
+  .btn { font-size: var(--font-size-sm) !important; }
+  .form-input, .form-select, .form-textarea { font-size: var(--font-size-base) !important; }
+
+  .match-card .team-name { font-size: var(--font-size-sm) !important; }
+  .match-card .team-score { font-size: var(--font-size-md) !important; }
+  .match-card .match-league { font-size: var(--font-size-xs) !important; }
+  .match-card .match-time { font-size: var(--font-size-xs) !important; }
 }
 
 /* ==========================================================================
@@ -4815,7 +4990,7 @@ html, body {
    ====================================================================== */
 @media (max-width: 767px) {
   .hero-slider .slider-container {
-    min-height: clamp(220px, 55vh, 360px) !important;
+    min-height: clamp(180px, 40vh, 300px) !important;
   }
 
   .popular-matches-section {
@@ -4829,6 +5004,45 @@ html, body {
   }
 }
 
+/* ======================================================================
+   Ensure hamburger visibility on mid-width screens (≤1023px)
+   ====================================================================== */
+@media (max-width: 1023px) {
+  /* Prevent clipping in navbar containers */
+  .navbar, .navbar-container, .navbar-right {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  /* Force hamburger to display and be visible */
+  .navbar .hamburger-menu,
+  .navbar-container .hamburger-menu,
+  .navbar-right .hamburger-menu,
+  .user-section .hamburger-menu,
+  .auth-buttons .hamburger-menu {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1001 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Keep hamburger adjacent to profile/auth blocks */
+  .user-section .hamburger-menu,
+  .auth-buttons .hamburger-menu {
+    margin-left: 6px !important;
+  }
+
+  /* Font Awesome bars icon sizing and color on mobile/tablet */
+  .hamburger-menu svg {
+    width: 22px !important;
+    height: 22px !important;
+    color: #ffffff !important; /* white for dark navbar */
+    flex-shrink: 0 !important;
+  }
+}
 /* ==========================================================================
    FINAL OVERRIDE: Hamburger icon thickness for small screens (≤767px)
    ========================================================================== */
@@ -4861,6 +5075,13 @@ html, body {
   .hamburger-menu.active {
     background: transparent !important;
     border: none !important;
+  }
+
+  /* Ensure visibility state is never overridden on small screens */
+  .hamburger-menu {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 }
 

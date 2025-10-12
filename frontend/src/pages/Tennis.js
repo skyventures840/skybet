@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
+import { computeFullLeagueTitle } from '../utils/leagueTitle';
 
 const Tennis = () => {
   const [matches, setMatches] = useState([]);
@@ -242,16 +243,25 @@ const Tennis = () => {
             <p>No tennis matches available at the moment.</p>
           </div>
         ) : (
-          Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
-            <div key={subcategory} className="subcategory-section">
-              <h3 className="subcategory-title">{subcategory}</h3>
-              <div className="matches-grid">
-                {subcategoryMatches.map(match => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
+          Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => {
+            const first = subcategoryMatches[0] || {};
+            const groupTitle = first.fullLeagueTitle || computeFullLeagueTitle({
+              sportKeyOrName: first.sport_key || first.sport || 'Tennis',
+              country: first.country || subcategory || '',
+              leagueName: first.league || subcategory,
+              fallbackSportTitle: 'Tennis'
+            });
+            return (
+              <div key={subcategory} className="subcategory-section">
+                <h3 className="subcategory-title">{groupTitle}</h3>
+                <div className="matches-grid">
+                  {subcategoryMatches.map(match => (
+                    <MatchCard key={match.id} match={match} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

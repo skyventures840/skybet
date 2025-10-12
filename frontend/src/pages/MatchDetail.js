@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import apiService from '../services/api';
+import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 import VideoPlayerScheduled from '../components/VideoPlayerScheduled';
 
 const MatchDetail = () => {
@@ -99,23 +100,23 @@ const MatchDetail = () => {
                     }
                 }
                 
-                // Total Goals/Points market
+                // Totals market (Over/Under)
                 if (oddsData.over || oddsData.under) {
                     const marketKey = `market_${marketIndex}`;
                     const options = [];
                     
                     if (oddsData.over && oddsData.over > 0) {
                         const totalLine = oddsData.total || '2.5';
-                        options.push({ name: `Over ${totalLine}`, odds: oddsData.over });
+                        options.push({ name: `Over (${totalLine})`, odds: oddsData.over });
                     }
                     if (oddsData.under && oddsData.under > 0) {
                         const totalLine = oddsData.total || '2.5';
-                        options.push({ name: `Under ${totalLine}`, odds: oddsData.under });
+                        options.push({ name: `Under (${totalLine})`, odds: oddsData.under });
                     }
                     
                     if (options.length > 0) {
                         markets[marketKey] = {
-                            name: 'Total Goals',
+                            name: 'Totals',
                             options: options
                         };
                         marketIndex++;
@@ -187,73 +188,79 @@ const MatchDetail = () => {
             console.log('Processing odds API format with bookmakers');
             console.log('Total bookmakers:', matchData.bookmakers.length);
             
-            const markets = {};
-            let marketIndex = 0;
-            
-            // Create markets from all bookmakers, not just the first one
+            // Aggregate across bookmakers by normalized key to avoid duplicates
+            const aggregated = new Map(); // normKey -> { key: normKey, title, options }
             matchData.bookmakers.forEach((bookmaker, bookmakerIndex) => {
                 console.log(`Processing bookmaker ${bookmakerIndex + 1}: ${bookmaker.title}`);
-                
+                const titlePrefix = bookmakerIndex === 0 ? '' : `${bookmaker.title} - `;
                 if (bookmaker.markets) {
                     console.log('Processing markets:', bookmaker.markets);
                     bookmaker.markets.forEach((market) => {
-                        const marketKey = `market_${marketIndex}`;
-                        
-                        // Create different market types based on market key and bookmaker
-                        let marketName = market.key;
-                        let marketOptions = [];
-                        
-                        switch (market.key) {
-                            case 'h2h':
-                                // Create unique market names for different bookmakers
-                                if (bookmakerIndex === 0) {
-                                    marketName = 'Match Winner';
-                                } else {
-                                    marketName = `${bookmaker.title} - Match Winner`;
-                                }
-                                marketOptions = market.outcomes.map(outcome => ({
-                                    name: outcome.name,
-                                    odds: outcome.price
-                                }));
-                                break;
-                            case 'totals':
-                                marketName = bookmakerIndex === 0 ? 'Total Goals' : `${bookmaker.title} - Total Goals`;
-                                marketOptions = market.outcomes.map(outcome => ({
-                                    name: outcome.name,
-                                    odds: outcome.price
-                                }));
-                                break;
-                            case 'spreads':
-                                marketName = bookmakerIndex === 0 ? 'Handicap' : `${bookmaker.title} - Handicap`;
-                                marketOptions = market.outcomes.map(outcome => ({
-                                    name: outcome.name,
-                                    odds: outcome.price
-                                }));
-                                break;
-                            default:
-                                // For any other market type, use the key as name
-                                marketName = bookmakerIndex === 0 ? 
-                                    market.key.charAt(0).toUpperCase() + market.key.slice(1) :
-                                    `${bookmaker.title} - ${market.key.charAt(0).toUpperCase() + market.key.slice(1)}`;
-                                marketOptions = market.outcomes.map(outcome => ({
-                                    name: outcome.name,
-                                    odds: outcome.price
-                                }));
-                        }
-                        
-                        // Only add market if it has valid options with odds > 0
-                        const validOptions = marketOptions.filter(option => option.odds > 0);
-                        if (validOptions.length > 0) {
-                            markets[marketKey] = {
-                                name: marketName,
-                                options: validOptions
-                            };
-                            console.log(`Created market ${marketKey}:`, markets[marketKey]);
-                            marketIndex++;
+                        const normKey = normalizeMarketKey(market.key);
+                        const baseTitle = getMarketTitle(normKey);
+                        const title = `${titlePrefix}${baseTitle}`;
+                        const incoming = (market.outcomes || []).map(o => ({ name: o.name, odds: o.price, point: o.point ?? null }));
+                        const existing = aggregated.get(normKey);
+                        if (!existing) {
+                            aggregated.set(normKey, { key: normKey, title, options: incoming });
                         } else {
-                            console.log(`Skipping market ${marketKey} - no valid options`);
+                            existing.options = [...existing.options, ...incoming];
                         }
                     });
+                }
+            });
+
+            // Normalize and dedupe options per market
+            const homeName = matchData.homeTeam || matchData.home_team || 'Home';
+            const awayName = matchData.awayTeam || matchData.away_team || 'Away';
+            const markets = {};
+            let marketIndex = 0;
+            Array.from(aggregated.values()).forEach(m => {
+                let options = m.options.filter(o => o.odds && o.odds > 0);
+                if (m.key === 'winner') {
+                    options = options.map(o => {
+                        const lower = (o.name || '').toLowerCase();
+                        if (['home','home win','homewin','1'].includes(lower)) return { ...o, name: homeName };
+                        if (['away','away win','awaywin','2'].includes(lower)) return { ...o, name: awayName };
+                        if (['draw','x','tie'].includes(lower)) return { ...o, name: 'Draw' };
+                        return o;
+                    });
+                } else if (m.key === 'totals') {
+                    options = options.map(o => {
+                        const lower = (o.name || '').toLowerCase();
+                        if (['over','ov','o'].includes(lower)) {
+                            const label = o.point != null ? `Over (${o.point})` : 'Over';
+                            return { ...o, name: label, point: null };
+                        }
+                        if (['under','un','u'].includes(lower)) {
+                            const label = o.point != null ? `Under (${o.point})` : 'Under';
+                            return { ...o, name: label, point: null };
+                        }
+                        return o;
+                    });
+                } else if (m.key === 'spreads') {
+                    options = options.map(o => {
+                        const raw = (o.name || '').toLowerCase();
+                        const isHome = raw.includes('home') || raw === homeName.toLowerCase();
+                        const isAway = raw.includes('away') || raw === awayName.toLowerCase();
+                        const signPoint = o.point != null ? (o.point >= 0 ? `+${o.point}` : `${o.point}`) : null;
+                        if (isHome) return { ...o, name: signPoint ? `${homeName} (${signPoint})` : homeName, point: null };
+                        if (isAway) return { ...o, name: signPoint ? `${awayName} (${signPoint})` : awayName, point: null };
+                        return { ...o, name: signPoint ? `${o.name} (${signPoint})` : (o.name || ''), point: null };
+                    });
+                }
+                // Dedupe by name; keep best priced
+                const byName = new Map();
+                options.forEach(o => {
+                    const k = (o.name || '').toLowerCase();
+                    if (!byName.has(k)) byName.set(k, o);
+                    else if ((!byName.get(k).odds || byName.get(k).odds <= 0) && o.odds && o.odds > 0) byName.set(k, o);
+                });
+                const finalOptions = Array.from(byName.values());
+                if (finalOptions.length > 0) {
+                    const marketKey = `market_${marketIndex}`;
+                    markets[marketKey] = { name: m.title, options: finalOptions };
+                    marketIndex++;
                 }
             });
             

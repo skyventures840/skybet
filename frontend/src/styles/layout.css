@@ -9,6 +9,32 @@
   flex-direction: column;
 }
 
+/* Mobile hero final overrides: ensure reduced size and visible border radius */
+@media (max-width: 767px) {
+  /* Reduce hero height and enforce proportional min-height */
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: 160px !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+  }
+  .hero-slider .slider-container {
+    min-height: clamp(160px, 42vh, 280px) !important;
+  }
+
+  /* Remove full-bleed for hero on mobile to reveal radius */
+  .hero-slider,
+  .hero-slider .slider-container,
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+
 /* ========================================================================
    Mobile Fixed Hero Height (≤767px)
    Ensure slides fully occupy a clear fixed height
@@ -17,7 +43,7 @@
   /* Fixed height for hero container */
   .hero-slider,
   .hero-slider .slider-container {
-    height: 260px !important;
+    height: 200px !important;
   }
 
   /* Make wrapper and slides fill the fixed height */
@@ -40,7 +66,7 @@
 @media (max-width: 767px) {
   /* Taller hero for small screens */
   .hero-slider .slider-container {
-    min-height: clamp(220px, 55vh, 360px) !important;
+    min-height: clamp(180px, 45vh, 300px) !important;
   }
 
   /* Increase popular matches container height */
@@ -143,7 +169,7 @@
 .time-display {
   color: var(--text-secondary);
   font-size: var(--font-size-lg);
-  font-family: monospace;
+  font-family: var(--font-family-mono);
 }
 
 .user-section {
@@ -528,6 +554,20 @@
     overflow: hidden;
   }
 
+  /* Hero section: edge-to-edge full viewport width */
+  .hero-slider,
+  .hero-slider .slider-container,
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
   /* Match cards: fit container width and avoid overflow */
   .match-card,
   .match-container {
@@ -553,6 +593,20 @@
   .middle {
     padding: 0 var(--spacing-sm);
     max-width: none;
+  }
+
+  /* Hero section: edge-to-edge full viewport width on tablet */
+  .hero-slider,
+  .hero-slider .slider-container,
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
   }
 }
 
@@ -667,7 +721,7 @@
 /* Mobile hero slider visibility fixes: ensure wrapper expands and slides are visible */
 @media (max-width: 767px) {
   .hero-slider { position: relative; overflow: hidden; }
-  .hero-slider .slider-container { position: relative; min-height: clamp(220px, 55vh, 360px); }
+  .hero-slider .slider-container { position: relative; min-height: clamp(180px, 40vh, 300px); }
 
   /* Allow wrapper to expand to fit all slides horizontally */
   .hero-slider .slides-wrapper {
@@ -716,6 +770,8 @@
   /* Break section wrappers out to full viewport width */
   .matches-section,
   .matches-grid,
+  .hero-slider,
+  .hero-slider .slider-container,
   .popular-matches-section,
   .popular-matches-box,
   .popular-matches-scroll {

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 
 import apiService from '../services/api';
 import QRCode from 'qrcode.react';
+import buildPaymentUri from '../utils/cryptoUri';
+import { generateCryptoQR } from '../utils/cryptoQr';
 import './Deposit.css';
 
 const NowPaymentsDeposit = () => {
@@ -153,8 +155,7 @@ const NowPaymentsDeposit = () => {
     });
   };
 
-  // QR generation must use only the pay_address returned by the API,
-  // without any extra parameters (amounts, memos, or schemes).
+  // Generate a Web3-standard payment URI for QR (EIP-681 / BIP-21 etc.)
 
   if (success && payment) {
     return (
@@ -215,7 +216,15 @@ const NowPaymentsDeposit = () => {
 
               <div className="qr-code-container">
                 <QRCode
-                  value={payment.payAddress}
+                  value={(['BTC','ETH','XRP','XLM'].includes(String(payment.payCurrency || '').toUpperCase()))
+                    ? generateCryptoQR(payment.payAddress, payment.payCurrency, payment.payAmount, payment.payinExtraId)
+                    : buildPaymentUri({
+                        currency: payment.payCurrency,
+                        address: payment.payAddress,
+                        amount: payment.payAmount,
+                        memoTag: payment.payinExtraId,
+                      })
+                  }
                   size={220}
                   level="H"
                   includeMargin={true}

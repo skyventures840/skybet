@@ -26,6 +26,76 @@
     padding: var(--spacing-xl);
     max-width: 500px;
   }
+
+  /* Hero slider - match popular matches section width on desktop */
+  .hero-slider,
+  .hero-slider .slider-container,
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent horizontal overflow and move content inward on desktop */
+  .hero-slider,
+  .hero-slider .slider-container {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+  }
+  .hero-slider .slides-wrapper {
+    display: flex !important;
+    width: auto !important;
+    min-width: max-content !important;
+    overflow: visible !important;
+    will-change: transform;
+  }
+  .hero-slider .slide {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  .hero-slider .slide-background { position: absolute !important; inset: 0 !important; }
+  .hero-slider .slide-background img { width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center center !important; display: block !important; transform: scale(1.10) !important; transform-origin: center center !important; }
+  .hero-slider .slide-overlay { position: absolute !important; inset: 0 !important; background: rgba(0,0,0,0.25) !important; }
+  .hero-slider .slide-content {
+    position: relative !important;
+    z-index: 1 !important;
+    max-width: clamp(960px, 80vw, 1200px) !important;
+    margin-left: clamp(16px, 4vw, 40px) !important;
+    margin-right: auto !important;
+    padding: clamp(24px, 5vw, 48px) !important; /* move text inward from edges */
+    text-align: left !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Reduce slide visual size on desktop */
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(230px, 34vh, 360px) !important;
+    min-height: clamp(230px, 34vh, 360px) !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    height: 100% !important;
+  }
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+  .hero-slider .slide-title {
+    font-size: clamp(22px, 2.4vw, 32px) !important;
+  }
+  .hero-slider .slide-subtitle {
+    font-size: clamp(14px, 1.6vw, 20px) !important;
+  }
 }
 
 /* ==========================================================================
@@ -141,12 +211,12 @@
 .btn:focus,
 .nav-link:focus,
 .odd-button:focus,
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-  outline: 2px solid var(--primary-green);
-  outline-offset: 2px;
-}
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+  }
 
 /* Skip link for screen readers */
 .skip-link {
@@ -204,6 +274,21 @@
   }
 }
 
+/* Smaller screens: reduce hero height, left-align text, add border */
+@media (max-width: 1023px) {
+  .hero-slider,
+  .hero-slider .slider-container { height: clamp(180px, 34vh, 300px) !important; min-height: clamp(180px, 34vh, 300px) !important; }
+
+  .hero-slider { border: 1px solid rgba(255, 255, 255, 0.15); }
+
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-overlay { height: 100% !important; }
+
+  .hero-slider .slide-content { text-align: left !important; margin-left: clamp(10px, 4vw, 24px) !important; margin-right: clamp(10px, 4vw, 24px) !important; padding: clamp(12px, 5vw, 18px) !important; }
+}
+
 /* Print styles */
 @media print {
   .navbar,
@@ -230,5 +315,56 @@
   body {
     background: white;
     color: black;
+  }
+}
+
+/* =============================================================
+   Global UI tweaks: reduce hero dots and remove bottom scrollbar
+   ============================================================= */
+/* Hide horizontal scrollbar globally to prevent page bottom scroll */
+html, body { overflow-x: hidden !important; }
+
+/* Ensure hero containers don’t trigger horizontal overflow */
+.hero-slider,
+.hero-slider .slider-container { overflow-x: hidden !important; }
+
+/* Smaller, minimal hero pagination dots (applies across breakpoints) */
+.hero-slider .slider-dots {
+  position: absolute;
+  bottom: 6px !important;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px !important;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.hero-slider .dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  border: 0;
+  padding: 0;
+  line-height: 0;
+  appearance: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.hero-slider .dot.active {
+  background: var(--primary-green);
+  transform: scale(1.1);
+}
+
+/* Increase brand text size on larger screens (desktop/tablet) */
+@media (min-width: 768px) {
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(28px, 2.6vw, 56px);
+    line-height: 1;
   }
 }
