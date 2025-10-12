@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { blockUser, unblockUser } from '../../services/api';
+import apiService from '../../services/api';
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
@@ -23,9 +22,7 @@ const ManageUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/users', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      const response = await apiService.getAdminUsers();
       setUsers(response.data);
     } catch (err) {
       setError('Failed to fetch users.');
@@ -43,9 +40,7 @@ const ManageUsers = () => {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`/api/users/${currentUser._id}`, formData, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      await apiService.updateUser(currentUser._id, formData);
       fetchUsers();
       closeModal();
     } catch (err) {
@@ -57,9 +52,7 @@ const ManageUsers = () => {
   const handleDeleteUser = async (id) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await axios.delete(`/api/users/${id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
+        await apiService.deleteUser(id);
         fetchUsers();
       } catch (err) {
         setError('Failed to delete user.');
@@ -83,7 +76,7 @@ const ManageUsers = () => {
   const handleBlockUser = async (id) => {
     if (window.confirm('Are you sure you want to block this user?')) {
       try {
-        await blockUser(id);
+        await apiService.blockUser(id);
         fetchUsers();
       } catch (err) {
         setError('Failed to block user.');
@@ -95,9 +88,7 @@ const ManageUsers = () => {
   const handleUnblockUser = async (id) => {
     if (window.confirm('Are you sure you want to unblock this user?')) {
       try {
-        await axios.put(`/api/users/${id}/unblock`, {}, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
+        await apiService.unblockUser(id);
         fetchUsers();
       } catch (err) {
         setError('Failed to unblock user.');

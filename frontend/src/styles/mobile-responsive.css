@@ -2138,9 +2138,9 @@ html, body {
   .match-card .match-date-time {
     font-size: clamp(10px, 2.5vw, 12px) !important;
     color: var(--text-muted) !important;
-    text-align: left !important;
+    text-align: auto !important;
     margin-bottom: 4px !important;
-    margin-left: 0 !important;
+    margin-left: 20px !important; /* Move further right for alignment */
     font-weight: 500 !important;
   }
 
@@ -2208,23 +2208,24 @@ html, body {
   /* Match card odds buttons container - FULL WIDTH DISTRIBUTION */
   .match-card .odds-buttons-container {
     display: flex !important;
-    gap: 3px !important; /* Slightly smaller gap for tighter layout */
+    gap: 4px !important; /* Slightly increased gap for clearer separation */
     flex-shrink: 0 !important;
     flex: 1 1 auto !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important; /* Do not stretch buttons full width */
     min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
     width: 100% !important;
-    align-items: stretch !important; /* Ensure equal height */
+    align-items: center !important;
+    flex-wrap: nowrap !important; /* Keep a single row on small screens */
   }
 
   /* Match card odds buttons - REDUCED HEIGHT & UNIFORM FONT SIZE */
   .match-card .odds-button {
-    flex: 1 1 auto !important;
+    flex: 0 0 clamp(64px, 24vw, 88px) !important; /* Fixed, narrower width on small screens */
     margin: 0 !important;
-    padding: 6px 6px !important; /* Slightly reduced padding for smaller buttons */
+    padding: 6px 4px !important; /* Slightly tighter padding */
     border: 1px solid #e0e0e0 !important;
     background: #f8f9fa !important;
     border-radius: 8px !important;
@@ -2236,16 +2237,13 @@ html, body {
     align-items: center !important;
     justify-content: center !important;
     flex-direction: column !important;
-    min-height: 36px !important; /* Slightly reduced height */
+    min-height: 32px !important; /* Slightly reduced height */
     min-width: 0 !important;
     max-width: none !important;
     color: var(--text-primary) !important;
     overflow: hidden !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-    width: 100% !important;
-    flex-grow: 1 !important; /* Ensure equal distribution */
-    flex-shrink: 1 !important;
-    flex-basis: 0 !important; /* Equal basis for distribution */
+    width: auto !important; /* Do not stretch to 100% */
   }
 
   /* Ensure odds value inside button inherits and centers cleanly */
@@ -2791,6 +2789,7 @@ html, body {
     margin: 0 !important; /* Remove margins */
     margin-right: 12px; /* Reduced space between teams and odds */
     max-width: 60%; /* Limit teams width to give more space to odds */
+    padding-left: 14px !important; /* Inset teams and date/time for alignment */
   }
 
   .match-date-time {
@@ -2798,7 +2797,7 @@ html, body {
     color: var(--text-muted);
     text-align: left !important; /* Align to left */
     margin-bottom: 4px; /* Increased margin for better spacing */
-    margin-left: 0 !important; /* Move to extreme left */
+    margin-left: 0 !important; /* Align with match-teams padding inset */
     font-weight: 500; /* Slightly bolder for better readability */
   }
 
@@ -5083,6 +5082,87 @@ html, body {
     visibility: visible !important;
     opacity: 1 !important;
   }
+}
+
+/* =============================================================
+   Mobile odds buttons sizing and inward spacing (global)
+   ============================================================= */
+@media (max-width: 767px) {
+  /* Generic odds button containers: add horizontal breathing room */
+  .odds-buttons-container,
+  .match-card .odds-buttons-container,
+  .match-container .odds-buttons-container {
+    padding: 0 10px !important;
+    margin: 0 8px !important;
+    gap: 6px !important; /* Slightly increased gap for clarity */
+    justify-content: space-between !important;
+  }
+
+  /* Reduce button footprint while keeping text readable */
+  .odds-button,
+  .match-card .odds-button,
+  .match-container .odds-button {
+    min-height: 30px !important;
+    padding: 4px 6px !important;
+    font-size: clamp(10px, 2.4vw, 12px) !important;
+    border-radius: 6px !important;
+  }
+
+  /* Labels and values inside odds buttons: tighten spacing */
+  .odd-label,
+  .match-card .odd-label,
+  .match-container .odd-label {
+    margin-bottom: 2px !important;
+    font-size: clamp(9px, 2.2vw, 11px) !important;
+  }
+  .odd-value,
+  .match-card .odd-value,
+  .match-container .odd-value {
+    font-size: clamp(10px, 2.4vw, 12px) !important;
+  }
+}
+
+/* =============================================================
+   Mobile: widen match-card container and reduce odds button width
+   ============================================================= */
+@media (max-width: 767px) {
+  /* Constrain containers to viewport and add inward padding */
+  .match-card,
+  .match-container,
+  .matches-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .matches-grid { padding-left: 10px !important; padding-right: 10px !important; }
+  /* Fixed-width card centered with rounded corners */
+  .match-card { 
+    width: calc(100% - 24px) !important; 
+    max-width: 420px !important; 
+    margin-left: auto !important; 
+    margin-right: auto !important; 
+    padding-left: 8px !important; 
+    padding-right: 8px !important; 
+    border-radius: 12px !important; 
+    overflow: hidden !important;
+  }
+  /* Match container inside card also gets rounded corners */
+  .match-container { 
+    border-radius: 12px !important; 
+    overflow: hidden !important;
+  }
+  .match-card .match-row { overflow: visible !important; }
+
+  /* Ensure odds fit without clipping */
+  .match-card .match-teams { max-width: 55% !important; margin-right: 8px !important; }
+  .match-card .odds-buttons-container { gap: 3px !important; justify-content: space-between !important; padding: 0 !important; margin: 0 !important; }
+  .match-card .odds-button { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
+
+  /* Force date/time to align with teams inset */
+  .match-card .match-date-time { margin-left: 0 !important; padding-left: 14px !important; text-align: left !important; }
+  .match-card .match-teams { padding-left: 14px !important; }
 }
 
 

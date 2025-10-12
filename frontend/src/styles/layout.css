@@ -688,7 +688,7 @@
   .match-card,
   .match-container {
     width: 100% !important;
-    max-width: 120% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important; /* edge-to-edge containers */
     overflow-x: hidden !important;

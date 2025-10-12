@@ -28,6 +28,35 @@ const responseCache = {
   },
   set(key, response, ttl) {
     this.store.set(key, { response, ttl, timestamp: Date.now() });
+  },
+  delete(key) {
+    this.store.delete(key);
+    try {
+      localStorage.removeItem(`cache:${key}`);
+    } catch (err) {
+      // Swallow storage errors (quota/unavailable) intentionally
+      void err;
+    }
+  },
+  invalidate(prefix) {
+    // Remove in-memory entries by prefix
+    for (const k of this.store.keys()) {
+      if (String(k).startsWith(prefix)) {
+        this.store.delete(k);
+      }
+    }
+    // Remove localStorage entries by prefix
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i) || '';
+        if (k.startsWith('cache:') && k.slice(6).startsWith(prefix)) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (err) {
+      // Swallow storage errors (quota/unavailable) intentionally
+      void err;
+    }
   }
 };
 
@@ -58,6 +87,7 @@ async function cachedGet(path, ttlMs) {
     }
   } catch (e) {
     // Ignore JSON/Storage errors and continue to network request
+    void e;
   }
 
   // 3) Network request (and persist result to both caches)
@@ -67,6 +97,7 @@ async function cachedGet(path, ttlMs) {
     localStorage.setItem(lsKey, JSON.stringify({ timestamp: Date.now(), data: response.data }));
   } catch (e) {
     // Storage might be full or unavailable; safe to ignore
+    void e;
   }
   return response;
 }
@@ -89,6 +120,24 @@ api.interceptors.request.use(
 // Response interceptor for global error handling with retry logic
 api.interceptors.response.use(
   (response) => {
+    // Auto-invalidate caches after mutating requests to keep UI fresh
+    const method = (response?.config?.method || 'get').toLowerCase();
+    const url = response?.config?.url || '';
+    if (method === 'post' || method === 'put' || method === 'delete') {
+      if (url.startsWith('/admin/matches') || url.startsWith('/matches')) {
+        responseCache.invalidate('/matches');
+      }
+      if (url.startsWith('/admin/hero')) {
+        responseCache.invalidate('/admin/hero');
+      }
+      if (url.startsWith('/admin/leagues') || url.startsWith('/sports')) {
+        responseCache.invalidate('/sports');
+        responseCache.invalidate('/admin/leagues');
+      }
+      if (url.startsWith('/admin/users') || url.startsWith('/users')) {
+        responseCache.invalidate('/admin/users');
+      }
+    }
     return response;
   },
   async (error) => {
@@ -150,13 +199,13 @@ const apiService = {
   withdraw: (withdrawData) => api.post('/users/withdraw', withdrawData),
 
   // Matches - Updated to use correct endpoints
-  getAllMatches: () => api.get('/matches/all'),
+  getAllMatches: () => cachedGet('/matches/all', 60000),
   // Cache main matches list briefly to avoid spinner and reflows
   getMatches: () => cachedGet('/matches', 30000),
   // Cache popular matches briefly
   getPopularMatches: () => cachedGet('/matches/popular/trending', 30000),
-  getMatchById: (id) => api.get(`/matches/${id}`),
-  getLiveMatches: () => api.get('/matches/live/real-time'),
+  getMatchById: (id) => cachedGet(`/matches/${id}`, 15000),
+  getLiveMatches: () => cachedGet('/matches/live/real-time', 5000),
   addMatch: (matchData) => api.post('/admin/matches', matchData),
   updateMatch: (id, matchData) => api.put(`/admin/matches/${id}`, matchData),
   deleteMatch: (id) => api.delete(`/admin/matches/${id}`),
@@ -167,13 +216,15 @@ const apiService = {
   getBetStatsSummary: () => api.get('/bets/stats/summary'),
 
   // Sports
-  getAllSports: () => api.get('/sports'),
-  getMatchesBySport: (sportId) => api.get(`/sports/${sportId}/matches`),
+  getAllSports: () => cachedGet('/sports', 120000),
+  getMatchesBySport: (sportId) => cachedGet(`/sports/${sportId}/matches`, 30000),
 
   // Admin
-  getAdminDashboardStats: () => api.get('/admin/dashboard-stats'),
-  getAdminUsers: () => api.get('/admin/users'),
+  getAdminDashboardStats: () => cachedGet('/admin/dashboard-stats', 30000),
+  getAdminStatistics: () => cachedGet('/admin/statistics', 60000),
+  getAdminUsers: () => cachedGet('/admin/users', 30000),
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   blockUser: (userId) => {
     return api.put(`/users/${userId}/block`);
@@ -200,11 +251,11 @@ const apiService = {
   uploadVideoTempFallback: (formData) => api.post('/matches/uploads/video', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   uploadPosterTempFallback: (formData) => api.post('/matches/uploads/poster', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   // Leagues
-  getLeagues: () => api.get('/admin/leagues'),
+  getLeagues: () => cachedGet('/admin/leagues', 600000),
   createLeague: (data) => api.post('/admin/leagues', data),
   // Fetch matches by sport key (public, no auth); cache briefly
   getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
-  getMatchMarkets: (matchId) => api.get(`/matches/${matchId}/markets`),
+  getMatchMarkets: (matchId) => cachedGet(`/matches/${matchId}/markets`, 30000),
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>
     api.put(`/admin/matches/${matchId}/status`, { status, homeScore, awayScore }),
@@ -214,6 +265,8 @@ const apiService = {
   
   // Payment endpoints
   createPayment: (paymentData) => api.post('/payments/create', paymentData),
+  // Cache management
+  invalidateCachePrefix: (prefix) => responseCache.invalidate(prefix),
 };
 
 export default apiService;

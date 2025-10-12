@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiService from '../../services/api';
 
 const ViewStatistics = () => {
   const [stats, setStats] = useState(null);
@@ -13,10 +13,7 @@ const ViewStatistics = () => {
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      // Assuming you have an API endpoint for statistics
-      const response = await axios.get('/api/admin/statistics', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      const response = await apiService.getAdminStatistics();
       setStats(response.data);
     } catch (err) {
       setError('Failed to fetch statistics.');
