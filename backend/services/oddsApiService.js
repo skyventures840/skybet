@@ -43,7 +43,8 @@ class OddsApiService {
       timeout: parseInt(process.env.ODDS_API_TIMEOUT, 10) || 10000, // Default to 10 seconds if not set
       params: {
         apiKey: config.oddsApi.apiKey,
-        regions: 'us,us2,uk,eu,au', // All available regions
+        // Allow configuring regions to reduce rate-limit pressure
+        regions: process.env.ODDS_API_REGIONS || 'us',
         // markets: 'h2h,spreads,totals,outrights', // All available markets - now dynamically fetched
         oddsFormat: 'decimal', // decimal | american
         dateFormat: 'iso', // iso | unix
@@ -68,6 +69,7 @@ class OddsApiService {
           all: true, // Include all sports, including those with outrights
         },
       });
+      this.lastResponseHeaders = response.headers;
       return response.data;
     } catch (error) {
       this.handleApiError(error);
@@ -97,6 +99,7 @@ class OddsApiService {
     
     try {
       const response = await this.client.get(`/sports/${sportKey}/markets`);
+      this.lastResponseHeaders = response.headers;
       return response.data;
     } catch (error) {
       if (error.response && error.response.status === 404) {
@@ -217,7 +220,7 @@ class OddsApiService {
     }
     if (supportedMarkets.length === 0) supportedMarkets = COMPREHENSIVE_MARKETS;
 
-    // Fetch odds for each market separately
+    // Fetch odds for markets in batches to reduce HTTP overhead
     const allOddsById = {};
     // Normalization helper to collapse lay/exchange variants and unify aliases
     const normalizeMarketKey = (key) => {
@@ -241,10 +244,12 @@ class OddsApiService {
       return noLay;
     };
 
-    for (const marketKey of supportedMarkets) {
+    const chunkSize = 10; // Keep request size reasonable and aligned with quota accounting
+    for (let i = 0; i < supportedMarkets.length; i += chunkSize) {
+      const marketsChunk = supportedMarkets.slice(i, i + chunkSize);
       try {
-        const oddsForMarket = await this._fetchAndSaveOddsForMarket(sportKey, marketKey);
-        for (const match of oddsForMarket) {
+        const oddsForChunk = await this._fetchAndSaveOddsForMarketsBatch(sportKey, marketsChunk);
+        for (const match of oddsForChunk) {
           if (!allOddsById[match.gameId]) {
             allOddsById[match.gameId] = match;
           } else {
@@ -267,11 +272,185 @@ class OddsApiService {
           }
         }
       } catch (err) {
-        console.warn(`Failed to fetch odds for market ${marketKey} in ${sportKey}: ${err.message}`);
+        console.warn(`Failed to fetch odds for markets chunk in ${sportKey}: ${err.message}`);
+      }
+      // Small delay between batches to be gentle on the API
+      if (i + chunkSize < supportedMarkets.length) {
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
     }
     // Return merged matches as an array
     return Object.values(allOddsById);
+  }
+
+  // Helper to fetch odds for multiple markets in one call and save to DB
+  async _fetchAndSaveOddsForMarketsBatch(sportKey, marketsArray) {
+    if (!this.isEnabled) {
+      console.warn('OddsApiService is disabled due to missing configuration');
+      return [];
+    }
+    // Basic input guard
+    const safeMarketsCsv = Array.isArray(marketsArray)
+      ? marketsArray.filter(Boolean).map(m => String(m).trim()).join(',')
+      : String(marketsArray || '').trim();
+
+    let games = [];
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.client.get(`/sports/${sportKey}/odds`, {
+          params: { markets: safeMarketsCsv }
+        });
+        this.lastResponseHeaders = response.headers;
+        games = Array.isArray(response.data) ? response.data : [];
+        break; // success
+      } catch (err) {
+        console.warn(`Batch odds fetch failed (attempt ${attempt}/${maxRetries}) for ${sportKey} markets ${safeMarketsCsv}: ${err.message}`);
+        // Backoff before retry
+        if (attempt < maxRetries) {
+          const backoffMs = 250 * attempt;
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          continue;
+        }
+        games = [];
+      }
+    }
+    if (!Array.isArray(games)) games = [];
+    if (games.length === 0) {
+      console.warn(`No events returned for ${sportKey} with markets: ${safeMarketsCsv}`);
+    }
+    return this._mergeAndUpsertOddsGames(games);
+  }
+
+  // Shared merge-and-upsert logic used by single and batched market fetches
+  async _mergeAndUpsertOddsGames(games) {
+    // Helper to normalize market keys consistently
+    const normalizeMarketKey = (key) => {
+      const k = (key || '').toLowerCase();
+      const noLay = k
+        .replace(/_?lay$/i, '')
+        .replace(/\blay\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\s/g, '_');
+      if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+      if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+      if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+      if (noLay === 'btts' || noLay === 'both_teams_to_score') return 'both_teams_to_score';
+      if (noLay === 'draw_no_bet') return 'draw_no_bet';
+      if (noLay === 'outrights' || noLay === 'outright') return 'outrights';
+      if (noLay === 'team_totals') return 'team_totals';
+      if (noLay === 'alternate_team_totals') return 'alternate_team_totals';
+      if (noLay === 'alternate_totals') return 'alternate_totals';
+      if (noLay === 'alternate_spreads') return 'alternate_spreads';
+      if (noLay === 'h2h_3_way') return 'h2h_3_way';
+      if (noLay === 'double_chance') return 'double_chance';
+      return noLay;
+    };
+
+    // Preload existing odds for these games to merge efficiently
+    const gameIds = games.map(g => g.id);
+    const existingDocs = await require('../models/Odds').find({ gameId: { $in: gameIds } });
+    const existingMap = new Map(existingDocs.map(doc => [doc.gameId, doc]));
+
+    const bulkOps = games.map(game => {
+      const existing = existingMap.get(game.id);
+
+      // Build incoming bookmakers with normalized market keys
+      const incomingBookmakers = (game.bookmakers || []).map(bm => ({
+        key: bm.key,
+        title: bm.title,
+        last_update: new Date(bm.last_update),
+        markets: (bm.markets || []).map(mkt => ({
+          key: normalizeMarketKey(mkt.key),
+          last_update: new Date(mkt.last_update),
+          outcomes: (mkt.outcomes || []).map(outcome => ({
+            name: outcome.name,
+            price: outcome.price,
+            point: outcome.point
+          }))
+        }))
+      }));
+
+      let mergedBookmakers = incomingBookmakers;
+
+      if (existing && Array.isArray(existing.bookmakers)) {
+        // Merge with existing bookmakers/markets
+        const existingBmMap = new Map(existing.bookmakers.map(b => [b.key, b]));
+
+        mergedBookmakers = incomingBookmakers.map(inBm => {
+          const exBm = existingBmMap.get(inBm.key);
+          if (!exBm) return inBm;
+
+          const exMarkets = Array.isArray(exBm.markets) ? exBm.markets : [];
+          const exMarketMap = new Map(exMarkets.map(m => [normalizeMarketKey(m.key), m]));
+
+          const mergedMarkets = inBm.markets.map(inMkt => {
+            const normKey = normalizeMarketKey(inMkt.key);
+            const exMkt = exMarketMap.get(normKey);
+            if (!exMkt) return inMkt;
+            // Prefer incoming market (fresh last_update), but ensure outcomes exist
+            return {
+              ...inMkt,
+              key: normKey,
+              outcomes: (inMkt.outcomes && inMkt.outcomes.length > 0) ? inMkt.outcomes : (exMkt.outcomes || [])
+            };
+          });
+
+          // Add any existing markets not present in incoming set
+          for (const [normKey, exMkt] of exMarketMap.entries()) {
+            const hasIncoming = mergedMarkets.some(m => normalizeMarketKey(m.key) === normKey);
+            if (!hasIncoming) mergedMarkets.push({ ...exMkt, key: normKey });
+          }
+
+          return {
+            key: inBm.key,
+            title: inBm.title,
+            last_update: inBm.last_update,
+            markets: mergedMarkets
+          };
+        });
+
+        // Include any existing bookmakers not present in incoming
+        for (const [bmKey, exBm] of existingBmMap.entries()) {
+          const hasIncoming = mergedBookmakers.some(b => b.key === bmKey);
+          if (!hasIncoming) mergedBookmakers.push(exBm);
+        }
+      }
+
+      return {
+        updateOne: {
+          filter: { gameId: game.id },
+          update: {
+            $set: {
+              sport_key: game.sport_key,
+              sport_title: game.sport_title,
+              commence_time: new Date(game.commence_time),
+              home_team: game.home_team,
+              away_team: game.away_team,
+              bookmakers: mergedBookmakers,
+              lastFetched: new Date()
+            }
+          },
+          upsert: true
+        }
+      };
+    });
+    if (bulkOps.length > 0) {
+      try {
+        const batchSize = 50;
+        for (let i = 0; i < bulkOps.length; i += batchSize) {
+          const batch = bulkOps.slice(i, i + batchSize);
+          await Odds.bulkWrite(batch, { ordered: false, writeConcern: { w: 1, wtimeout: 30000 } });
+          if (i + batchSize < bulkOps.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+      } catch (bulkWriteError) {
+        console.error(`MongoDB bulkWrite error during odds upsert: ${bulkWriteError.message}`);
+      }
+    }
+    return games;
   }
 
   // Helper to fetch odds for a single market and save to DB
@@ -299,6 +478,7 @@ class OddsApiService {
       const response = await this.client.get(`/sports/${sportKey}/odds`, {
         params: { markets: market },
       });
+      this.lastResponseHeaders = response.headers;
       games = response.data || [];
     } catch (err) {
       // On error, return empty list and allow caller to proceed
@@ -309,7 +489,12 @@ class OddsApiService {
     // Helper to normalize market keys consistently
     const normalizeMarketKey = (key) => {
       const k = (key || '').toLowerCase();
-      const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
+      const noLay = k
+        .replace(/_?lay$/i, '')
+        .replace(/\blay\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\s/g, '_');
       if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
       if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
       if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
@@ -321,6 +506,7 @@ class OddsApiService {
       if (noLay === 'alternate_totals') return 'alternate_totals';
       if (noLay === 'alternate_spreads') return 'alternate_spreads';
       if (noLay === 'h2h_3_way') return 'h2h_3_way';
+      if (noLay === 'double_chance') return 'double_chance';
       return noLay;
     };
 
@@ -428,7 +614,7 @@ class OddsApiService {
           }
         }
       } catch (bulkWriteError) {
-        console.error(`MongoDB bulkWrite error for sport ${sportKey} (market ${market}): ${bulkWriteError.message}`);
+        console.error(`MongoDB bulkWrite error during single-market odds upsert: ${bulkWriteError.message}`);
       }
     }
     return games;
@@ -467,10 +653,48 @@ class OddsApiService {
    * @returns {{remaining: number, used: number}} An object containing the remaining and used requests.
    */
   getLastRateLimitInfo() {
+    const headers = this.lastResponseHeaders || null;
+    if (!headers) return null;
+    // Axios normalizes header keys to lowercase, but be defensive
+    const remRaw = headers['x-requests-remaining'] ?? headers['X-Requests-Remaining'] ?? headers['x-requests-available'] ?? headers['X-Requests-Available'];
+    const usedRaw = headers['x-requests-used'] ?? headers['X-Requests-Used'] ?? headers['x-requests'] ?? headers['X-Requests'];
+    const remaining = Number(remRaw);
+    const used = Number(usedRaw);
+    if (Number.isNaN(remaining) && Number.isNaN(used)) return null;
     return {
-      remaining: parseInt(this.lastResponseHeaders?.['x-requests-remaining'], 10),
-      used: parseInt(this.lastResponseHeaders?.['x-requests-used'], 10)
+      remaining: Number.isNaN(remaining) ? undefined : remaining,
+      used: Number.isNaN(used) ? undefined : used,
     };
+  }
+
+  /**
+   * @method getOddsByEventIds
+   * @description Fetch odds for specific events using eventIds filter per v4 docs.
+   * @param {string} sportKey - Sport key (e.g., 'basketball_nba').
+   * @param {string[]}|{string} eventIds - Array or comma-separated string of event IDs.
+   * @param {string[]}|{string} markets - Array or comma-separated string of markets.
+   * @param {string[]}|{string} [bookmakers] - Optional list of bookmakers to filter.
+   * @returns {Promise<Array<Object>>} Array of event odds; also upserts into DB.
+   */
+  async getOddsByEventIds(sportKey, eventIds, markets, bookmakers) {
+    if (!this.isEnabled) {
+      console.warn('OddsApiService is disabled due to missing configuration');
+      return [];
+    }
+    const eventsParam = Array.isArray(eventIds) ? eventIds.join(',') : String(eventIds);
+    const marketsParam = Array.isArray(markets) ? markets.join(',') : String(markets);
+    const params = { eventIds: eventsParam, markets: marketsParam };
+    if (bookmakers) params.bookmakers = Array.isArray(bookmakers) ? bookmakers.join(',') : String(bookmakers);
+    let games = [];
+    try {
+      const response = await this.client.get(`/sports/${sportKey}/odds`, { params });
+      this.lastResponseHeaders = response.headers;
+      games = response.data || [];
+    } catch (err) {
+      games = [];
+    }
+    if (!Array.isArray(games)) games = [];
+    return this._mergeAndUpsertOddsGames(games);
   }
 }
 
@@ -492,8 +716,8 @@ async function fetchMainMarkets(sport, regions, markets, bookmakers) {
 }
 
 // Helper function to fetch additional markets for an event
-async function fetchEventMarkets(eventId, regions, markets, bookmakers) {
-  const url = `${ODDS_API_BASE_URL}/events/${eventId}/odds?apiKey=${ODDS_API_KEY}&regions=${regions}&markets=${markets}&oddsFormat=decimal&bookmakers=${bookmakers}`;
+async function fetchEventMarkets(sport, eventIds, regions, markets, bookmakers) {
+  const url = `${ODDS_API_BASE_URL}/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=${regions}&markets=${markets}&oddsFormat=decimal&eventIds=${eventIds}${bookmakers ? `&bookmakers=${bookmakers}` : ''}`;
   const response = await axios.get(url);
   return response.data;
 }

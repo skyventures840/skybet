@@ -31,6 +31,9 @@ const { healthMonitor, isServerHealthy, updateCronStatus, incrementErrorCount } 
 const app = express();
 const PORT = process.env.PORT_BACKEND || process.env.PORT || 10000;
 
+// Avoid buffering writes when MongoDB is not connected
+mongoose.set('bufferCommands', false);
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -221,7 +224,6 @@ function startHttpAndWsServers() {
   global.websocketServer = wsServer;
   module.exports.io = wsServer;
   wsServer.startHeartbeat();
-  startCronJobs();
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
@@ -274,14 +276,23 @@ if (mongoURI) {
   .then(() => {
     console.log('Connected to MongoDB');
     startHttpAndWsServers();
+    // Start cron only after a successful DB connection to ensure persistence
+    try {
+      startCronJobs();
+      console.log('Cron jobs started after successful DB connection');
+    } catch (cronErr) {
+      console.warn('Failed to start cron jobs:', cronErr && cronErr.message ? cronErr.message : cronErr);
+    }
   })
   .catch((err) => {
     console.warn('⚠️ Failed to connect to MongoDB, starting server without DB:', err && err.message ? err.message : err);
     startHttpAndWsServers();
+    // Intentionally do NOT start cron when DB is unavailable to avoid non-persistent writes
   });
 } else {
   console.warn('⚠️ MONGODB_URI not set; starting server without DB connection');
   startHttpAndWsServers();
+  // Intentionally do NOT start cron when DB is unavailable to avoid non-persistent writes
 }
 
 module.exports = app;

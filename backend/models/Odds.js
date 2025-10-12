@@ -33,5 +33,8 @@ const OddsSchema = new mongoose.Schema({
 // Add indexes for faster queries
 OddsSchema.index({ gameId: 1 });
 OddsSchema.index({ sport_key: 1 });
+// Speed up sorting and sport-specific queries
+OddsSchema.index({ commence_time: 1 });
+OddsSchema.index({ sport_key: 1, commence_time: 1 });
 
 module.exports = mongoose.model('Odds', OddsSchema);

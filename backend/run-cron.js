@@ -1,4 +1,6 @@
-require('dotenv').config();
+// Ensure we load the root .env and override any pre-set vars
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env'), override: true });
 const mongoose = require('mongoose');
 const startCronJobs = require('./cron');
 

@@ -1,7 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 // Logger removed during cleanup - using console for now
-const OddsFetcher = require('./OddsFetcher');
+const { OddsApiService } = require('../services/oddsApiService');
 const Odds = require('../models/Odds');
 const Match = require('../models/Match');
 // Removed unused matchDataEnricher import
@@ -20,8 +20,13 @@ async function main() {
   await Match.deleteMany({});
   console.log('Cleared existing Odds and Match collections');
 
-  const fetcher = new OddsFetcher();
-  const sports = await fetcher.getSports();
+  const service = new OddsApiService();
+  if (!service.isEnabled) {
+    console.error('OddsApiService is disabled (missing ODDS_API_KEY or base URL).');
+    await mongoose.disconnect();
+    process.exit(1);
+  }
+  const sports = await service.getSports();
   const supportedSports = sports.filter(sport =>
     !sport.key.includes('politics') &&
     !sport.key.includes('entertainment') &&
@@ -32,48 +37,33 @@ async function main() {
 
   for (const sport of supportedSports) {
     try {
-      console.log(`Fetching and merging odds for sport: ${sport.title} (${sport.key})`);
-      const matches = await fetcher.fetchAllOddsForSport(sport.key);
-      console.log(`Fetched and merged ${matches.length} matches for ${sport.key}`);
+      console.log(`Fetching and saving odds for sport: ${sport.title} (${sport.key})`);
 
-      if (matches.length > 0) {
-        // Enrich matches with real team names
-        const enrichedMatches = matches;
-        // Save to Odds collection
-        const oddsBulkOps = enrichedMatches.map(match => ({
-          updateOne: {
-            filter: { gameId: match.id },
-            update: {
-              $set: {
-                gameId: match.id,
-                sport_key: match.sport_key,
-                sport_title: match.sport_title,
-                commence_time: new Date(match.commence_time),
-                home_team: match.home_team,
-                away_team: match.away_team,
-                bookmakers: match.bookmakers,
-                lastFetched: new Date()
-              }
-            },
-            upsert: true
-          }
-        }));
-        await Odds.bulkWrite(oddsBulkOps, { ordered: false });
-        console.log(`Saved ${enrichedMatches.length} odds records for ${sport.key}`);
+      // Use common markets batch fetch (mirrors simpleFetchAndVerify)
+      const commonMarkets = (process.env.TEST_MARKETS || 'h2h,spreads,totals').split(',');
+      const games = await service._fetchAndSaveOddsForMarketsBatch(sport.key, commonMarkets);
 
+      const rateInfo = service.getLastRateLimitInfo ? service.getLastRateLimitInfo() : null;
+      if (rateInfo) {
+        console.log('Rate limit info:', rateInfo);
+      }
+
+      console.log(`Fetched ${games.length} events for ${sport.key}`);
+
+      if (games.length > 0) {
         // Save to Match collection (frontend expects this format)
-        const matchBulkOps = enrichedMatches.map(match => ({
+        const matchBulkOps = games.map(game => ({
           updateOne: {
-            filter: { _id: match.id },
+            filter: { _id: game.id },
             update: {
               $set: {
-                _id: match.id,
-                sport: match.sport_key,
-                league: match.sport_title,
-                homeTeam: match.home_team,
-                awayTeam: match.away_team,
-                startTime: new Date(match.commence_time),
-                odds: match.bookmakers,
+                _id: game.id,
+                sport: game.sport_key,
+                league: game.sport_title,
+                homeTeam: game.home_team,
+                awayTeam: game.away_team,
+                startTime: new Date(game.commence_time),
+                odds: game.bookmakers,
                 status: 'upcoming'
               }
             },
@@ -81,15 +71,37 @@ async function main() {
           }
         }));
         await Match.bulkWrite(matchBulkOps, { ordered: false });
-        console.log(`Saved ${enrichedMatches.length} match records for ${sport.key}`);
+        console.log(`Saved ${games.length} match records for ${sport.key}`);
       }
+
+      // Verification: ensure odds were saved for this sport (from SimpleFetchAndVerify)
+      const sportOddsCount = await Odds.countDocuments({ sport_key: sport.key });
+      console.log(`Odds documents saved for ${sport.key}: ${sportOddsCount}`);
+      const sample = await Odds.findOne({ sport_key: sport.key }).lean();
+      if (sample) {
+        console.log('Sample saved odds document summary:', {
+          gameId: sample.gameId,
+          commence_time: sample.commence_time,
+          home_team: sample.home_team,
+          away_team: sample.away_team,
+          bookmaker_count: Array.isArray(sample.bookmakers) ? sample.bookmakers.length : 0,
+        });
+      } else {
+        console.log(`No odds documents found for sport ${sport.key}.`);
+      }
+
       // Rate limiting between sports
-      await fetcher.sleep(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
       console.error(`Error processing sport ${sport.key}:`, error.message);
       continue;
     }
   }
+
+  // Final totals
+  const totalOdds = await Odds.countDocuments({});
+  const totalMatches = await Match.countDocuments({});
+  console.log('Final collection totals:', { totalOdds, totalMatches });
 
   console.log('Odds fetching and DB update completed successfully');
   await mongoose.disconnect();

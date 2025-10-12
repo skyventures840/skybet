@@ -195,13 +195,15 @@ class ComprehensiveOddsService {
     if (!eventId) throw new Error('eventId is required');
     const regionsParam = this.normalizeRegions(regions);
     const marketsParam = markets === 'all' ? 'h2h,spreads,totals,outrights' : markets; // API requires explicit markets list
-    let url = `${this.baseUrl}/sports/${sport}/events/${eventId}/odds?apiKey=${this.apiKey}&regions=${regionsParam}&markets=${marketsParam}&oddsFormat=${oddsFormat}`;
+    let url = `${this.baseUrl}/sports/${sport}/odds?apiKey=${this.apiKey}&regions=${regionsParam}&markets=${marketsParam}&oddsFormat=${oddsFormat}&eventIds=${encodeURIComponent(eventId)}`;
     if (bookmakers) {
       url += `&bookmakers=${bookmakers}`;
     }
     try {
       const response = await axios.get(url);
-      return response.data; // Expected to be a single event object
+      const data = Array.isArray(response.data) ? response.data : [];
+      // Return the matching event if present, or first item; otherwise null
+      return data.find(ev => ev.id === eventId) || data[0] || null;
     } catch (error) {
       console.error(`Error fetching event odds for ${sport}/${eventId}: ${error.message}`);
       throw new Error(`Error fetching event odds: ${error.message}`);
@@ -269,19 +271,35 @@ class ComprehensiveOddsService {
   ) {
     const regionsParam = this.normalizeRegions(regions);
     const marketsList = await this.buildMarketsListForSport(sport, markets);
-    let mergedForMatch = [];
-    for (const mkt of marketsList) {
+    const marketsCsv = marketsList.join(',');
+
+    // Try all bookmakers first, then primary, then fallback
+    let eventOdds = null;
+    try {
+      eventOdds = await this.fetchEventOdds(sport, eventId, regionsParam, marketsCsv, '', oddsFormat);
+    } catch (err) {
+      eventOdds = null;
+    }
+
+    const hasAnyMarkets = !!(eventOdds && Array.isArray(eventOdds.bookmakers) && eventOdds.bookmakers.some(b => Array.isArray(b.markets) && b.markets.length > 0));
+    if (!hasAnyMarkets) {
       try {
-        const oddsData = await this.fetchOddsWithFallback(sport, regionsParam, mkt, primaryBookmaker, fallbackBookmaker, oddsFormat);
-        const match = Array.isArray(oddsData) ? oddsData.find(ev => ev.id === eventId) : null;
-        if (match) {
-          mergedForMatch = this.mergeEventsAcrossCalls(mergedForMatch, [match], primaryBookmaker, fallbackBookmaker);
-        }
+        eventOdds = await this.fetchEventOdds(sport, eventId, regionsParam, marketsCsv, primaryBookmaker, oddsFormat);
       } catch (err) {
-        console.warn(`Event odds fetch failed for ${sport}/${eventId}/${mkt}: ${err.message}`);
+        // ignore
+      }
+      const hasPrimaryMarkets = !!(eventOdds && Array.isArray(eventOdds?.bookmakers) && eventOdds.bookmakers.some(b => b.key === primaryBookmaker && Array.isArray(b.markets) && b.markets.length > 0));
+      if (!hasPrimaryMarkets) {
+        try {
+          eventOdds = await this.fetchEventOdds(sport, eventId, regionsParam, marketsCsv, fallbackBookmaker, oddsFormat);
+        } catch (err) {
+          // ignore
+        }
       }
     }
-    const mergedData = this.mergeBookmakerData(mergedForMatch, primaryBookmaker, fallbackBookmaker);
+
+    if (!eventOdds) return null;
+    const mergedData = this.mergeBookmakerData([eventOdds], primaryBookmaker, fallbackBookmaker);
     return mergedData[0] || null;
   }
 

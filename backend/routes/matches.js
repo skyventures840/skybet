@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Match = require('../models/Match');
+const Sport = require('../models/Sport');
 const { auth, adminAuth } = require('../middleware/auth');
 const { io } = require('../server');
 const Odds = require('../models/Odds');
@@ -29,6 +30,54 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage });
+
+// Helper: build a map of leagues -> { sportName, country, leagueName }
+async function buildLeagueMetaMap() {
+  try {
+    const sports = await Sport.find({ active: true }).lean();
+    const mapByLeagueName = new Map();
+    (sports || []).forEach(s => {
+      const sportName = s.name || s.key || '';
+      (s.leagues || []).forEach(l => {
+        const leagueName = (l.name || '').trim();
+        if (!leagueName) return;
+        mapByLeagueName.set(leagueName.toLowerCase(), {
+          sportName,
+          country: l.country || '',
+          leagueName
+        });
+      });
+    });
+    return mapByLeagueName;
+  } catch (err) {
+    console.warn('Failed to build league meta map:', err.message);
+    return new Map();
+  }
+}
+
+function titleCase(str = '') {
+  return String(str)
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function extractLeagueMeta(metaMap, sportTitle) {
+  if (!sportTitle) return null;
+  const lc = String(sportTitle).toLowerCase();
+  if (metaMap.has(lc)) return metaMap.get(lc);
+  for (const [key, val] of metaMap.entries()) {
+    if (lc.includes(key)) return val;
+  }
+  return null;
+}
+
+function computeFullLeagueTitle({ sportKeyOrName, country, leagueName, fallbackSportTitle }) {
+  const sportDisplay = titleCase(sportKeyOrName || fallbackSportTitle || '');
+  const parts = [sportDisplay, country, leagueName].filter(Boolean);
+  return parts.join('.');
+}
 
 // Create a new match
 router.post('/', adminAuth, async (req, res) => {
@@ -60,6 +109,8 @@ router.get('/', async (req, res) => {  // Removed auth middleware
     const sport = req.query.sport;
     const status = req.query.status;
     const leagueId = req.query.leagueId;
+
+    const leagueMetaMap = await buildLeagueMetaMap();
 
     // Get matches from both collections
     const [adminMatches, oddsData] = await Promise.all([
@@ -127,6 +178,17 @@ router.get('/', async (req, res) => {  // Removed auth middleware
         }
       });
 
+      const meta = extractLeagueMeta(leagueMetaMap, odds.sport_title);
+      const leagueName = meta?.leagueName || odds.sport_title || 'Match';
+      const country = meta?.country || '';
+      const sportDisplay = meta?.sportName || odds.sport_key;
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportDisplay,
+        country,
+        leagueName,
+        fallbackSportTitle: odds.sport_title
+      });
+
       return {
         id: odds.gameId,
         homeTeam: odds.home_team,
@@ -137,7 +199,10 @@ router.get('/', async (req, res) => {  // Removed auth middleware
         odds: markets,
         additionalMarkets: additionalMarketsCount,
         market: firstBookmaker.markets[0]?.key || 'Unknown',
-        bookmaker: firstBookmaker.title
+        bookmaker: firstBookmaker.title,
+        league: leagueName,
+        country,
+        fullLeagueTitle
       };
     }).filter(match => match !== null);
 
@@ -175,6 +240,16 @@ router.get('/', async (req, res) => {  // Removed auth middleware
         }
       }
       
+      const leagueName = match.leagueId?.name || 'Match';
+      const meta = leagueName ? leagueMetaMap.get(String(leagueName).toLowerCase()) : null;
+      const country = meta?.country || '';
+      const sportDisplay = meta?.sportName || match.sport;
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportDisplay,
+        country,
+        leagueName
+      });
+
       return {
         id: match._id,
         homeTeam: match.homeTeam,
@@ -187,7 +262,10 @@ router.get('/', async (req, res) => {  // Removed auth middleware
         market: 'admin',
         bookmaker: 'Admin',
         videoUrl: match.videoUrl || null,
-        videoPosterUrl: match.videoPosterUrl || null
+        videoPosterUrl: match.videoPosterUrl || null,
+        league: leagueName,
+        country,
+        fullLeagueTitle
       };
     });
 
@@ -262,6 +340,7 @@ router.get('/popular/trending', async (req, res) => {
     ]);
 
     // Transform odds data into match format
+    const leagueMetaMap = await buildLeagueMetaMap();
     const transformedOddsData = oddsData.map(odds => {
       const firstBookmaker = odds.bookmakers[0];
       if (!firstBookmaker) return null;
@@ -298,17 +377,30 @@ router.get('/popular/trending', async (req, res) => {
         }
       });
 
+      const meta = extractLeagueMeta(leagueMetaMap, odds.sport_title);
+      const leagueName = meta?.leagueName || odds.sport_title || 'Match';
+      const country = meta?.country || '';
+      const sportDisplay = meta?.sportName || odds.sport_key;
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportDisplay,
+        country,
+        leagueName,
+        fallbackSportTitle: odds.sport_title
+      });
+
       return {
         id: odds.gameId,
-        league: odds.sport_title || 'Live Match',
-        subcategory: odds.sport_title || 'Live', // Use sport_title instead of sport_key for better display
+        league: leagueName,
+        subcategory: `${titleCase(sportDisplay)}${country ? '.' + country : ''}`,
         startTime: odds.commence_time,
         homeTeam: odds.home_team,
         awayTeam: odds.away_team,
         odds: markets,
         additionalMarkets: additionalMarketsCount,
         sport: odds.sport_key,
-        source: 'odds_api'
+        source: 'odds_api',
+        country,
+        fullLeagueTitle
       };
     }).filter(match => match !== null);
 
@@ -348,17 +440,29 @@ router.get('/popular/trending', async (req, res) => {
         }
       }
 
+      const leagueName = matchObj.leagueId ? matchObj.leagueId.name : 'Match';
+      const meta = leagueName ? leagueMetaMap.get(String(leagueName).toLowerCase()) : null;
+      const country = meta?.country || '';
+      const sportDisplay = meta?.sportName || matchObj.sport;
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportDisplay,
+        country,
+        leagueName
+      });
+
       return {
         id: matchObj._id,
-        league: matchObj.leagueId ? matchObj.leagueId.name : 'Live Match',
-        subcategory: matchObj.leagueId ? matchObj.leagueId.name : (matchObj.sport || 'Live'), // Use league name for better display
+        league: leagueName,
+        subcategory: `${titleCase(sportDisplay)}${country ? '.' + country : ''}`,
         startTime: matchObj.startTime,
         homeTeam: matchObj.homeTeam,
         awayTeam: matchObj.awayTeam,
         odds: formattedOdds,
         additionalMarkets: (matchObj.markets || []).length,
         sport: matchObj.sport,
-        source: 'admin'
+        source: 'admin',
+        country,
+        fullLeagueTitle
       };
     });
 
@@ -406,7 +510,9 @@ router.get('/popular/trending', async (req, res) => {
       awayTeam: match.awayTeam,
       odds: match.odds,
       sport: match.sport,
-      source: match.source
+      source: match.source,
+      country: match.country || '',
+      fullLeagueTitle: match.fullLeagueTitle || `${titleCase(match.sport || '')}${match.country ? '.' + match.country : ''}${match.league ? '.' + match.league : ''}`
     }));
 
     res.json({
@@ -766,6 +872,7 @@ router.get('/:matchId/markets', async (req, res) => {
 router.get('/live/all', async (req, res) => {  // Removed auth middleware
   try {
     const liveMatches = await Match.find({ status: 'live' })
+      .populate('leagueId', 'name')
       .sort({ startTime: 1 });
 
     res.json(liveMatches);
@@ -1298,6 +1405,9 @@ router.get('/live/real-time', async (req, res) => {
     
     console.log(`[LIVE MATCHES] Found ${liveOddsData.length} live odds records`);
     
+    // Build league metadata for country and sport display
+    const leagueMetaMap = await buildLeagueMetaMap();
+
     // Transform matches to include live data and real-time odds
     const transformedLiveMatches = liveMatches.map(match => {
       const matchObj = match.toObject();
@@ -1344,9 +1454,22 @@ router.get('/live/real-time', async (req, res) => {
         liveTime = `LIVE ${diffMins}'`;
       }
       
+      // Compute league name, country, and full league title
+      const leagueName = (matchObj.leagueId && matchObj.leagueId.name)
+        ? matchObj.leagueId.name
+        : (matchOdds && matchOdds.sport_title ? matchOdds.sport_title : 'Match');
+      const meta = leagueName ? leagueMetaMap.get(String(leagueName).toLowerCase()) : null;
+      const country = meta?.country || '';
+      const sportDisplay = meta?.sportName || matchObj.sport;
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportDisplay,
+        country,
+        leagueName
+      });
+
       return {
         id: matchObj._id,
-        league: matchObj.leagueId || 'Live Match',
+        league: leagueName,
         subcategory: matchObj.sport || 'Live',
         startTime: matchObj.startTime,
         homeTeam: matchObj.homeTeam,
@@ -1366,8 +1489,8 @@ router.get('/live/real-time', async (req, res) => {
         homeScore: matchObj.homeScore,
         awayScore: matchObj.awayScore,
         lastUpdate: new Date().toISOString(),
-        bookmaker: oddsStructure.default?.bookmaker || 'Live',
-        market: 'live'
+        country,
+        fullLeagueTitle
       };
     });
     

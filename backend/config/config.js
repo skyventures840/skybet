@@ -5,7 +5,7 @@ const config = {
   oddsApi: {
     baseUrl: process.env.ODDS_API_BASE_URL || 'https://api.the-odds-api.com/v4',
     apiKey: process.env.ODDS_API_KEY,
-    apiVersion: 'v2'
+    apiVersion: 'v4'
   },
   frontendUrl: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:3000'],
   env: process.env.NODE_ENV || 'development',
