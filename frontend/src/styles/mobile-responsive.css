@@ -3696,8 +3696,8 @@ html, body {
     z-index: 5;
     box-shadow: none;
   }
-  .popular-slider-btn.prev-btn { left: 8px; }
-  .popular-slider-btn.next-btn { right: 8px; }
+  .popular-slider-btn.prev-btn { left: 16px; }
+  .popular-slider-btn.next-btn { right: 16px; }
 
   /* Ensure hero slider arrows are visible on mobile */
   .hero-slider .slider-btn {

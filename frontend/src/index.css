@@ -7487,6 +7487,38 @@ body {
   margin-bottom: 2px;
 }
 
+/* Mobile adjustments: full-viewport Popular Matches and transparent arrows */
+@media (max-width: 767px) {
+  /* Make the container full-bleed across the viewport */
+  .popular-matches-section,
+  .popular-matches-box,
+  .popular-matches-scroll {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Bring match card content forward visually */
+  .popular-match-card { position: relative !important; z-index: 3 !important; }
+
+  /* Make slider arrow backgrounds transparent and reduce visual weight */
+  .popular-slider-btn {
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+  .popular-slider-btn:hover {
+    background: transparent !important;
+    color: #fff !important;
+  }
+  /* Move arrows inward from viewport edges on small screens */
+  .popular-slider-btn.prev-btn { left: 16px !important; }
+  .popular-slider-btn.next-btn { right: 16px !important; }
+}
+
 .team-name {
   color: #fff;
   font-weight: 600;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
-import websocketService from '../services/websocketService';
+import io from 'socket.io-client';
 import { useSelector } from 'react-redux';
 
 const LiveBetting = () => {
@@ -49,64 +49,61 @@ const LiveBetting = () => {
 
   // Setup WebSocket connection and subscriptions
   const setupWebSocket = () => {
-    if (!user?.token) {
-      console.log('[LIVE BETTING] No user token, skipping WebSocket setup');
+    const WS_URL = process.env.REACT_APP_WS_URL || null;
+    if (!WS_URL) {
+      console.warn('[LIVE BETTING] WS_URL not set; skipping Socket.IO');
       return;
     }
 
     try {
-      // Connect to WebSocket
-      websocketService.connect(user.token);
-      
-      // Subscribe to live matches updates
-      websocketService.subscribeToLiveMatches();
-      
-      // Listen for live matches updates
-      websocketService.on('liveMatchesUpdate', (data) => {
-        console.log('[LIVE BETTING] Received live matches update via WebSocket:', data);
-        if (data.matches) {
-          setLiveMatches(data.matches);
-          setLastUpdate(data.timestamp);
-        }
+      const socket = io(WS_URL, { withCredentials: true });
+      socket.on('connect', () => {
+        console.log('[LIVE BETTING] Connected to Socket.IO');
+        socket.emit('subscribe:live');
       });
-      
-      // Listen for odds changes
-      websocketService.on('oddsChange', (data) => {
-        console.log('[LIVE BETTING] Received odds change:', data);
-        setLiveMatches(prevMatches => 
-          prevMatches.map(match => 
-            match.id === data.matchId 
-              ? { ...match, odds: data.newOdds, lastUpdate: data.timestamp }
-              : match
-          )
-        );
+
+      socket.on('matchUpdate', (updatedMatch) => {
+        setLiveMatches(prev => {
+          const idx = prev.findIndex(m => (m._id || m.id) === (updatedMatch._id || updatedMatch.id));
+          if (idx === -1) return prev;
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...updatedMatch };
+          return next;
+        });
+        setLastUpdate(new Date().toISOString());
       });
-      
-      // Listen for match result updates
-      websocketService.on('matchResultUpdate', (data) => {
-        console.log('[LIVE BETTING] Received match result update:', data);
-        setLiveMatches(prevMatches => 
-          prevMatches.map(match => 
-            match.id === data.matchId 
-              ? { 
-                  ...match, 
-                  homeScore: data.result.homeScore,
-                  awayScore: data.result.awayScore,
-                  score: data.result.score,
-                  lastUpdate: data.timestamp
-                }
-              : match
-          )
-        );
+
+      socket.on('oddsUpdate', (payload) => {
+        const matchId = payload?.matchId || payload?._id || payload?.id;
+        const odds = payload?.delta || payload?.odds || payload;
+        setLiveMatches(prev => prev.map(m => {
+          const id = m._id || m.id;
+          if (id !== matchId) return m;
+          return { ...m, odds: { ...(m.odds || {}), ...(odds || {}) } };
+        }));
       });
-      
-      // Start heartbeat
-      websocketService.startHeartbeat();
-      
-      console.log('[LIVE BETTING] WebSocket setup completed');
-      
+
+      socket.on('newMatch', (newMatch) => {
+        setLiveMatches(prev => {
+          const id = newMatch._id || newMatch.id;
+          if (!id) return prev;
+          const exists = prev.some(m => (m._id || m.id) === id);
+          return exists ? prev : [newMatch, ...prev];
+        });
+      });
+
+      socket.on('matchDeleted', (matchId) => {
+        setLiveMatches(prev => prev.filter(m => (m._id || m.id) !== matchId));
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[LIVE BETTING] Disconnected from Socket.IO');
+      });
+
+      // Cleanup
+      return () => socket.disconnect();
     } catch (error) {
-      console.error('[LIVE BETTING] Error setting up WebSocket:', error);
+      console.error('[LIVE BETTING] Error setting up Socket.IO:', error);
     }
   };
 
@@ -242,9 +239,6 @@ const LiveBetting = () => {
     
     return () => {
       clearInterval(intervalId);
-      // Cleanup WebSocket
-      websocketService.unsubscribeFromLiveMatches();
-      websocketService.stopHeartbeat();
     };
   }, [user]);
 

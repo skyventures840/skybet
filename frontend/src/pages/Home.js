@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import HeroSlider from '../components/HeroSlider';
+import HeroSkeleton from '../components/HeroSkeleton';
+import MatchCardSkeleton from '../components/MatchCardSkeleton';
+import PopularMatchesSkeleton from '../components/PopularMatchesSkeleton';
 import MatchCard from '../components/MatchCard';
 import PopularMatches from '../components/PopularMatches';
 import apiService from '../services/api';
+import SportsStrip from '../components/SportsStrip';
 
 const Home = () => {
   const [selectedTab, setSelectedTab] = useState('Featured');
@@ -15,6 +19,11 @@ const Home = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSidebarFilter, setSelectedSidebarFilter] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const handleSelectSport = (sportKey) => {
+    // Toggle off if clicking the same sport; otherwise set sport and clear subcategory
+    setSelectedSidebarFilter(prev => (prev === sportKey ? '' : sportKey));
+    setSelectedSubcategory('');
+  };
 
   const tabs = ['Featured', 'Competitions', 'Outrights', 'Offers', 'Free Games'];
 
@@ -606,11 +615,33 @@ const Home = () => {
 
   return (
     <div className="home-page">
-      <HeroSlider />
+      {loading ? <HeroSkeleton /> : <HeroSlider />}
       
       {/* Popular Matches section - keep unchanged */}
       <div className="main-content">
-        <PopularMatches matches={popularMatches} loading={loading} />
+        {/* Sports strip between hero and popular matches */}
+        <SportsStrip onSelectSport={handleSelectSport} activeSport={selectedSidebarFilter} />
+        {(() => {
+          // Derive sport token if strict mapping exists
+          let pm = popularMatches;
+          const strictToken = strictSportTokenMap[selectedSidebarFilter];
+          if (selectedSidebarFilter) {
+            if (strictToken) {
+              pm = pm.filter(m => String(m.sport || '').toLowerCase().split('_')[0] === strictToken);
+            } else {
+              const mappedValues = sidebarToDataMap[selectedSidebarFilter] || [selectedSidebarFilter];
+              pm = pm.filter(m =>
+                mappedValues.some(val =>
+                  (m.sport && m.sport.toLowerCase().includes(val.toLowerCase())) ||
+                  (m.league && m.league.toLowerCase().includes(val.toLowerCase())) ||
+                  (m.subcategory && m.subcategory.toLowerCase().includes(val.toLowerCase()))
+                )
+              );
+            }
+          }
+          if (loading) return <PopularMatchesSkeleton />;
+          return <PopularMatches matches={pm} loading={loading} />;
+        })()}
         
         {/* Enhanced Matches Section */}
         <div className="matches-section">
@@ -641,10 +672,15 @@ const Home = () => {
           </div>
 
           <div className="matches-container">
-            {Object.entries(groupedMatches).length > 0 ? (
+            {loading && Object.keys(groupedMatches).length === 0 ? (
+              <div className="matches-skeleton-grid">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <MatchCardSkeleton key={idx} />
+                ))}
+              </div>
+            ) : Object.entries(groupedMatches).length > 0 ? (
               Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
                 <div key={subcategory} className="competition-group">
-                 
                   <div className="matches-list">
                     {subcategoryMatches.map((match, index) => (
                       <MatchCard

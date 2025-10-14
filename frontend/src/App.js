@@ -33,12 +33,14 @@ import AdminDashboard from './pages/AdminDashboard';
 import MatchDetail from './pages/MatchDetail';
 import MatchMarkets from './pages/MatchMarkets';
 import SportFallback from './components/SportFallback';
+import useOddsStore from './store/oddsStore';
 
 function App() {
   const location = useLocation();
   const dispatch = useDispatch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
+  const WS_URL = process.env.REACT_APP_WS_URL || null;
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -46,30 +48,52 @@ function App() {
       dispatch(loginSuccess(user));
     }
 
-    const socket = io(window.location.origin.replace(/\/$/, '')); // same-origin; dev proxy forwards to backend
+    // Guard Socket.IO connection when backend URL is missing/unavailable
+    if (!WS_URL) {
+      console.warn('WS_URL not set; skipping Socket.IO connection.');
+      return;
+    }
+
+    const { updateMatch, updateOdds, addMatch, deleteMatch } = useOddsStore.getState();
+    const socket = io(WS_URL, { withCredentials: true });
 
     socket.on('connect', () => {
       console.log('Connected to Socket.IO server');
+      // Subscribe to user-specific updates if logged in
+      const stored = JSON.parse(localStorage.getItem('user'));
+      const uid = stored?.user?._id || stored?.user?.id;
+      if (uid) socket.emit('subscribe:user', uid);
     });
 
     socket.on('matchUpdate', (updatedMatch) => {
       console.log('Match updated:', updatedMatch);
-      // Dispatch an action to update the match in your Redux store
+      updateMatch(updatedMatch);
     });
 
     socket.on('oddsUpdate', (updatedMatch) => {
       console.log('Odds updated for match:', updatedMatch);
-      // Dispatch an action to update the odds for the match in your Redux store
+      const matchId = updatedMatch?._id || updatedMatch?.id;
+      const odds = updatedMatch?.odds || updatedMatch;
+      if (matchId) updateOdds(matchId, odds);
+      else console.warn('oddsUpdate missing match id');
     });
 
     socket.on('newMatch', (newMatch) => {
       console.log('New match added:', newMatch);
-      // Dispatch an action to add the new match to your Redux store
+      addMatch(newMatch);
     });
 
     socket.on('matchDeleted', (matchId) => {
       console.log('Match deleted:', matchId);
-      // Dispatch an action to remove the deleted match from your Redux store
+      deleteMatch(matchId);
+    });
+
+    // Forward bet updates to any listeners (e.g., Bets page)
+    socket.on('betUpdate', (payload) => {
+      console.log('Bet update received:', payload);
+      try {
+        window.dispatchEvent(new CustomEvent('bet:update', { detail: payload }));
+      } catch (e) {}
     });
 
     socket.on('disconnect', () => {
@@ -79,7 +103,7 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, [dispatch]);
+  }, [dispatch, WS_URL]);
 
   const isLoggedIn = useSelector(state => state.auth?.loggedIn || false);
   const isAdmin = useSelector(state => state.auth?.isAdmin || false);
@@ -114,85 +138,79 @@ function App() {
 
   return (
     <div className="app">
-      <div className="hide-on-mobile">
-        <h2></h2>
-      </div>
-      
-      <div className="hide-on-website">
-        <div className="page-content">
-          <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+      <div className="page-content">
+        <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
           
-          <div className="under-navbar">
-            {!isAuthPage && (
-              <div 
-                ref={sidebarRef}
-                className={`side-bar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}
-              >
-                <Sidebar closeSidebar={() => setIsSidebarOpen(false)} />
-              </div>
-            )}
-            
-            <div className="middle">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/account" element={
-                  <PrivateRoute auth={{ isLoggedIn }}>
-                    <Account />
-                  </PrivateRoute>
-                } />
-                <Route path="/bets" element={
-                  <PrivateRoute auth={{ isLoggedIn, isAdmin, isBettingRoute: true }}>
-                    <Bets />
-                  </PrivateRoute>
-                } />
-                <Route path="/football" element={<Football />} />
-                <Route path="/football/*" element={<SportFallback sport="Football" />} />
-                <Route path="/basketball" element={<Basketball />} />
-                <Route path="/basketball/*" element={<SportFallback sport="Basketball" />} />
-                <Route path="/tennis" element={<Tennis />} />
-                <Route path="/tennis/*" element={<SportFallback sport="Tennis" />} />
-                <Route path="/baseball" element={<Baseball />} />
-                <Route path="/baseball/*" element={<SportFallback sport="Baseball" />} />
-                <Route path="/hockey" element={<Hockey />} />
-                <Route path="/hockey/*" element={<SportFallback sport="Hockey" />} />
-                <Route path="/icehockey" element={<IceHockey />} />
-                <Route path="/icehockey/*" element={<SportFallback sport="Ice Hockey" />} />
-                <Route path="/soccer" element={<Soccer />} />
-                <Route path="/soccer/*" element={<SportFallback sport="Soccer" />} />
-                <Route path="/live" element={<LiveBetting />} />
-                <Route path="/admin" element={
-                  <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
-                    <AdminDashboard />
-                  </PrivateRoute>
-                } />
-                <Route path="/admin/matches" element={
-                  <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
-                    <AdminDashboard />
-                  </PrivateRoute>
-                } />
-                <Route path="/odds" element={<OddsPage />} />
-                <Route path="/match/:matchId" element={<MatchDetail />} />
-                <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+        <div className="under-navbar">
+          {!isAuthPage && (
+            <div 
+              ref={sidebarRef}
+              className={`side-bar-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}
+            >
+              <Sidebar closeSidebar={() => setIsSidebarOpen(false)} />
             </div>
-            
-            {!isAuthPage && (
-              <div className="bet-slip-wrapper">
-                <Betslip />
-              </div>
-            )}
+          )}
+          
+          <div className="middle">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/account" element={
+                <PrivateRoute auth={{ isLoggedIn }}>
+                  <Account />
+                </PrivateRoute>
+              } />
+              <Route path="/bets" element={
+                <PrivateRoute auth={{ isLoggedIn, isAdmin, isBettingRoute: true }}>
+                  <Bets />
+                </PrivateRoute>
+              } />
+              <Route path="/football" element={<Football />} />
+              <Route path="/football/*" element={<SportFallback sport="Football" />} />
+              <Route path="/basketball" element={<Basketball />} />
+              <Route path="/basketball/*" element={<SportFallback sport="Basketball" />} />
+              <Route path="/tennis" element={<Tennis />} />
+              <Route path="/tennis/*" element={<SportFallback sport="Tennis" />} />
+              <Route path="/baseball" element={<Baseball />} />
+              <Route path="/baseball/*" element={<SportFallback sport="Baseball" />} />
+              <Route path="/hockey" element={<Hockey />} />
+              <Route path="/hockey/*" element={<SportFallback sport="Hockey" />} />
+              <Route path="/icehockey" element={<IceHockey />} />
+              <Route path="/icehockey/*" element={<SportFallback sport="Ice Hockey" />} />
+              <Route path="/soccer" element={<Soccer />} />
+              <Route path="/soccer/*" element={<SportFallback sport="Soccer" />} />
+              <Route path="/live" element={<LiveBetting />} />
+              <Route path="/admin" element={
+                <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
+                  <AdminDashboard />
+                </PrivateRoute>
+              } />
+              <Route path="/admin/matches" element={
+                <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
+                  <AdminDashboard />
+                </PrivateRoute>
+              } />
+              <Route path="/odds" element={<OddsPage />} />
+              <Route path="/match/:matchId" element={<MatchDetail />} />
+              <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </div>
           
-          {/* Mobile Bottom Navigation */}
-          <MobileBottomNav />
-          
-          {/* Mobile Betslip - Only shows on mobile when there are selected matches */}
-          <MobileBetslip />
+          {!isAuthPage && (
+            <div className="bet-slip-wrapper">
+              <Betslip />
+            </div>
+          )}
         </div>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
+        
+        {/* Mobile Betslip - Only shows on mobile when there are selected matches */}
+        <MobileBetslip />
         <Footer />
       </div>
     </div>

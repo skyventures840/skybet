@@ -19,6 +19,16 @@ const Bets = () => {
     fetchBetStats();
   }, []);
 
+  // Listen for real-time bet updates and refresh lists
+  useEffect(() => {
+    const onBetUpdate = () => {
+      fetchBetHistory();
+      fetchBetStats();
+    };
+    window.addEventListener('bet:update', onBetUpdate);
+    return () => window.removeEventListener('bet:update', onBetUpdate);
+  }, []);
+
   // Add sample data for testing if no bets exist
   const addSampleBets = () => {
     const sampleBets = [

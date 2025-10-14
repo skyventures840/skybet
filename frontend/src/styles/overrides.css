@@ -1,0 +1,16 @@
+/* Final overrides to ensure mobile hero dots sizing applies */
+@media (max-width: 767px) {
+  .hero-slider .slider-container .slider-dots .dot {
+    width: 3px !important;
+    height: 3px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-sizing: content-box !important;
+    display: inline-block !important;
+    line-height: 0 !important;
+  }
+  .hero-slider .slider-container .slider-dots {
+    gap: 4px !important;
+    bottom: 3px !important;
+  }
+}
