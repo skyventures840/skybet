@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { bus } = require('../utils/cache');
 
 const betSchema = new mongoose.Schema({
   userId: {
@@ -223,10 +224,10 @@ betSchema.statics.getStats = async function(userId = null) {
 
 betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
   const bets = await this.find({ matchId, status: 'pending' });
-  
+
   for (const bet of bets) {
     let won = false;
-    
+
     switch (bet.market) {
       case 'moneyline': {
         if (bet.selection === 'home') {
@@ -237,7 +238,8 @@ betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
         break;
       }
       case 'handicap': {
-        const handicapLine = parseFloat(bet.selection.split('(')[1]);
+        const lineStr = bet.selection.split('(')[1] || '0)';
+        const handicapLine = parseFloat(lineStr);
         if (bet.selection.includes('home')) {
           won = (homeScore + handicapLine) > awayScore;
         } else {
@@ -246,7 +248,8 @@ betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
         break;
       }
       case 'totals': {
-        const totalLine = parseFloat(bet.selection.split('(')[1]);
+        const lineStr = bet.selection.split('(')[1] || '0)';
+        const totalLine = parseFloat(lineStr);
         const totalScore = homeScore + awayScore;
         if (bet.selection.includes('over')) {
           won = totalScore > totalLine;
@@ -255,13 +258,34 @@ betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
         }
         break;
       }
+      default:
+        // Fallback simple winner evaluation
+        if (bet.selection === 'home') won = homeScore > awayScore;
+        if (bet.selection === 'away') won = awayScore > homeScore;
+        if (bet.selection === 'draw') won = homeScore === awayScore;
     }
-    
-    await this.findByIdAndUpdate(bet._id, {
+
+    const update = {
       status: won ? 'won' : 'lost',
       actualWin: won ? bet.potentialWin : 0,
       settledAt: new Date()
-    });
+    };
+
+    await this.findByIdAndUpdate(bet._id, update);
+
+    // Emit user-scoped event for realtime UI sync
+    try {
+      bus.emit('bets:update', {
+        userId: String(bet.userId),
+        betId: String(bet._id),
+        matchId,
+        status: update.status,
+        actualWin: update.actualWin,
+        settledAt: update.settledAt
+      });
+    } catch (e) {
+      // Avoid crashing on emit errors
+    }
   }
 };
 

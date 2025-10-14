@@ -19,8 +19,11 @@ const paymentsRoutes = require('./routes/payments');
 const adminRoutes = require('./routes/admin');
 const wheelRoutes = require('./routes/wheel');
 
-// Import WebSocket server
-const WebSocketServer = require('./websocketServer');
+// Import Socket.io server
+const { createSocketIOServer } = require('./events/socketioServer');
+const compression = require('compression');
+const sharp = require('sharp');
+const { cache, get, set, del } = require('./utils/cache');
 
 // Import cron jobs
 const startCronJobs = require('./cron');
@@ -42,7 +45,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "wss:", "ws:"],
+      connectSrc: ["'self'", "https:", "http:", "wss:", "ws:"],
     },
   },
 }));
@@ -116,6 +119,7 @@ app.use('/api/payments/create', paymentLimiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(compression());
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -163,6 +167,26 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     }
   }
 }));
+
+// On-the-fly WebP conversion for images to reduce payload
+app.get('/uploads/webp/*', async (req, res) => {
+  try {
+    const relPath = req.params[0];
+    const absPath = path.join(__dirname, 'uploads', relPath);
+    const webpKey = `/uploads/webp/${relPath}`;
+    const cached = get(webpKey);
+    if (cached) {
+      res.setHeader('Content-Type', 'image/webp');
+      return res.end(cached);
+    }
+    const buffer = await sharp(absPath).webp({ quality: 75 }).toBuffer();
+    set(webpKey, {}, buffer, 3600);
+    res.setHeader('Content-Type', 'image/webp');
+    res.end(buffer);
+  } catch (e) {
+    res.status(404).json({ error: 'Image not found' });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -219,16 +243,12 @@ function startHttpAndWsServers() {
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-
-  const wsServer = new WebSocketServer(server);
-  global.websocketServer = wsServer;
-  module.exports.io = wsServer;
-  wsServer.startHeartbeat();
+  const io = createSocketIOServer(server);
+  module.exports.io = io;
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
-    wsServer.shutdown();
     server.close(() => {
       console.log('HTTP server closed');
       if (mongoose.connection && mongoose.connection.readyState !== 0) {
@@ -244,7 +264,6 @@ function startHttpAndWsServers() {
 
   process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully');
-    wsServer.shutdown();
     server.close(() => {
       console.log('HTTP server closed');
       if (mongoose.connection && mongoose.connection.readyState !== 0) {

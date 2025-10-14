@@ -36,11 +36,16 @@
     "express-rate-limit": "^6.10.0",
     "express-validator": "^7.2.1",
     "helmet": "^7.0.0",
+    "compression": "^1.7.4",
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.29.4",
     "mongoose": "^7.5.0",
     "multer": "^2.0.2",
     "node-cron": "^3.0.3",
+    "node-cache": "^5.1.2",
+    "bull": "^4.12.2",
+    "socket.io": "^4.8.1",
+    "sharp": "^0.33.4",
     "validator": "^13.11.0",
     "winston": "^3.17.0",
     "ws": "^8.13.0"
@@ -53,7 +58,8 @@
     "eslint-plugin-promise": "^6.1.1",
     "jest": "^29.6.2",
     "nodemon": "^3.0.1",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "artillery": "^2.0.0-35"
   },
   "engines": {
     "node": ">=16.0.0",

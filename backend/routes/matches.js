@@ -9,6 +9,7 @@ const Odds = require('../models/Odds');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { get: cacheGet, set: cacheSet, bus } = require('../utils/cache');
 
 // Ensure upload dirs exist (mirror admin route behavior)
 const videoUploadDir = path.join(__dirname, '../uploads/videos');
@@ -79,6 +80,21 @@ function computeFullLeagueTitle({ sportKeyOrName, country, leagueName, fallbackS
   return parts.join('.');
 }
 
+// Simple caching middleware for matches list
+function cacheResponse(ttlSeconds = 30) {
+  return (req, res, next) => {
+    const key = '/api/matches';
+    const cached = cacheGet(key);
+    if (cached) return res.json(cached);
+    const originalJson = res.json.bind(res);
+    res.json = (data) => {
+      try { cacheSet(key, {}, data, ttlSeconds); } catch (e) {}
+      return originalJson(data);
+    };
+    next();
+  };
+}
+
 // Create a new match
 router.post('/', adminAuth, async (req, res) => {
   try {
@@ -104,7 +120,7 @@ router.get('/all', adminAuth, async (req, res) => {
 });
 
 // Get all matches with filtering and pagination
-router.get('/', async (req, res) => {  // Removed auth middleware
+router.get('/', cacheResponse(30), async (req, res) => {  // Removed auth middleware
   try {
     const sport = req.query.sport;
     const status = req.query.status;
@@ -948,6 +964,9 @@ router.put('/:matchId', adminAuth, async (req, res) => {
 
     res.json(updatedMatch);
     io.emit('matchUpdate', updatedMatch); // Emit update to all connected clients
+    // Invalidate caches and broadcast via event bus for live subscribers
+    bus.emit('matches:live:update', updatedMatch);
+    bus.emit('matches:changed');
   } catch (error) {
     console.error('Update match error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -971,6 +990,9 @@ router.put('/:matchId/odds', adminAuth, async (req, res) => {
 
     res.json(updatedMatch);
     io.emit('oddsUpdate', updatedMatch); // Emit odds update to all connected clients
+    // Broadcast odds delta via bus and invalidate cached match lists
+    bus.emit('odds:update', { matchId: req.params.matchId, delta: newOdds });
+    bus.emit('matches:changed');
   } catch (error) {
     console.error('Update match odds error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -987,6 +1009,8 @@ router.delete('/:matchId', adminAuth, async (req, res) => {
     }
 
     io.emit('matchDeleted', req.params.matchId); // Emit deleted match ID to all connected clients
+    bus.emit('matches:deleted', req.params.matchId);
+    bus.emit('matches:changed');
     res.json({ message: 'Match deleted successfully', deletedMatch });
   } catch (error) {
     console.error('Delete match error:', error);
@@ -1058,6 +1082,9 @@ router.put('/:matchId', auth, adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
     res.json(updatedMatch);
+    io.emit('matchUpdate', updatedMatch);
+    bus.emit('matches:live:update', updatedMatch);
+    bus.emit('matches:changed');
   } catch (error) {
     console.error('Update match error:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
@@ -1071,6 +1098,9 @@ router.delete('/:matchId', auth, adminAuth, async (req, res) => {
     if (!deletedMatch) {
       return res.status(404).json({ error: 'Match not found' });
     }
+    io.emit('matchDeleted', req.params.matchId);
+    bus.emit('matches:deleted', req.params.matchId);
+    bus.emit('matches:changed');
     res.json({ message: 'Match deleted successfully' });
   } catch (error) {
     console.error('Delete match error:', error);
@@ -1529,10 +1559,10 @@ router.put('/live/:matchId/odds', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
 
-    // Broadcast odds update via WebSocket
-    if (global.websocketServer) {
-      global.websocketServer.broadcastOddsChange(matchId, newOdds);
-    }
+    // Broadcast odds update via Socket.io + bus and invalidate caches
+    io.emit('oddsUpdate', { matchId, delta: newOdds });
+    bus.emit('odds:update', { matchId, delta: newOdds });
+    bus.emit('matches:changed');
 
     res.json({
       success: true,
@@ -1565,14 +1595,10 @@ router.put('/live/:matchId/score', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
 
-    // Broadcast score update via WebSocket
-    if (global.websocketServer) {
-      global.websocketServer.broadcastMatchResult(matchId, {
-        homeScore,
-        awayScore,
-        score: `${homeScore}-${awayScore}`
-      });
-    }
+    // Broadcast score update via Socket.io + bus and invalidate caches
+    io.emit('matchUpdate', updatedMatch);
+    bus.emit('matches:live:update', updatedMatch);
+    bus.emit('matches:changed');
 
     res.json({
       success: true,
