@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const { OddsApiService } = require('../services/oddsApiService');
 const Odds = require('../models/Odds');
 const Match = require('../models/Match');
+const Results = require('../models/Results');
+const Scores = require('../models/Scores');
 // Removed unused matchDataEnricher import
 
 async function main() {
@@ -18,7 +20,9 @@ async function main() {
   // Clear existing data
   await Odds.deleteMany({});
   await Match.deleteMany({});
-  console.log('Cleared existing Odds and Match collections');
+  await Results.deleteMany({});
+  await Scores.deleteMany({});
+  console.log('Cleared existing Odds, Match, Results, and Scores collections');
 
   const service = new OddsApiService();
   if (!service.isEnabled) {
@@ -90,6 +94,32 @@ async function main() {
         console.log(`No odds documents found for sport ${sport.key}.`);
       }
 
+      // Fetch and store results data (completed games)
+      try {
+        console.log(`Fetching results for ${sport.key}...`);
+        const results = await service.getResults(sport.key, 7); // Get results from last 7 days
+        console.log(`Fetched ${results.length} results for ${sport.key}`);
+        
+        // Verify results were stored
+        const resultsCount = await Results.countDocuments({ sport_key: sport.key });
+        console.log(`Results documents saved for ${sport.key}: ${resultsCount}`);
+      } catch (error) {
+        console.error(`Error fetching results for ${sport.key}:`, error.message);
+      }
+
+      // Fetch and store scores data (live and recent games)
+      try {
+        console.log(`Fetching scores for ${sport.key}...`);
+        const scores = await service.getScores(sport.key);
+        console.log(`Fetched ${scores.length} scores for ${sport.key}`);
+        
+        // Verify scores were stored
+        const scoresCount = await Scores.countDocuments({ sport_key: sport.key });
+        console.log(`Scores documents saved for ${sport.key}: ${scoresCount}`);
+      } catch (error) {
+        console.error(`Error fetching scores for ${sport.key}:`, error.message);
+      }
+
       // Rate limiting between sports
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
@@ -101,7 +131,9 @@ async function main() {
   // Final totals
   const totalOdds = await Odds.countDocuments({});
   const totalMatches = await Match.countDocuments({});
-  console.log('Final collection totals:', { totalOdds, totalMatches });
+  const totalResults = await Results.countDocuments({});
+  const totalScores = await Scores.countDocuments({});
+  console.log('Final collection totals:', { totalOdds, totalMatches, totalResults, totalScores });
 
   console.log('Odds fetching and DB update completed successfully');
   await mongoose.disconnect();

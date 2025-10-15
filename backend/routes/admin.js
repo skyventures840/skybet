@@ -11,6 +11,7 @@ const { body, validationResult } = require('express-validator');
 const League = require('../models/League');
 const Odds = require('../models/Odds');
 const Transaction = require('../models/Transaction'); // Added Transaction import
+const betSettlementService = require('../services/betSettlementService');
 // Removed unused matchDataEnricher import
 
 // Set up Multer for image uploads with production-ready configuration
@@ -1254,6 +1255,30 @@ router.get('/dashboard-stats', adminAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch dashboard statistics',
+      message: error.message
+    });
+  }
+});
+
+// Manual bet settlement endpoint for testing
+router.post('/settle-bets', adminAuth, async (req, res) => {
+  try {
+    console.log('[ADMIN] Manual bet settlement triggered');
+    
+    const result = await betSettlementService.processSettlements();
+    
+    console.log('[ADMIN] Bet settlement completed:', result);
+    
+    res.json({
+      success: true,
+      message: 'Bet settlement completed successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('[ADMIN] Error in manual bet settlement:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to settle bets',
       message: error.message
     });
   }

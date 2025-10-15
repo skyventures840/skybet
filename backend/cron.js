@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const mongoose = require('mongoose');
 const { OddsApiService } = require('./services/oddsApiService');
+const betSettlementService = require('./services/betSettlementService');
 const logger = require('./utils/logger');
 const Match = require('./models/Match');
 const League = require('./models/League');
@@ -85,6 +86,25 @@ async function cleanupOldMatches() {
 }
 
 /**
+ * @function settleBets
+ * @description Automatically settle bets based on completed match results
+ */
+async function settleBets() {
+  try {
+    logger.info('Starting automated bet settlement...');
+    const result = await betSettlementService.processSettlements();
+    
+    if (result.success) {
+      logger.info(`Bet settlement completed: ${result.settledBets} bets settled across ${result.processedMatches} matches`);
+    } else {
+      logger.warn('Bet settlement completed with issues');
+    }
+  } catch (error) {
+    logger.error('Error during bet settlement:', error);
+  }
+}
+
+/**
  * @function fetchOddsForSport
  * @param {string} sportKey - The sport key to fetch odds for
  * @param {string} sportName - The display name of the sport
@@ -102,13 +122,9 @@ async function fetchOddsForSport(sportKey, sportName) {
   }
   
   try {
-    // Use simpler batch fetch for common markets to reduce quota usage
-    const commonMarkets = (process.env.ODDS_API_MARKETS || 'h2h,spreads,totals')
-      .split(',')
-      .map(m => m.trim())
-      .filter(Boolean);
-    logger.info(`Fetching common markets for ${sportName}: ${commonMarkets.join(',')}`);
-    const games = await oddsApiService._fetchAndSaveOddsForMarketsBatch(sportKey, commonMarkets);
+    // Use the comprehensive getUpcomingOdds method which includes all priority markets
+    logger.info(`Fetching comprehensive odds with priority markets for ${sportName} (${sportKey})`);
+    const games = await oddsApiService.getUpcomingOdds(sportKey);
     logger.info(`Fetched ${Array.isArray(games) ? games.length : 0} events for ${sportName} (${sportKey})`);
     
     // Helper: map Odds API sport_key to internal sport enum
@@ -359,15 +375,12 @@ async function fetchLiveOdds() {
 
         const apiSportKeys = sportKeyMap[sport] || [sport];
 
-        // Use common markets batch to keep consistency and reduce quota usage
-        const commonMarkets = (process.env.ODDS_API_MARKETS || 'h2h,spreads,totals')
-          .split(',')
-          .map(m => m.trim())
-          .filter(Boolean);
+        // Use comprehensive priority markets for live odds
+        const priorityMarkets = oddsApiService.getPriorityMarkets();
 
         for (const apiSportKey of apiSportKeys) {
-          logger.info(`Fetching live odds for ${sport} (API key: ${apiSportKey}) using markets: ${commonMarkets.join(',')}`);
-          const games = await oddsApiService._fetchAndSaveOddsForMarketsBatch(apiSportKey, commonMarkets);
+          logger.info(`Fetching live odds for ${sport} (API key: ${apiSportKey}) using ${priorityMarkets.length} priority markets`);
+          const games = await oddsApiService._fetchAndSaveOddsForMarketsBatch(apiSportKey, priorityMarkets);
           logger.info(`Live odds fetched: ${Array.isArray(games) ? games.length : 0} events for ${apiSportKey}`);
           // Add delay between league calls to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -396,9 +409,10 @@ const startCronJobs = () => {
   let isStatusUpdating = false;
   let isBroadcasting = false;
   let isCleaningUp = false;
+  let isBetSettling = false;
 
-  // Fetch upcoming odds every 5 minutes (more frequent)
-  cron.schedule('*/5 * * * *', async () => {
+  // Fetch upcoming odds every 30 minutes
+  cron.schedule('*/30 * * * *', async () => {
     // Skip if DB is not connected to avoid buffered writes that never flush
     if (!mongoose.connection || mongoose.connection.readyState !== 1) {
       logger.warn('MongoDB not connected; skipping scheduled upcoming odds fetch');
@@ -513,6 +527,29 @@ const startCronJobs = () => {
       logger.error('Error in live matches broadcast cron job:', error);
     } finally {
       isBroadcasting = false;
+    }
+  });
+
+  // Settle bets every 2 minutes based on completed match results
+  cron.schedule('*/2 * * * *', async () => {
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      logger.warn('MongoDB not connected; skipping scheduled bet settlement');
+      return;
+    }
+    if (isBetSettling) {
+      logger.warn('Bet settlement already in progress, skipping...');
+      return;
+    }
+    
+    isBetSettling = true;
+    try {
+      logger.info('Starting cron job: Settling bets...');
+      await settleBets();
+      logger.info('Cron job finished: Successfully processed bet settlements.');
+    } catch (error) {
+      logger.error('Error in bet settlement cron job:', error);
+    } finally {
+      isBetSettling = false;
     }
   });
 
