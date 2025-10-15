@@ -4,6 +4,8 @@ import { useDispatch } from 'react-redux';
 import apiService from '../services/api';
 import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 import VideoPlayerScheduled from '../components/VideoPlayerScheduled';
+import { assessOddsRisk } from '../utils/riskManagement';
+import LockedOdds from '../components/LockedOdds';
 
 const MatchDetail = () => {
     const { matchId } = useParams();
@@ -617,16 +619,33 @@ const MatchDetail = () => {
                                         </div>
                                         {(expandedMarkets[market.key] || allMarketsExpanded) && (
                                             <div className="market-options">
-                                                {market.options.map((option, index) => (
-                                                    <button
-                                                        key={index}
-                                                        className="market-option-btn"
-                                                        onClick={() => addToBetslip(market.name, option.name, option.odds)}
-                                                    >
-                                                        <span className="option-name">{option.name}</span>
-                                                        <span className="option-odds">{option.odds.toFixed(2)}</span>
-                                                    </button>
-                                                ))}
+                                                {market.options.map((option, index) => {
+                                                    const riskAssessment = assessOddsRisk(match, option.odds, option.name);
+                                                    
+                                                    // If odds should be disabled, show locked odds component
+                                                    if (riskAssessment.shouldDisable) {
+                                                        return (
+                                                            <div key={index} className="market-option-btn locked">
+                                                                <span className="option-name">{option.name}</span>
+                                                                <LockedOdds
+                                                                    riskAssessment={riskAssessment}
+                                                                    className="option-odds-locked"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={index}
+                                                            className="market-option-btn"
+                                                            onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                        >
+                                                            <span className="option-name">{option.name}</span>
+                                                            <span className="option-odds">{option.odds.toFixed(2)}</span>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -649,16 +668,33 @@ const MatchDetail = () => {
                             </div>
                             {(expandedMarkets[market.key] || allMarketsExpanded) && (
                                 <div className="market-options">
-                                                {market.options.map((option, index) => (
-                                            <button
-                                                key={index}
-                                                className="market-option-btn"
-                                                onClick={() => addToBetslip(market.name, option.name, option.odds)}
-                                            >
-                                                <span className="option-name">{option.name}</span>
-                                                <span className="option-odds">{option.odds.toFixed(2)}</span>
-                                            </button>
-                                        ))}
+                                                {market.options.map((option, index) => {
+                                                    const riskAssessment = assessOddsRisk(match, option.odds, option.name);
+                                                    
+                                                    // If odds should be disabled, show locked odds component
+                                                    if (riskAssessment.shouldDisable) {
+                                                        return (
+                                                            <div key={index} className="market-option-btn locked">
+                                                                <span className="option-name">{option.name}</span>
+                                                                <LockedOdds
+                                                                    riskAssessment={riskAssessment}
+                                                                    className="option-odds-locked"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={index}
+                                                            className="market-option-btn"
+                                                            onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                        >
+                                                            <span className="option-name">{option.name}</span>
+                                                            <span className="option-odds">{option.odds.toFixed(2)}</span>
+                                                        </button>
+                                                    );
+                                                })}
                                 </div>
                             )}
                         </div>
@@ -700,16 +736,33 @@ const MatchDetail = () => {
                                                 </div>
                                                 {expandedMarkets[market.key] && (
                                                     <div className="market-options">
-                                                        {market.options.map((option, index) => (
-                                                            <button
-                                                                key={index}
-                                                                className="market-option-btn"
-                                                                onClick={() => addToBetslip(market.name, option.name, option.odds)}
-                                                            >
-                                                                <span className="option-name">{option.name}</span>
-                                                                <span className="option-odds">{option.odds.toFixed(2)}</span>
-                                                            </button>
-                                                        ))}
+                                                        {market.options.map((option, index) => {
+                                                            const riskAssessment = assessOddsRisk(match, option.odds, option.name);
+                                                            
+                                                            // If odds should be disabled, show locked odds component
+                                                            if (riskAssessment.shouldDisable) {
+                                                                return (
+                                                                    <div key={index} className="market-option-btn locked">
+                                                                        <span className="option-name">{option.name}</span>
+                                                                        <LockedOdds
+                                                                            riskAssessment={riskAssessment}
+                                                                            className="option-odds-locked"
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            
+                                                            return (
+                                                                <button
+                                                                    key={index}
+                                                                    className="market-option-btn"
+                                                                    onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                                >
+                                                                    <span className="option-name">{option.name}</span>
+                                                                    <span className="option-odds">{option.odds.toFixed(2)}</span>
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>
@@ -729,16 +782,33 @@ const MatchDetail = () => {
                                                 </div>
                                                 {expandedMarkets[market.key] && (
                                                     <div className="market-options">
-                                                        {market.options.map((option, index) => (
-                                                            <button
-                                                                key={index}
-                                                                className="market-option-btn"
-                                                                onClick={() => addToBetslip(market.name, option.name, option.odds)}
-                                                            >
-                                                                <span className="option-name">{option.name}</span>
-                                                                <span className="option-odds">{option.odds.toFixed(2)}</span>
-                                                            </button>
-                                                        ))}
+                                                        {market.options.map((option, index) => {
+                                                            const riskAssessment = assessOddsRisk(match, option.odds, option.name);
+                                                            
+                                                            // If odds should be disabled, show locked odds component
+                                                            if (riskAssessment.shouldDisable) {
+                                                                return (
+                                                                    <div key={index} className="market-option-btn locked">
+                                                                        <span className="option-name">{option.name}</span>
+                                                                        <LockedOdds
+                                                                            riskAssessment={riskAssessment}
+                                                                            className="option-odds-locked"
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            
+                                                            return (
+                                                                <button
+                                                                    key={index}
+                                                                    className="market-option-btn"
+                                                                    onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                                >
+                                                                    <span className="option-name">{option.name}</span>
+                                                                    <span className="option-odds">{option.odds.toFixed(2)}</span>
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>

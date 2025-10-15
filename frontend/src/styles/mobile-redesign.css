@@ -1,0 +1,684 @@
+@media (max-width: 767px) {
+  
+  .main-content {
+    width: 97% !important;
+    max-width: 97% !important;
+    margin: 0 auto !important;
+    padding: 8px 1.5% !important; /* Minimal padding for edge spacing */
+    box-sizing: border-box !important;
+  }
+
+  .home-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+  .popular-matches-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 8px 0 !important; /* Reduced bottom margin */
+    padding: 0 !important;
+    background: var(--card-bg) !important;
+    border-radius: 0 !important; /* Remove border radius for full coverage */
+    overflow: hidden !important;
+    box-shadow: none !important; /* Remove shadow for seamless design */
+  }
+
+  .popular-matches-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  .popular-matches-header {
+    padding: 12px 5% !important; /* Further increased side padding to move text more inwards */
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .popular-matches-title {
+    font-size: clamp(18px, 4.5vw, 22px) !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin-left: 8px !important;
+    text-align: left !important;
+  }
+
+  /* Popular matches scroll container */
+  .popular-matches-scroll {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 calc(5% + 20px) 6px calc(5% + 20px) !important; /* Extra padding to center between arrows, reduced bottom margin */
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex !important;
+    gap: 0 !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .popular-matches-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Popular match cards */
+  .popular-match-card {
+    flex: 0 0 90% !important; /* Cards take 90% of viewport width */
+    min-width: 90% !important;
+    max-width: 110% !important;
+    background: var(--bg-secondary) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important; /* Much more visible border */
+    border-radius: 8px !important;
+    padding: 8px !important; /* Reduced padding to decrease height */
+    margin: 0 auto !important; /* Center alignment */
+    scroll-snap-align: start !important;
+    box-sizing: border-box !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important; /* Enhanced shadow for depth */
+    min-height: auto !important; /* Allow natural height */
+  }
+
+  .popular-match-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.15) !important;
+    border-color: var(--primary-green) !important;
+    border-width: 2.5px !important; /* Even thicker border on hover */
+  }
+
+  /* Popular match card content - compact styling */
+   .popular-match-card .match-teams {
+     gap: 1px !important; /* Reduced gap between teams */
+     margin-bottom: 2px !important; /* Further reduced bottom margin */
+   }
+
+  .popular-match-card .team {
+    font-size: clamp(12px, 3vw, 14px) !important; /* Slightly smaller font */
+    margin: 0 !important; /* Remove margins */
+    line-height: 1.2 !important; /* Tighter line height */
+  }
+
+  .popular-match-card .match-date-time {
+    font-size: clamp(9px, 2.2vw, 10px) !important; /* Smaller date/time text */
+    margin: 0 0 5px 0 !important; /* Reduced margin */
+  }
+
+  .popular-match-card .vs {
+    font-size: clamp(14px, 2.9vw, 8px) !important; /* Smaller vs text */
+    margin: 1px 0 !important; /* Minimal margin */
+  }
+
+  .popular-match-card .odds-buttons-container {
+    display: flex !important;
+    justify-content: space-evenly !important; /* Even distribution of odds buttons */
+    align-items: center !important;
+    width: 100% !important; /* Full width for even distribution */
+    gap: 8px !important; /* Consistent gap between odds buttons */
+    padding: 4px 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .popular-match-card .odds-button {
+      flex: 1 1 auto !important; /* Allow buttons to grow and shrink evenly */
+      min-width: 80px !important; /* Further increased minimum width */
+      max-width: 110px !important; /* Further increased maximum width */
+      height: 36px !important; /* Increased height for better touch targets */
+      padding: 8px 12px !important; /* Increased padding for better appearance */
+      font-size: clamp(11px, 2.8vw, 13px) !important; /* Larger font for better readability */
+      text-align: center !important;
+      box-sizing: border-box !important;
+      border-radius: 8px !important; /* Slightly larger border radius */
+    }
+
+   /* League title ellipsis for popular match cards */
+   .popular-match-card .league-title,
+   .popular-match-card .league-header h3,
+   .popular-match-card .league-header .league-name {
+     white-space: nowrap !important;
+     overflow: hidden !important;
+     text-overflow: ellipsis !important;
+     max-width: 100% !important;
+     display: block !important;
+   }
+
+  /* Navigation arrows for popular matches */
+  .popular-slider-btn {
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 18px !important;
+    z-index: 10 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .popular-slider-btn:hover {
+    background: rgba(0, 0, 0, 0.9) !important;
+    transform: translateY(-50%) scale(1.1) !important;
+  }
+
+  .popular-slider-btn.prev-btn {
+    left: 8px !important;
+  }
+
+  .popular-slider-btn.next-btn {
+    right: 8px !important;
+  }
+
+  /* =============================================================================
+     MATCH CARDS SECTION - FULL WIDTH REDESIGN
+     ============================================================================= */
+  
+  .matches-section {
+    width: 100% !important;
+    max-width: 120% !important;
+    margin: 16px -9px 0 0 !important;
+    padding: 0 !important;
+  }
+
+  .section-header {
+    padding: 0 1.5% 12px 1.5% !important; /* Minimal side padding */
+    margin: 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .section-header h2 {
+    font-size: clamp(18px, 4.5vw, 22px) !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin: 0 0 8px 0 !important;
+  }
+
+  .tab-navigation {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto !important;
+    padding: 6px 12px !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 16px !important;
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+  }
+
+  .tab-btn.active {
+    background: var(--primary-green) !important;
+    color: var(--bg-primary) !important;
+    border-color: var(--primary-green) !important;
+  }
+
+  /* Matches container */
+  .matches-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin:  0 !important;
+    padding: 0 !important;
+  }
+
+  .competition-group {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .matches-list {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 1.5% !important; /* Minimal side padding */
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important; /* Minimal gap between cards */
+  }
+
+  /* =============================================================================
+     MATCH CARD REDESIGN - COMPACT AND FULL WIDTH
+     ============================================================================= */
+  
+  .match-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    background: var(--card-bg) !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 0 !important; /* Remove border radius for seamless connection */
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  .match-card:first-child {
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
+  }
+
+  .match-card:last-child {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom-left-radius: 8px !important;
+    border-bottom-right-radius: 8px !important;
+  }
+
+  .match-card:hover {
+    background: rgba(0, 255, 136, 0.03) !important;
+    border-left: 3px solid var(--primary-green) !important;
+    padding-left: 9px !important; /* Adjust padding to compensate for border */
+  }
+
+  /* League header - compact design */
+  .match-card .league-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 8px !important;
+    padding: 0 !important;
+  }
+
+  .match-card .league-title {
+    font-size: clamp(12px, 3vw, 14px) !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    margin: 0 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* Match row layout */
+  .match-card .match-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 8px !important;
+    min-height: 48px !important;
+  }
+
+  /* Teams section */
+  .match-card .match-teams {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+    max-width: 60% !important;
+  }
+
+  .match-card .match-date-time {
+    font-size: clamp(10px, 2.5vw, 11px) !important;
+    color: var(--text-muted) !important;
+    margin: 0 0 4px 0 !important;
+    font-weight: 500 !important;
+  }
+
+  .match-card .team {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: clamp(13px, 3.2vw, 15px) !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 1px 0 !important;
+  }
+
+  .match-card .team-flag {
+    width: 14px !important;
+    height: 10px !important;
+    object-fit: cover !important;
+    border-radius: 2px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .match-card .vs {
+    font-size: clamp(8px, 2vw, 9px) !important;
+    color: var(--text-muted) !important;
+    font-weight: 400 !important;
+    margin: 2px 0 !important;
+    text-align: center !important;
+  }
+
+  /* Odds section */
+  .match-card .score-odds-line {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 4px !important;
+    min-width: 35% !important;
+    max-width: 40% !important;
+  }
+
+  .match-card .odds-buttons-container {
+    display: flex !important;
+    gap: 4px !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+
+  .match-card .odds-button {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: 48px !important;
+    height: 32px !important;
+    padding: 4px 2px !important;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    color: var(--text-primary) !important;
+    font-size: clamp(10px, 2.5vw, 11px) !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+  }
+
+  .match-card .odds-button:hover {
+    background: var(--primary-green) !important;
+    color: var(--bg-primary) !important;
+    border-color: var(--primary-green) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .match-card .odds-button .odds-value {
+    font-size: clamp(9px, 2.2vw, 10px) !important;
+    font-weight: 700 !important;
+    margin-top: 1px !important;
+  }
+
+  /* Hide odds headers on mobile for cleaner look */
+  .match-card .odds-headers-container {
+    display: none !important;
+  }
+
+  /* Live match indicator */
+  .match-card.live-match {
+    border-left: 3px solid var(--primary-green) !important;
+    padding-left: 9px !important;
+  }
+
+  .live-status-badge {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: var(--primary-green) !important;
+    color: var(--bg-primary) !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    padding: 2px 6px !important;
+    border-radius: 8px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* =============================================================================
+     SPORTS STRIP - FULL WIDTH INTEGRATION
+     ============================================================================= */
+  
+  .sports-strip {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 1.5% !important; /* Minimal side padding */
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex !important;
+    gap: 8px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    background: var(--bg-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .sports-strip::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .sport-card {
+    flex: 0 0 auto !important;
+    min-width: 80px !important;
+    padding: 8px 6px !important;
+    border-radius: 8px !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .sport-card:hover,
+  .sport-card.active {
+    background: var(--primary-green) !important;
+    color: var(--bg-primary) !important;
+    border-color: var(--primary-green) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .sport-icon svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .sport-label {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    margin-top: 4px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* =============================================================================
+     UTILITY CLASSES FOR MOBILE
+     ============================================================================= */
+  
+  .no-matches {
+    text-align: center !important;
+    padding: 40px 1.5% !important;
+    color: var(--text-muted) !important;
+  }
+
+  .no-matches h3 {
+    font-size: clamp(16px, 4vw, 18px) !important;
+    margin-bottom: 8px !important;
+    color: var(--text-primary) !important;
+  }
+
+  .no-matches p {
+    font-size: clamp(12px, 3vw, 14px) !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Error and loading states */
+  .error-container,
+  .loading-container {
+    text-align: center !important;
+    padding: 40px 1.5% !important;
+  }
+
+  .matches-skeleton-grid {
+    padding: 0 1.5% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+  }
+}
+
+/* =============================================================================
+   SMALL MOBILE DEVICES (320px - 480px) - EXTRA COMPACT
+   ============================================================================= */
+@media (max-width: 480px) {
+  
+  .main-content {
+    width: 100% !important; /* Fixed full width */
+    max-width: 100vw !important; /* Ensure it doesn't exceed viewport */
+    padding: 4px 0 !important; /* No horizontal padding for fixed width */
+    box-sizing: border-box !important; /* Include padding in width calculation */
+  }
+
+  .popular-matches-header,
+  .section-header {
+    width: 100% !important; /* Fixed container width */
+    max-width: 100vw !important; /* Ensure it doesn't exceed viewport */
+    padding: 8px 1.5% !important; /* Consistent with container padding */
+    box-sizing: border-box !important; /* Include padding in width calculation */
+  }
+
+  .popular-matches-scroll,
+  .matches-list {
+    width: 100% !important; /* Fixed container width */
+    max-width: 100vw !important; /* Ensure it doesn't exceed viewport */
+    padding: 0 calc(1.5% + 25px) 4px calc(1.5% + 25px) !important; /* Extra padding to center between arrows */
+    display: flex !important;
+    justify-content: flex-start !important; /* Allow proper scroll snap alignment */
+    align-items: center !important;
+    position: relative !important; /* Enable z-index positioning */
+    z-index: 1 !important; /* Lower z-index than cards */
+    box-sizing: border-box !important; /* Include padding in width calculation */
+    overflow-x: auto !important; /* Enable horizontal scrolling */
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important; /* Enable snap scrolling */
+    gap: 0 !important; /* No gap between match cards */
+    -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+    scrollbar-width: none !important; /* Hide scrollbar */
+    -ms-overflow-style: none !important; /* Hide scrollbar on IE */
+  }
+
+  /* Hide scrollbar for webkit browsers */
+  .popular-matches-scroll::-webkit-scrollbar,
+  .matches-list::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .popular-match-card {
+    flex: 0 0 97% !important; /* Exactly 97% screen coverage */
+    min-width: 97% !important;
+    max-width: 97% !important;
+    width: 97% !important;
+    min-height: 180px !important; /* Uniform minimum height for all cards */
+    max-height: 220px !important; /* Uniform maximum height to prevent variation */
+    padding: 12px 16px !important; /* Increased internal padding to move content inwards */
+    margin: 0 !important; /* Remove auto margin for proper snap alignment */
+    box-sizing: border-box !important; /* Prevent overflow */
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important; /* Center all content */
+    justify-content: space-between !important; /* Distribute content evenly */
+    border-radius: 8px !important; /* Ensure corners are visible */
+    position: relative !important; /* Enable z-index positioning */
+    z-index: 10 !important; /* Bring cards forward */
+    transform: translateZ(0) !important; /* Create new stacking context */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2) !important; /* Enhanced shadow for depth */
+    backdrop-filter: blur(1px) !important; /* Subtle blur effect */
+    scroll-snap-align: center !important; /* Center each card when scrolling */
+  }
+
+  .popular-match-card:hover {
+    transform: translateY(-4px) translateZ(0) !important; /* Enhanced lift effect */
+    z-index: 15 !important; /* Even higher on hover */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 255, 136, 0.2) !important; /* Dramatic shadow */
+    border-color: var(--primary-green) !important;
+    border-width: 2.5px !important;
+  }
+
+  .match-card {
+    padding: 1px !important;
+  }
+
+  .match-card .odds-button {
+    max-width: 44px !important;
+    height: 30px !important;
+    font-size: clamp(9px, 2.2vw, 10px) !important;
+  }
+
+  /* Ensure all match card content is properly centered and doesn't overflow */
+  .popular-match-card .match-teams,
+  .popular-match-card .league-header,
+  .popular-match-card .match-date-time {
+    width: 90% !important; /* Further reduced width to move content more inwards */
+    text-align: center !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important; /* Center within the card */
+    padding: 0 12px !important; /* Increased internal padding to move text inwards */
+  }
+
+  /* Specific styling for odds container to enable proper button distribution */
+  .popular-match-card .odds-container {
+    width: 100% !important; /* Full width for maximum odds button distribution */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    overflow: visible !important; /* Allow proper button display */
+    box-sizing: border-box !important;
+    margin: 0 auto !important; /* Center within the card */
+    padding: 4px 12px !important; /* Balanced padding for button spacing */
+  }
+
+  .popular-match-card .team {
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 85% !important; /* Further reduced to move text more inwards */
+    margin: 0 auto !important;
+    padding: 0 8px !important; /* Increased padding to move text inwards */
+  }
+
+  .popular-match-card .odds-button {
+    flex: 1 1 auto !important; /* Allow buttons to grow and shrink evenly */
+    min-width: 80px !important; /* Further increased minimum width */
+    max-width: 110px !important; /* Further increased maximum width */
+    height: 36px !important; /* Increased height for better touch targets */
+    margin: 0 2px !important; /* Small margin for spacing */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 8px 12px !important; /* Increased padding for better appearance */
+    font-size: clamp(11px, 2.8vw, 13px) !important; /* Larger font for better readability */
+    box-sizing: border-box !important;
+    border-radius: 8px !important; /* Slightly larger border radius */
+  }
+}

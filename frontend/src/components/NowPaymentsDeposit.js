@@ -216,7 +216,7 @@ const NowPaymentsDeposit = () => {
 
               <div className="qr-code-container">
                 <QRCode
-                  value={(['BTC','ETH','XRP','XLM'].includes(String(payment.payCurrency || '').toUpperCase()))
+                  value={(['BTC','ETH','XRP','XLM','USDT'].includes(String(payment.payCurrency || '').toUpperCase()))
                     ? generateCryptoQR(payment.payAddress, payment.payCurrency, payment.payAmount, payment.payinExtraId)
                     : buildPaymentUri({
                         currency: payment.payCurrency,

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import HeroSlider from '../components/HeroSlider';
-import HeroSkeleton from '../components/HeroSkeleton';
 import MatchCardSkeleton from '../components/MatchCardSkeleton';
 import PopularMatchesSkeleton from '../components/PopularMatchesSkeleton';
 import MatchCard from '../components/MatchCard';
@@ -615,7 +614,7 @@ const Home = () => {
 
   return (
     <div className="home-page">
-      {loading ? <HeroSkeleton /> : <HeroSlider />}
+      <HeroSlider />
       
       {/* Popular Matches section - keep unchanged */}
       <div className="main-content">

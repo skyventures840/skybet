@@ -1,9 +1,3 @@
-// Crypto payment URI builder and QR data URL generator
-// Implements user-provided schemes for BTC, ETH, XRP, XLM
-// Usage example:
-// import { generateCryptoQR, generateCryptoQrDataUrl } from './cryptoQr';
-// const uri = generateCryptoQR('rYourXRPAddressHere', 'XRP', '10.5', '123456789');
-// const dataUrl = await generateCryptoQrDataUrl(uri);
 
 import QRCode from 'qrcode';
 
@@ -32,6 +26,13 @@ export function generateCryptoQR(payAddress, payCurrency, amount = null, extraId
       uri = `web+stellar:pay?destination=${payAddress}`;
       if (extraId) uri += `&memo=${extraId}`;
       if (amount) uri += `&amount=${amount}`;
+      break;
+    }
+    case 'usdt': {
+      // USDT is an ERC-20 token on Ethereum, use EIP-681 standard
+      const USDT_CONTRACT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+      const units = Math.floor(parseFloat(amount || 0) * 1e6); // USDT has 6 decimals
+      uri = `ethereum:${USDT_CONTRACT}@1/transfer?address=${payAddress}&uint256=${units}`;
       break;
     }
     // Add cases for LTC, DASH, etc., per earlier table

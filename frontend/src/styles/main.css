@@ -4,7 +4,7 @@
 @import 'components.css';
 @import 'mobile-responsive.css';
 @import 'modern-mobile.css';
-
+@import 'mobile-redesign.css';
 
 @media (min-width: 1024px) {
   /* Hide hamburger menu on desktop */
@@ -482,13 +482,13 @@ html, body { overflow-x: hidden !important; }
   .nav-brand { max-width: none !important; white-space: nowrap !important; }
 }
 
-/* Mobile: modest brand size increase without breaking layout */
+/* Mobile: significant brand size increase without breaking layout */
 @media (max-width: 767px) {
   .nav-brand,
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(32px, 9vw, 48px) !important;
+    font-size: clamp(36px, 11vw, 56px) !important;
     line-height: 1 !important;
   }
 }

@@ -218,15 +218,6 @@ const Betslip = () => {
     return 'Selection';
   };
 
-  // Empty betslip shimmer to guide users
-  const renderEmptySkeleton = () => (
-    <div className="betslip-empty">
-      <div className="skeleton-line" style={{ width: '40%', height: 16, marginBottom: 8 }}></div>
-      <div className="skeleton-line" style={{ width: '60%', height: 12, marginBottom: 10 }}></div>
-      <div className="skeleton-odds"></div>
-    </div>
-  );
-
   const placeBet = async () => {
     if (activeBets.length === 0) return;
     
@@ -404,7 +395,6 @@ const Betslip = () => {
         {activeBets.length === 0 ? (
           <div className="empty-betslip">
             <div className="empty-message">
-              {renderEmptySkeleton()}
               <p>{getValidationMessage()}</p>
             </div>
           </div>

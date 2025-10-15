@@ -15,13 +15,35 @@
   }
 }
 /* ========================================================================
-   GLOBAL HORIZONTAL OVERFLOW GUARD
+   GLOBAL HORIZONTAL OVERFLOW GUARD & MOBILE EDGE-TO-EDGE
    ======================================================================== */
 html, body {
   overflow-x: hidden !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
+}
+
+/* Mobile edge-to-edge styling for all devices ≤767px */
+@media (max-width: 767px) {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  #root, .app, .page-content, .content-wrapper, .under-navbar, .middle, .container {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
 }
 
 /* ==========================================================================
@@ -1544,7 +1566,6 @@ html, body {
     font-size: 12px;
     transition: transform 0.3s ease;
   }
-
   .expand-arrow.expanded {
     transform: rotate(90deg);
   }
@@ -2047,7 +2068,7 @@ html, body {
     overflow: hidden !important;
     left: 0 !important;
     right: 0 !important;
-    padding: 16px 8px !important; /* Optimized padding for full-width utilization */
+    padding: 16px 2px !important; /* Reduced padding for almost 100% screen width utilization */
     display: flex !important;
     flex-direction: column !important;
     gap: 0 !important;
@@ -2558,7 +2579,7 @@ html, body {
   }
 
   .match-time {
-    font-size: clamp(7px, 1.6vw, 9px) !important;
+    font-size: clamp(12px, 2.5vw, 16px) !important;
     color: var(--text-muted);
     font-weight: 400;
     text-align: left !important; /* Align to left */
@@ -3640,21 +3661,26 @@ html, body {
     padding: 0 12px !important;
   }
 
-  /* Popular matches - enable horizontal swipe with snap */
+  /* Popular matches - enable horizontal swipe with snap - match hero section full width */
   .popular-matches-scroll {
     display: flex;
     overflow-x: auto !important; /* Enable horizontal swipe */
     overflow-y: hidden;
-    gap: 0 !important; /* No gap between cards for seamless appearance */
-    padding: 0 !important; /* No padding for full width */
+    gap: 16px !important; /* Increased gap between cards for better visual separation */
+    padding: 0 16px !important; /* Increased padding to accommodate larger gap */
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x; /* Allow horizontal panning */
     scroll-snap-type: x mandatory; /* Snap one card at a time */
-    width: 100% !important; /* Use 100% instead of 100vw to prevent horizontal scroll */
-    max-width: 100% !important;
+    width: 100vw !important; /* Full viewport width like hero section */
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important; /* Negative margins like hero section */
+    margin-right: calc(-50vw + 50%) !important; /* Negative margins like hero section */
+    box-sizing: border-box !important; /* Match hero section */
     scrollbar-width: none; /* Hide scrollbar */
     -ms-overflow-style: none; /* Hide scrollbar in IE/Edge */
+    position: relative !important;
+    z-index: 5 !important;
   }
 
   .popular-matches-scroll::-webkit-scrollbar {
@@ -3662,20 +3688,33 @@ html, body {
   }
 
   .popular-match-card {
-    flex: 0 0 100%; /* One card per viewport width */
-    min-width: 100%;
+    flex: 0 0 92%; /* Further reduced width to accommodate larger gap */
+    min-width: 92%;
     scroll-snap-align: start; /* Snap card to start */
     background: var(--card-bg);
     border: none !important; /* Remove border for full-width coverage */
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; /* Subtle separator only */
-    border-radius: 0 !important; /* Remove border radius for seamless connection */
-    padding: 16px 8px !important; /* Optimized padding for full-width utilization */
+    border-radius: 8px !important; /* Add border radius for better visual separation */
+    padding: 12px 16px !important; /* Proper padding for content spacing within full-width container */
     transition: all 0.3s ease;
     margin: 0 !important; /* No margin between cards */
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 92% !important;
+    max-width: 92% !important;
     min-height: 120px !important; /* Increased height for better visibility */
     box-sizing: border-box !important; /* Ensure padding is included in width */
+    position: relative !important;
+    z-index: 10 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important; /* Add shadow for better visual separation */
+  }
+
+  /* Ensure proper spacing for card content elements */
+  .popular-match-card .match-league,
+  .popular-match-card .match-time,
+  .popular-match-card .match-teams,
+  .popular-match-card .match-score {
+    position: relative !important;
+    z-index: 15 !important;
+    margin: 4px 0 !important; /* Proper vertical spacing between elements */
   }
 
   /* Make popular matches arrows visible and positioned */
@@ -3693,7 +3732,7 @@ html, body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    z-index: 5;
+    z-index: 20 !important; /* Higher z-index to stay above all content */
     box-shadow: none;
   }
   .popular-slider-btn.prev-btn { left: 16px; }
@@ -3795,51 +3834,69 @@ html, body {
     width: 100%;
   }
 
-  /* Ensure all content containers are full width */
+  /* Ensure all content containers are full viewport width for edge-to-edge */
   .main-content,
   .page-content,
   .under-navbar,
   .middle,
   .container {
-    width: 100% !important;
+    width: 100vw !important; /* Full viewport width for true edge-to-edge */
     max-width: 100vw !important;
     margin: 0 !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
 
   .main-content {
     padding: 0 !important; /* Zero padding for full width sections */
     margin: 0 !important;
-    width: 100% !important;
+    width: 100vw !important; /* Full viewport width for true edge-to-edge */
     max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
 
-  /* Popular matches section specific */
+  /* Popular matches section specific - match hero section full width approach */
   .popular-matches-section {
-    width: 100% !important; /* Use 100% instead of 100vw to prevent horizontal scroll */
-    max-width: 100% !important;
+    width: 100vw !important; /* Full viewport width like hero section */
+    max-width: 100vw !important;
     margin: 0 !important;
+    margin-left: calc(-50vw + 50%) !important; /* Negative margins like hero section */
+    margin-right: calc(-50vw + 50%) !important; /* Negative margins like hero section */
     padding: 0 !important;
-    margin-left: 0 !important; /* Remove negative margins */
-    margin-right: 0 !important; /* Remove negative margins */
     overflow: hidden !important;
     position: relative; /* For proper content positioning */
     left: 0 !important; /* Match hero section positioning */
     min-height: 150px !important; /* Increased height for better visibility */
     right: 0 !important; /* Match hero section positioning */
     border-radius: 0; /* Match hero section border radius */
+    z-index: 1 !important; /* Lower z-index to send container backward */
+    box-sizing: border-box !important; /* Match hero section */
+    /* Additional edge space elimination */
+    transform: translateX(0) !important;
+    border: none !important;
+    outline: none !important;
   }
 
   .popular-matches-box {
-    width: 100% !important; /* Use 100% instead of 100vw to prevent horizontal scroll */
-    max-width: 100% !important;
+    width: 100vw !important; /* Full viewport width like hero section */
+    max-width: 100vw !important;
     margin: 0 !important;
+    margin-left: calc(-50vw + 50%) !important; /* Negative margins like hero section */
+    margin-right: calc(-50vw + 50%) !important; /* Negative margins like hero section */
     padding: 0 !important;
     overflow: hidden !important;
     position: relative; /* For proper content positioning */
     left: 0 !important; /* Match hero section positioning */
     right: 0 !important; /* Match hero section positioning */
     border-radius: 0; /* Match hero section border radius */
+    z-index: 1 !important; /* Lower z-index to send container backward */
+    box-sizing: border-box !important; /* Match hero section */
+    /* Additional edge space elimination */
+    transform: translateX(0) !important;
+    border: none !important;
+    outline: none !important;
   }
 
   .popular-matches-header {
@@ -4379,7 +4436,7 @@ html, body {
   .match-card .team-name { font-size: var(--font-size-sm) !important; }
   .match-card .team-score { font-size: var(--font-size-md) !important; }
   .match-card .match-league { font-size: var(--font-size-xs) !important; }
-  .match-card .match-time { font-size: var(--font-size-xs) !important; }
+  .match-card .match-time { font-size: var(--font-size-sm) !important; }
 }
 
 /* ==========================================================================
@@ -4894,12 +4951,12 @@ html, body {
    SKYBET BRAND - SMALL SCREEN SIZE INCREASE (FINAL OVERRIDE)
    ========================================================================== */
 @media (max-width: 767px) {
-  /* Increase brand size slightly on small screens while keeping layout intact */
+  /* Increase brand size significantly on small screens while keeping layout intact */
   header.navbar .navbar-left .nav-brand,
   .navbar .navbar-left .nav-brand,
   .navbar .nav-brand,
   .nav-brand {
-    font-size: clamp(28px, 8.5vw, 42px) !important; /* Larger than default for better prominence */
+    font-size: clamp(36px, 11vw, 56px) !important; /* Significantly larger for better prominence */
     line-height: 1 !important;
     letter-spacing: -0.5px !important;
     white-space: nowrap !important;
@@ -4997,9 +5054,24 @@ html, body {
   }
   .popular-matches-scroll {
     max-height: 280px !important;
+    position: relative !important; /* Ensure positioning context for z-index */
+    z-index: 5 !important; /* Medium z-index for scroll container */
   }
   .popular-match-card {
     min-height: 280px !important;
+    position: relative !important; /* Ensure positioning context for z-index */
+    z-index: 10 !important; /* Higher z-index to bring cards forward */
+  }
+
+  /* Bring forward all content within popular match cards */
+  .popular-match-card .match-league,
+  .popular-match-card .match-time,
+  .popular-match-card .match-teams-container,
+  .popular-match-card .team-name,
+  .popular-match-card .vs,
+  .popular-match-card .match-odds {
+    position: relative !important;
+    z-index: 15 !important; /* Even higher z-index for text content */
   }
 }
 
