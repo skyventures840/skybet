@@ -159,6 +159,20 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
         
         const handleAdditionalMarketsClick = (e) => {
             e.stopPropagation();
+            
+            // Preserve Home data before navigating away
+            try {
+                const homeMatches = sessionStorage.getItem('home_matches_data');
+                const homePopular = sessionStorage.getItem('home_popular_data');
+                const homeFiltered = sessionStorage.getItem('home_filtered_data');
+                
+                if (homeMatches || homePopular || homeFiltered) {
+                    console.log('[SUBCATEGORY] Home data already preserved in session storage');
+                }
+            } catch (e) {
+                console.log('[SUBCATEGORY] Session storage not available');
+            }
+            
             const matchId = match._id || match.id;
             if (matchId) {
                 navigate(`/match/${matchId}?from=additional`);
@@ -168,7 +182,22 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
         };
 
         return (
-        <div className={`match-row ${isLiveMatch(match) ? 'live-match' : ''}`} onClick={() => navigate(`/match/${match._id || match.id}`)}>
+        <div className={`match-row ${isLiveMatch(match) ? 'live-match' : ''}`} onClick={() => {
+            // Preserve Home data before navigating away
+            try {
+                const homeMatches = sessionStorage.getItem('home_matches_data');
+                const homePopular = sessionStorage.getItem('home_popular_data');
+                const homeFiltered = sessionStorage.getItem('home_filtered_data');
+                
+                if (homeMatches || homePopular || homeFiltered) {
+                    console.log('[SUBCATEGORY] Home data already preserved in session storage');
+                }
+            } catch (e) {
+                console.log('[SUBCATEGORY] Session storage not available');
+            }
+            
+            navigate(`/match/${match._id || match.id}`);
+        }}>
             {/* Live status badge */}
             {isLiveMatch(match) && (
                 <div className="live-status-badge">LIVE</div>

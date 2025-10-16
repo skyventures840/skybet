@@ -4277,6 +4277,73 @@ html, body {
     gap: 2px !important;
   }
 
+  /* Ultra-compact match cards for very small screens */
+  .match-card,
+  .popular-match-card {
+    min-height: 180px !important; /* Even smaller for tiny screens */
+    padding: 6px !important; /* Minimal padding */
+    margin: 2px auto !important; /* Minimal margin */
+    width: calc(100% - 24px) !important; /* Increased margin for corner radius visibility */
+    max-width: 280px !important; /* Added max-width for better control */
+  }
+
+  /* Ultra-compact odds buttons */
+  .odds-button,
+  .match-card .odds-button,
+  .match-container .odds-button {
+    min-height: 20px !important; /* Very small height */
+    padding: 1px 3px !important; /* Minimal padding */
+    font-size: clamp(7px, 1.8vw, 9px) !important; /* Very small font */
+    border-radius: 3px !important; /* Smaller border radius */
+    min-width: 40px !important; /* Smaller minimum width */
+  }
+
+  /* Ultra-compact odds button container */
+  .odds-buttons-container,
+  .match-card .odds-buttons-container,
+  .match-container .odds-buttons-container {
+    gap: 1px !important; /* Minimal gap */
+    padding: 0 2px !important; /* Minimal padding */
+    margin: 0 1px !important; /* Minimal margin */
+  }
+
+  /* Ultra-small text in odds buttons */
+  .odd-label,
+  .match-card .odd-label,
+  .match-container .odd-label {
+    font-size: clamp(6px, 1.5vw, 8px) !important; /* Very small label text */
+    margin-bottom: 0px !important; /* No margin */
+  }
+
+  .odd-value,
+  .match-card .odd-value,
+  .match-container .odd-value {
+    font-size: clamp(7px, 1.8vw, 9px) !important; /* Very small value text */
+  }
+
+  /* Maximize space for odds by reducing teams section */
+  .match-card .match-teams {
+    max-width: 45% !important; /* Even smaller teams section */
+    margin-right: 2px !important; /* Minimal margin */
+    padding-left: 6px !important; /* Minimal padding */
+  }
+
+  /* Ultra-small team and match info text */
+  .match-card .team-name {
+    font-size: clamp(8px, 2vw, 10px) !important; /* Very small team names */
+  }
+
+  .match-card .team-score {
+    font-size: clamp(9px, 2.2vw, 11px) !important; /* Very small scores */
+  }
+
+  .match-card .match-league,
+  .match-card .match-time,
+  .match-card .match-date-time {
+    font-size: clamp(7px, 1.8vw, 9px) !important; /* Very small info text */
+    padding-left: 6px !important; /* Minimal padding */
+  }
+
   .navbar-right {
     gap: 2px !important;
   }
@@ -4729,7 +4796,97 @@ html, body {
 @media (max-width: 480px) {
   .match-card,
   .popular-match-card {
-    min-height: 260px !important;
+    min-height: 200px !important; /* Reduced from 260px for better fit */
+    padding: 8px !important; /* Reduced padding */
+    margin: 4px auto !important; /* Reduced margin */
+    width: calc(100% - 32px) !important; /* Increased margin for corner radius visibility */
+    max-width: 320px !important; /* Added max-width for better control */
+  }
+
+  /* Reduce odds buttons significantly for small screens */
+  .odds-button,
+  .match-card .odds-button,
+  .match-container .odds-button {
+    min-height: 24px !important; /* Reduced from 30px */
+    padding: 2px 4px !important; /* Reduced padding */
+    font-size: clamp(8px, 2vw, 10px) !important; /* Smaller font */
+    border-radius: 4px !important; /* Smaller border radius */
+    min-width: 45px !important; /* Ensure minimum width for readability */
+  }
+
+  /* Reduce odds button container spacing */
+  .odds-buttons-container,
+  .match-card .odds-buttons-container,
+  .match-container .odds-buttons-container {
+    gap: 2px !important; /* Reduced gap between buttons */
+    padding: 0 4px !important; /* Reduced padding */
+    margin: 0 2px !important; /* Reduced margin */
+  }
+
+  /* Reduce text sizes in odds buttons */
+  .odd-label,
+  .match-card .odd-label,
+  .match-container .odd-label {
+    font-size: clamp(7px, 1.8vw, 9px) !important; /* Smaller label text */
+    margin-bottom: 1px !important; /* Reduced margin */
+  }
+
+  .odd-value,
+  .match-card .odd-value,
+  .match-container .odd-value {
+    font-size: clamp(8px, 2vw, 10px) !important; /* Smaller value text */
+  }
+
+  /* Reduce match teams section to give more space to odds */
+  .match-card .match-teams {
+    max-width: 50% !important; /* Reduced from 55% */
+    margin-right: 4px !important; /* Reduced margin */
+    padding-left: 8px !important; /* Reduced padding */
+  }
+
+  /* Reduce team name and score font sizes */
+  .match-card .team-name {
+    font-size: clamp(9px, 2.2vw, 11px) !important; /* Smaller team names */
+  }
+
+  .match-card .team-score {
+    font-size: clamp(10px, 2.4vw, 12px) !important; /* Smaller scores */
+  }
+
+  /* Reduce match info text sizes */
+  .match-card .match-league,
+  .match-card .match-time,
+  .match-card .match-date-time {
+    font-size: clamp(8px, 2vw, 10px) !important; /* Smaller info text */
+    padding-left: 8px !important; /* Reduced padding */
+  }
+
+  /* Ensure containers accommodate smaller match cards */
+  .matches-container,
+  .matches-list,
+  .competition-group {
+    padding: 2px !important; /* Reduced container padding */
+    margin: 2px 0 !important; /* Reduced container margin */
+  }
+
+  .league-header {
+    padding: 4px 8px !important; /* Reduced league header padding */
+    margin-bottom: 2px !important; /* Reduced margin */
+    font-size: clamp(10px, 2.5vw, 12px) !important; /* Smaller league header text */
+  }
+
+  /* Adjust score-odds-line for better fit */
+  .match-card .score-odds-line {
+    padding: 2px 4px !important; /* Reduced padding */
+    margin: 1px 0 !important; /* Reduced margin */
+    gap: 2px !important; /* Reduced gap between elements */
+  }
+
+  /* Ensure match row fits properly */
+  .match-card .match-row {
+    padding: 2px !important; /* Reduced row padding */
+    margin: 1px 0 !important; /* Reduced row margin */
+    min-height: auto !important; /* Allow flexible height */
   }
 }
 
@@ -5211,8 +5368,8 @@ html, body {
   .matches-grid { padding-left: 10px !important; padding-right: 10px !important; }
   /* Fixed-width card centered with rounded corners */
   .match-card { 
-    width: calc(100% - 24px) !important; 
-    max-width: 420px !important; 
+    width: calc(100% - 40px) !important; /* Increased margin for corner radius visibility */
+    max-width: 380px !important; /* Reduced max-width for better fit */
     margin-left: auto !important; 
     margin-right: auto !important; 
     padding-left: 8px !important; 

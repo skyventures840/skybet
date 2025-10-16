@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import HeroSlider from '../components/HeroSlider';
-import MatchCardSkeleton from '../components/MatchCardSkeleton';
-import PopularMatchesSkeleton from '../components/PopularMatchesSkeleton';
 import MatchCard from '../components/MatchCard';
 import PopularMatches from '../components/PopularMatches';
 import apiService from '../services/api';
 import SportsStrip from '../components/SportsStrip';
+import enhancedCache from '../services/enhancedCache';
+import oddsWebSocket from '../services/oddsWebSocket';
 
 const Home = () => {
   const [selectedTab, setSelectedTab] = useState('Featured');
@@ -254,6 +254,14 @@ const Home = () => {
     filtered = filtered.filter(match => new Date(match.startTime) >= now);
 
     setFilteredMatches(filtered);
+    
+    // Save filtered matches to session storage
+    try {
+      sessionStorage.setItem('home_filtered_data', JSON.stringify(filtered));
+      console.log('[HOME] Saved filtered matches data to session storage');
+    } catch (e) {
+      console.log('[HOME] Failed to save filtered matches to session storage:', e);
+    }
   }, [matches, searchTerm, selectedDate, selectedSidebarFilter, selectedSubcategory]);
 
  
@@ -332,12 +340,66 @@ const Home = () => {
   };
 
   // Fetch matches from API
-  const fetchMatches = async () => {
+  const fetchMatches = async (forceRefresh = false) => {
     try {
-      setLoading(true);
       setError(null);
+      setLoading(true);
       
-      console.log('[DEBUG] Starting to fetch matches from API...');
+      // Try to get cached data first
+      if (!forceRefresh) {
+        const cachedMatches = enhancedCache.getCachedData('/matches');
+        if (cachedMatches) {
+          console.log('[HOME] Using cached matches data');
+          const transformedMatches = transformOddsToMatches(cachedMatches.matches || []);
+          setMatches(transformedMatches);
+          
+          // Use the same data for popular matches (ensure no duplicates)
+          const now = new Date();
+          const popularMatchesData = transformedMatches
+            .filter(match => {
+              // Count valid odds (greater than 0)
+              const validOddsCount = Object.values(match.odds || {}).filter(odd => odd > 0).length;
+              return validOddsCount >= 2;
+            })
+            // Only upcoming
+            .filter(match => new Date(match.startTime) >= now)
+            .slice(0, 6)
+            .map(match => ({
+              id: match.id || match._id,
+              league: match.league || '',
+              subcategory: match.subcategory || '',
+              startTime: match.startTime,
+              time: new Date(match.startTime).toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              odds: match.odds || {},
+              sport: match.sport || '',
+              country: match.country || '',
+              fullLeagueTitle: match.fullLeagueTitle || ''
+            }));
+          
+          const uniquePopularMatches = deduplicateMatches(popularMatchesData);
+          setPopularMatches(uniquePopularMatches);
+          
+          // Save popular matches to session storage
+          try {
+            sessionStorage.setItem('home_popular_data', JSON.stringify(uniquePopularMatches));
+            console.log('[HOME] Saved popular matches data to session storage');
+          } catch (e) {
+            console.log('[HOME] Failed to save popular matches to session storage:', e);
+          }
+          
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Fetch fresh data if no cache or force refresh
+      console.log('[HOME] Fetching fresh matches data...');
+      setLoading(true);
       
       const response = await apiService.getMatches();
       console.log('[DEBUG] API response received:', response);
@@ -354,6 +416,14 @@ const Home = () => {
         console.log('[DEBUG] First match sample:', transformedMatches[0]);
       }
       setMatches(transformedMatches);
+      
+      // Save to session storage for instant navigation
+      try {
+        sessionStorage.setItem('home_matches_data', JSON.stringify(transformedMatches));
+        console.log('[HOME] Saved matches data to session storage');
+      } catch (e) {
+        console.log('[HOME] Failed to save matches to session storage:', e);
+      }
       
       // Use the same data for popular matches (ensure no duplicates)
       const now = new Date();
@@ -419,10 +489,108 @@ const Home = () => {
     }
   };
 
-  // Add this near the other useEffect hooks, after the existing fetchMatches useEffect
-  // Replace this useEffect
+  // Initialize WebSocket and handle odds updates
   useEffect(() => {
-    // Preload cached matches/popular to render instantly
+    const handleOddsUpdate = (data) => {
+      console.log('[HOME] Received odds update:', data);
+      
+      // Update matches with new odds
+      setMatches(prevMatches => 
+        prevMatches.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              odds: { ...match.odds, ...data.odds }
+            };
+          }
+          return match;
+        })
+      );
+      
+      // Update popular matches with new odds
+      setPopularMatches(prevPopular => 
+        prevPopular.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              odds: { ...match.odds, ...data.odds }
+            };
+          }
+          return match;
+        })
+      );
+    };
+
+    const handleMatchStatusUpdate = (data) => {
+      console.log('[HOME] Received match status update:', data);
+      
+      // Update match status in both matches and popular matches
+      setMatches(prevMatches => 
+        prevMatches.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              status: data.status,
+              score: data.score || match.score
+            };
+          }
+          return match;
+        })
+      );
+      
+      setPopularMatches(prevPopular => 
+        prevPopular.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              status: data.status,
+              score: data.score || match.score
+            };
+          }
+          return match;
+        })
+      );
+    };
+
+    // Subscribe to WebSocket events and store unsubscribe functions
+    const unsubscribeOddsUpdate = oddsWebSocket.subscribe('odds_update', handleOddsUpdate);
+    const unsubscribeMatchStatus = oddsWebSocket.subscribe('match_status', handleMatchStatusUpdate);
+
+    // Connect WebSocket
+    oddsWebSocket.connect();
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribeOddsUpdate();
+      unsubscribeMatchStatus();
+      oddsWebSocket.disconnect();
+    };
+  }, []);
+  
+  // Preload cached data on component mount for instant display
+  useEffect(() => {
+    // First, try to restore from session storage for instant navigation
+    try {
+      const sessionMatches = sessionStorage.getItem('home_matches_data');
+      const sessionPopular = sessionStorage.getItem('home_popular_data');
+      const sessionFiltered = sessionStorage.getItem('home_filtered_data');
+      
+      if (sessionMatches && sessionPopular) {
+        console.log('[HOME] Restoring data from session storage for instant display');
+        const parsedMatches = JSON.parse(sessionMatches);
+        const parsedPopular = JSON.parse(sessionPopular);
+        const parsedFiltered = sessionFiltered ? JSON.parse(sessionFiltered) : [];
+        
+        setMatches(parsedMatches);
+        setPopularMatches(parsedPopular);
+        setFilteredMatches(parsedFiltered);
+        setLoading(false); // Show content immediately
+      }
+    } catch (e) {
+      console.log('[HOME] No session storage data available');
+    }
+
+    // Then, try localStorage cache as fallback
     try {
       const matchesCacheRaw = localStorage.getItem('cache:/matches');
       if (matchesCacheRaw) {
@@ -502,6 +670,35 @@ const Home = () => {
     
     return () => clearInterval(popularMatchesInterval);
   }, []);
+
+  // Navigation state management for preserving data
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Page is being hidden (user navigating away), ensure data is saved
+        try {
+          if (matches.length > 0) {
+            sessionStorage.setItem('home_matches_data', JSON.stringify(matches));
+          }
+          if (popularMatches.length > 0) {
+            sessionStorage.setItem('home_popular_data', JSON.stringify(popularMatches));
+          }
+          if (filteredMatches.length > 0) {
+            sessionStorage.setItem('home_filtered_data', JSON.stringify(filteredMatches));
+          }
+          console.log('[HOME] Data preserved for navigation');
+        } catch (e) {
+          console.log('[HOME] Failed to preserve data:', e);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [matches, popularMatches, filteredMatches]);
   
   // Add this new function to fetch only popular matches
   const fetchPopularMatches = async () => {
@@ -638,7 +835,6 @@ const Home = () => {
               );
             }
           }
-          if (loading) return <PopularMatchesSkeleton />;
           return <PopularMatches matches={pm} loading={loading} />;
         })()}
         
@@ -671,13 +867,7 @@ const Home = () => {
           </div>
 
           <div className="matches-container">
-            {loading && Object.keys(groupedMatches).length === 0 ? (
-              <div className="matches-skeleton-grid">
-                {Array.from({ length: 6 }).map((_, idx) => (
-                  <MatchCardSkeleton key={idx} />
-                ))}
-              </div>
-            ) : Object.entries(groupedMatches).length > 0 ? (
+            {Object.entries(groupedMatches).length > 0 ? (
               Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
                 <div key={subcategory} className="competition-group">
                   <div className="matches-list">

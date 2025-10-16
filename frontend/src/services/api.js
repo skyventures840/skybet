@@ -1,4 +1,5 @@
 import axios from 'axios';
+import enhancedCache from './enhancedCache';
 
 // Use environment variable for API URL, fallback to localhost for development
 const RAW_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000';
@@ -60,45 +61,28 @@ const responseCache = {
   }
 };
 
-async function cachedGet(path, ttlMs) {
-  // 1) In-memory cache for fast same-session hits
-  const cached = responseCache.get(path);
-  if (cached) return cached;
-
-  // 2) LocalStorage cache for instant loads across sessions
-  const lsKey = `cache:${path}`;
-  try {
-    const raw = localStorage.getItem(lsKey);
-    if (raw) {
-      const entry = JSON.parse(raw);
-      if (entry && entry.timestamp && (Date.now() - entry.timestamp) < ttlMs) {
-        // Minimal axios-like response shape
-        const lsResponse = {
-          data: entry.data,
-          status: 200,
-          headers: {},
-          config: { url: path },
-          request: null,
-        };
-        // Also warm in-memory cache for subsequent calls in this session
-        responseCache.set(path, lsResponse, ttlMs);
-        return lsResponse;
-      }
-    }
-  } catch (e) {
-    // Ignore JSON/Storage errors and continue to network request
-    void e;
+async function cachedGet(path, ttlMs = null) {
+  // Use enhanced cache for 30-minute caching (ignore ttlMs parameter)
+  const cachedData = enhancedCache.getCachedData(path);
+  
+  if (cachedData) {
+    // Return cached data in axios-like response format
+    return {
+      data: cachedData,
+      status: 200,
+      headers: {},
+      config: { url: path },
+      request: null,
+    };
   }
 
-  // 3) Network request (and persist result to both caches)
+  // Make network request if no valid cache
+  console.log(`[ENHANCED API] Fetching fresh data for ${path}`);
   const response = await api.get(path);
-  responseCache.set(path, response, ttlMs);
-  try {
-    localStorage.setItem(lsKey, JSON.stringify({ timestamp: Date.now(), data: response.data }));
-  } catch (e) {
-    // Storage might be full or unavailable; safe to ignore
-    void e;
-  }
+  
+  // Cache the response data
+  enhancedCache.setCachedData(path, response.data);
+  
   return response;
 }
 
@@ -125,16 +109,21 @@ api.interceptors.response.use(
     const url = response?.config?.url || '';
     if (method === 'post' || method === 'put' || method === 'delete') {
       if (url.startsWith('/admin/matches') || url.startsWith('/matches')) {
+        enhancedCache.invalidateByPrefix('/matches');
         responseCache.invalidate('/matches');
       }
       if (url.startsWith('/admin/hero')) {
+        enhancedCache.invalidateByPrefix('/admin/hero');
         responseCache.invalidate('/admin/hero');
       }
       if (url.startsWith('/admin/leagues') || url.startsWith('/sports')) {
+        enhancedCache.invalidateByPrefix('/sports');
+        enhancedCache.invalidateByPrefix('/admin/leagues');
         responseCache.invalidate('/sports');
         responseCache.invalidate('/admin/leagues');
       }
       if (url.startsWith('/admin/users') || url.startsWith('/users')) {
+        enhancedCache.invalidateByPrefix('/admin/users');
         responseCache.invalidate('/admin/users');
       }
     }

@@ -249,6 +249,19 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
     };
 
     const handleMatchClick = () => {
+        // Preserve Home data before navigating away
+        try {
+            const homeMatches = sessionStorage.getItem('home_matches_data');
+            const homePopular = sessionStorage.getItem('home_popular_data');
+            const homeFiltered = sessionStorage.getItem('home_filtered_data');
+            
+            if (homeMatches || homePopular || homeFiltered) {
+                console.log('[MATCHCARD] Home data already preserved in session storage');
+            }
+        } catch (e) {
+            console.log('[MATCHCARD] Session storage not available');
+        }
+        
         const matchId = match._id || match.id;
         if (matchId) {
             navigate(`/match/${matchId}`);
@@ -261,6 +274,20 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
 
     const handleTeamsClick = (e) => {
         e.stopPropagation();
+        
+        // Preserve Home data before navigating away
+        try {
+            const homeMatches = sessionStorage.getItem('home_matches_data');
+            const homePopular = sessionStorage.getItem('home_popular_data');
+            const homeFiltered = sessionStorage.getItem('home_filtered_data');
+            
+            if (homeMatches || homePopular || homeFiltered) {
+                console.log('[MATCHCARD] Home data already preserved in session storage');
+            }
+        } catch (e) {
+            console.log('[MATCHCARD] Session storage not available');
+        }
+        
         const matchId = match._id || match.id;
         if (matchId) {
             navigate(`/match/${matchId}/markets`);
