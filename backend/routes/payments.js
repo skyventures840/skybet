@@ -15,7 +15,8 @@ function generateMockAddress(currency) {
     'LTC': 'LTC1234567890abcdef1234567890abcdef12345678',
     'BCH': 'bitcoincash:qp3wjpa3tjlj042z2wv7hahsldgwhwy0rq9sywjpyy',
     'XRP': 'rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH',
-    'USDT': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f'
+    'USDT': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f', // USDT ERC20 (Ethereum)
+    'USDTTRC20': 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' // USDT TRC20 (TRON)
   };
   return addresses[currency.toUpperCase()] || addresses['BTC'];
 }
@@ -28,7 +29,8 @@ function calculateMockPayAmount(usdAmount, currency) {
     'LTC': 100,     // 1 LTC = $100
     'BCH': 300,     // 1 BCH = $300
     'XRP': 0.5,     // 1 XRP = $0.50
-    'USDT': 1       // 1 USDT = $1
+    'USDT': 1,      // 1 USDT ERC20 = $1
+    'USDTTRC20': 1  // 1 USDT TRC20 = $1
   };
   
   const rate = mockRates[currency.toUpperCase()] || mockRates['BTC'];

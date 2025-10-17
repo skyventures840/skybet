@@ -104,9 +104,21 @@ router.post('/login', [
     }
 
     console.log('[DEBUG] User found, verifying password');
+    console.log('[DEBUG] Input password details:', {
+      length: password.length,
+      value: password,
+      type: typeof password
+    });
+    console.log('[DEBUG] Stored password details:', {
+      length: user.password.length,
+      prefix: user.password.substring(0, 20),
+      type: typeof user.password
+    });
+    
     let isMatch = false;
     try {
       isMatch = await bcrypt.compare(password, user.password);
+      console.log('[DEBUG] bcrypt.compare result:', isMatch);
     } catch (compareErr) {
       console.error('[DEBUG] bcrypt.compare failed:', compareErr);
       return res.status(400).json({ message: 'Invalid credentials.' });

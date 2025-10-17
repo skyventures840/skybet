@@ -168,7 +168,8 @@ function generateMockAddress(currency) {
   const addresses = {
     'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
     'ETH': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f',
-    'USDT': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f',
+    'USDT': '0x742d35Cc6634C0532925a3b8D49d7e8E9c2d4b7f', // USDT ERC20 (Ethereum)
+    'USDTTRC20': 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', // USDT TRC20 (TRON)
     'USDC': '0x3f5CE5FBFe3E9af3971dD833D26BA9B5C936f0bE',
     'LTC': 'LTC1234567890abcdef1234567890abcdef12345678',
     'XRP': 'rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH',
@@ -195,7 +196,8 @@ function calculateMockPayAmount(usdAmount, currency) {
   const mockRates = {
     'BTC': 45000,
     'ETH': 2500,
-    'USDT': 1,
+    'USDT': 1, // USDT ERC20 (Ethereum)
+    'USDTTRC20': 1, // USDT TRC20 (TRON)
     'USDC': 1,
     'LTC': 100,
     'XRP': 0.5,

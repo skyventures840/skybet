@@ -21,6 +21,8 @@ const wheelRoutes = require('./routes/wheel');
 
 // Import Socket.io server
 const { createSocketIOServer } = require('./events/socketioServer');
+// Import WebSocket server
+const WebSocketServer = require('./websocketServer');
 const compression = require('compression');
 const sharp = require('sharp');
 const { cache, get, set, del } = require('./utils/cache');
@@ -245,6 +247,10 @@ function startHttpAndWsServers() {
   });
   const io = createSocketIOServer(server);
   module.exports.io = io;
+
+  // Initialize WebSocket server
+  global.websocketServer = new WebSocketServer(server);
+  console.log('WebSocket server initialized');
 
   // Graceful shutdown
   process.on('SIGTERM', () => {

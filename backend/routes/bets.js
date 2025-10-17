@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Bet = require('../models/Bet');
 const User = require('../models/User');
 const Match = require('../models/Match');
@@ -115,9 +116,9 @@ function getHomeTeam(matchId, market, selection) {
     if (selection === 'Home Team' || selection === matchData?.homeTeam) {
       return selection;
     }
-    return 'Team A';
+    return 'Unknown';
   }
-  return 'Team A';
+  return 'Unknown';
 }
 
 function getAwayTeam(matchId, market, selection) {
@@ -131,9 +132,9 @@ function getAwayTeam(matchId, market, selection) {
     if (selection === 'Away Team' || selection === matchData?.awayTeam) {
       return selection;
     }
-    return 'Team B';
+    return 'Unknown';
   }
-  return 'Team B';
+  return 'Unknown';
 }
 
 function getCompetition(matchId) {
@@ -258,6 +259,20 @@ router.post('/', auth, [
     console.log('Updating user balance...');
     await User.updateBalance(userId, -stake);
     console.log('User balance updated');
+
+    // Broadcast new bet via WebSocket
+    if (global.websocketServer) {
+      const populatedBet = await Bet.findById(bet._id).populate('userId', 'username email');
+      
+      global.websocketServer.broadcastToAll({
+        type: 'new_bet',
+        payload: {
+          bet: populatedBet,
+          betId: bet._id.toString(),
+          userId: userId.toString()
+        }
+      });
+    }
 
     res.status(201).json({ 
       id: bet._id,
@@ -454,33 +469,44 @@ router.delete('/:betId', auth, async (req, res) => {
 router.get('/stats/summary', auth, async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log(`Fetching bet stats for user: ${userId}`);
 
+    // Get comprehensive bet statistics using aggregation
     const stats = await Bet.aggregate([
-      { $match: { userId: userId } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: '$status',
           count: { $sum: 1 },
           totalStake: { $sum: '$stake' },
-          totalWin: { $sum: '$actualWin' }
+          totalWin: { $sum: '$actualWin' },
+          totalPotentialWin: { $sum: '$potentialWin' }
         }
       }
     ]);
+
+    console.log('Aggregation results:', stats);
 
     const summary = {
       totalBets: 0,
       totalStaked: 0,
       totalWon: 0,
+      totalPotentialWin: 0,
       pendingBets: 0,
       wonBets: 0,
       lostBets: 0,
-      profit: 0
+      voidBets: 0,
+      cancelledBets: 0,
+      profit: 0,
+      winRate: 0
     };
 
+    // Process aggregation results
     stats.forEach(stat => {
       summary.totalBets += stat.count;
-      summary.totalStaked += stat.totalStake;
+      summary.totalStaked += stat.totalStake || 0;
       summary.totalWon += stat.totalWin || 0;
+      summary.totalPotentialWin += stat.totalPotentialWin || 0;
 
       switch (stat._id) {
         case 'pending':
@@ -492,16 +518,35 @@ router.get('/stats/summary', auth, async (req, res) => {
         case 'lost':
           summary.lostBets = stat.count;
           break;
+        case 'void':
+          summary.voidBets = stat.count;
+          break;
+        case 'cancelled':
+          summary.cancelledBets = stat.count;
+          break;
       }
     });
 
+    // Calculate derived statistics
     summary.profit = summary.totalWon - summary.totalStaked;
-    summary.winRate = summary.totalBets > 0 ? ((summary.wonBets / (summary.wonBets + summary.lostBets)) * 100).toFixed(2) : 0;
+    
+    // Calculate win rate based only on settled bets (won + lost), excluding pending, void, and cancelled
+    const settledBets = summary.wonBets + summary.lostBets;
+    summary.winRate = settledBets > 0 ? parseFloat(((summary.wonBets / settledBets) * 100).toFixed(2)) : 0;
 
+    // Add active bets (alias for pending bets for frontend compatibility)
+    summary.activeBets = summary.pendingBets;
+
+    console.log('Final summary:', summary);
     res.json(summary);
   } catch (error) {
     console.error('Get bet stats error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Server error', 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

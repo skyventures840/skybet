@@ -812,10 +812,42 @@ router.put('/bets/:betId/status', adminAuth, [
       });
     }
 
+    // Broadcast bet status update via WebSocket
+    if (global.websocketServer) {
+      global.websocketServer.broadcastBetStatusUpdate(
+        bet._id.toString(),
+        bet.userId._id.toString(),
+        status,
+        []
+      );
+      
+      // Also broadcast general bet update for admin dashboard
+      global.websocketServer.broadcastToAll({
+        type: 'bet_status_update',
+        payload: {
+          betId: bet._id.toString(),
+          status: status,
+          actualWin: actualWin,
+          updatedAt: bet.updatedAt,
+          bet: bet
+        }
+      });
+    }
+
     res.json({ success: true, bet });
   } catch (error) {
     console.error('Update bet status error:', error);
-    res.status(500).json({ error: 'Failed to update bet status' });
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code
+    });
+    res.status(500).json({ 
+      error: 'Failed to update bet status',
+      details: error.message,
+      stack: error.stack
+    });
   }
 });
 
@@ -857,6 +889,18 @@ router.put('/bets/:betId', adminAuth, [
 
     if (!bet) {
       return res.status(404).json({ error: 'Bet not found' });
+    }
+
+    // Broadcast bet update via WebSocket
+    if (global.websocketServer) {
+      global.websocketServer.broadcastToAll({
+        type: 'bet_update',
+        payload: {
+          betId: bet._id.toString(),
+          bet: bet,
+          updatedAt: bet.updatedAt
+        }
+      });
     }
 
     res.json({ success: true, bet });
@@ -967,6 +1011,35 @@ router.put('/bets/bulk/status', adminAuth, [
       { _id: { $in: betIds } },
       updateData
     );
+
+    // Broadcast bulk bet status updates via WebSocket
+    if (global.websocketServer && result.modifiedCount > 0) {
+      // Get the updated bets to broadcast
+      const updatedBets = await Bet.find({ _id: { $in: betIds } })
+        .populate('userId', 'username email');
+      
+      // Broadcast each bet update
+      updatedBets.forEach(bet => {
+        global.websocketServer.broadcastBetStatusUpdate(
+          bet._id.toString(),
+          bet.userId._id.toString(),
+          status,
+          []
+        );
+        
+        // Also broadcast general bet update for admin dashboard
+        global.websocketServer.broadcastToAll({
+          type: 'bet_status_update',
+          payload: {
+            betId: bet._id.toString(),
+            status: status,
+            actualWin: actualWin,
+            updatedAt: bet.updatedAt,
+            bet: bet
+          }
+        });
+      });
+    }
 
     res.json({ 
       success: true, 
