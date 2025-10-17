@@ -161,48 +161,7 @@ const Soccer = () => {
     } catch (err) {
       console.error('Error fetching soccer matches:', err);
       setError('Failed to load soccer matches. Please try again later.');
-      
-      // Fallback to sample data if API fails
-      const sampleMatches = [
-        {
-          id: 1,
-          league: 'Premier League',
-          time: '17:30 16.12',
-          homeTeam: 'Manchester United',
-          awayTeam: 'Liverpool',
-          odds: {
-            '1': 2.85,
-            'X': 3.40,
-            '2': 2.45,
-            '1X': 1.65,
-            '12': 1.45,
-            '2X': 1.55,
-            'Over (2.5)': 1.75,
-            'Under (2.5)': 2.05
-          },
-          additionalOdds: '+156'
-        },
-        {
-          id: 2,
-          league: 'Champions League',
-          time: '21:00 17.12',
-          homeTeam: 'Real Madrid',
-          awayTeam: 'Barcelona',
-          odds: {
-            '1': 2.10,
-            'X': 3.60,
-            '2': 3.20,
-            '1X': 1.45,
-            '12': 1.35,
-            '2X': 1.85,
-            'Over (3.5)': 1.95,
-            'Under (3.5)': 1.80
-          },
-          additionalOdds: '+234'
-        }
-      ];
-      
-      setMatches(sampleMatches);
+      setMatches([]);
     } finally {
       setLoading(false);
     }

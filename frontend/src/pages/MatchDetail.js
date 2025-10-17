@@ -269,32 +269,7 @@ const MatchDetail = () => {
             console.log('Final markets object:', markets);
             console.log('Total markets created:', Object.keys(markets).length);
             
-            // TEST: If no markets were created, create dummy markets for testing
-            if (Object.keys(markets).length === 0) {
-                console.log('TEST: No markets created, adding dummy markets');
-                markets['market_0'] = {
-                    name: 'Test Market 1',
-                    options: [
-                        { name: 'Home Win', odds: 2.0 },
-                        { name: 'Away Win', odds: 3.0 }
-                    ]
-                };
-                markets['market_1'] = {
-                    name: 'Test Market 2',
-                    options: [
-                        { name: 'Over 2.5', odds: 1.8 },
-                        { name: 'Under 2.5', odds: 2.2 }
-                    ]
-                };
-                markets['market_2'] = {
-                    name: 'Test Market 3',
-                    options: [
-                        { name: 'Both Teams Score', odds: 1.5 },
-                        { name: 'Clean Sheet', odds: 2.5 }
-                    ]
-                };
-                console.log('TEST: Added dummy markets:', markets);
-            }
+
             
             const transformedMatch = {
                 _id: matchData.id,

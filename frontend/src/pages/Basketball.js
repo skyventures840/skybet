@@ -178,50 +178,7 @@ const Basketball = () => {
     } catch (err) {
       console.error('Error fetching basketball matches:', err);
       setError('Failed to load basketball matches. Please try again later.');
-      
-      // Fallback to sample data if API fails
-      const sampleMatches = [
-        {
-          id: 1,
-          league: 'NBA - Regular Season',
-          time: '21:00 16.12',
-          homeTeam: 'Los Angeles Lakers',
-          awayTeam: 'Boston Celtics',
-          odds: {
-            '1': 2.25,
-            'X': 15.00,
-            '2': 1.65,
-            '1X': 1.45,
-            '12': 1.22,
-            '2X': 1.18,
-            'Over (225.5)': 1.88,
-            'Under (225.5)': 1.87
-          },
-          additionalOdds: '+156',
-          sport: 'Basketball'
-        },
-        {
-          id: 2,
-          league: 'College Basketball - March Madness',
-          time: '22:30 16.12',
-          homeTeam: 'Duke Blue Devils',
-          awayTeam: 'North Carolina Tar Heels',
-          odds: {
-            '1': 1.95,
-            'X': 18.00,
-            '2': 1.85,
-            '1X': 1.38,
-            '12': 1.25,
-            '2X': 1.32,
-            'Over (145.5)': 1.92,
-            'Under (145.5)': 1.83
-          },
-          additionalOdds: '+78',
-          sport: 'Basketball'
-        }
-      ];
-      
-      setMatches(sampleMatches);
+      setMatches([]);
     } finally {
       setLoading(false);
     }

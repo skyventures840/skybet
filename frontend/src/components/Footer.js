@@ -40,7 +40,7 @@ const Footer = () => {
             <span>Certified by <a href="https://ecogra.org/" className="footer-link-blue"><strong>eCOGRA</strong></a></span>
           </div>
           <div className="footer-brand">
-            <span>Powered by <strong>SkyBet</strong></span>
+            <span>Powered by <strong>Betdev</strong></span>
           </div>
         </div>
       </div>

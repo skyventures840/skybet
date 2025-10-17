@@ -26,8 +26,8 @@ const LiveBetting = () => {
         console.log(`[LIVE BETTING] Received ${matches.length} live matches from API`);
         
         if (matches.length === 0) {
-          console.log('[LIVE BETTING] No live matches found, using sample data for demonstration');
-          setLiveMatches(getSampleLiveMatches());
+          console.log('[LIVE BETTING] No live matches found');
+          setLiveMatches([]);
         } else {
           setLiveMatches(matches);
           setLastUpdate(new Date().toISOString());
@@ -38,10 +38,8 @@ const LiveBetting = () => {
       
     } catch (err) {
       console.error('[LIVE BETTING] Error fetching live matches:', err);
-      setError('Failed to load live matches. Using sample data for demonstration.');
-      
-      // Fallback to sample data
-      setLiveMatches(getSampleLiveMatches());
+      setError('Failed to load live matches. Please try again later.');
+      setLiveMatches([]);
     } finally {
       setLoading(false);
     }
@@ -149,80 +147,7 @@ const LiveBetting = () => {
       .map(([type]) => type);
   };
 
-  // Sample live matches for demonstration
-  const getSampleLiveMatches = () => [
-    {
-      id: 1,
-      league: 'Premier League',
-      subcategory: 'Soccer',
-      startTime: new Date(),
-      homeTeam: 'Chelsea',
-      awayTeam: 'Arsenal',
-      homeTeamFlag: '🏳️',
-      awayTeamFlag: '🏳️',
-      odds: {
-        '1': 1.65,
-        'X': 4.20,
-        '2': 4.85
-      },
-      additionalMarkets: 6,
-      sport: 'Soccer',
-      status: 'live',
-      isLive: true,
-      liveTime: 'LIVE 67\'',
-      score: '2-1',
-      homeScore: 2,
-      awayScore: 1,
-      lastUpdate: new Date().toISOString()
-    },
-    {
-      id: 2,
-      league: 'NBA',
-      subcategory: 'Basketball',
-      startTime: new Date(),
-      homeTeam: 'Golden State Warriors',
-      awayTeam: 'Miami Heat',
-      homeTeamFlag: '🏳️',
-      awayTeamFlag: '🏳️',
-      odds: {
-        '1': 1.45,
-        '2': 2.75
-      },
-      additionalMarkets: 8,
-      sport: 'Basketball',
-      status: 'live',
-      isLive: true,
-      liveTime: 'LIVE Q3 8:45',
-      score: '89-76',
-      homeScore: 89,
-      awayScore: 76,
-      lastUpdate: new Date().toISOString()
-    },
-    {
-      id: 3,
-      league: 'Premier League',
-      subcategory: 'Soccer',
-      startTime: new Date(),
-      homeTeam: 'Manchester United',
-      awayTeam: 'Liverpool',
-      homeTeamFlag: '🏳️',
-      awayTeamFlag: '🏳️',
-      odds: {
-        '1': 2.10,
-        'X': 3.40,
-        '2': 3.20
-      },
-      additionalMarkets: 5,
-      sport: 'Soccer',
-      status: 'live',
-      isLive: true,
-      liveTime: 'LIVE 23\'',
-      score: '0-0',
-      homeScore: 0,
-      awayScore: 0,
-      lastUpdate: new Date().toISOString()
-    }
-  ];
+
 
   useEffect(() => {
     // Initial fetch

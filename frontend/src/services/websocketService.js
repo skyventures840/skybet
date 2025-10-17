@@ -16,7 +16,7 @@ class WebSocketService {
     
     try {
       // Use environment variable for WebSocket URL, fallback to localhost for development
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:10000';
+      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000';
       this.ws = new WebSocket(`${wsUrl}?token=${token}`);
       
       this.ws.onopen = () => {

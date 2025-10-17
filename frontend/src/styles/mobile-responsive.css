@@ -4399,17 +4399,18 @@ html, body {
 
   /* Much smaller dots for very small screens */
   .slider-dots {
-    bottom: 0.25px;
-    gap: 0.125px;
+    bottom: 1px !important;
+    gap: 1px !important;
   }
 
   .dot {
-    width: 0.015px; /* Further reduced from 0.04px */
-    height: 0.015px; /* Further reduced from 0.04px */
+    width: 2px !important; /* Significantly reduced for minimal footprint */
+    height: 2px !important; /* Significantly reduced for minimal footprint */
+    border-radius: 50% !important; /* Ensure perfectly round dots */
   }
 
   .dot.active {
-    transform: scale(1.1);
+    transform: scale(1.3) !important; /* Slightly larger scale for active state */
   }
 
   /* Match cards ultra-compact - full width */
@@ -4938,17 +4939,18 @@ html, body {
 
   /* Ultra-small dots for iPhone SE */
   .slider-dots {
-    bottom: 0.75px !important;
-    gap: 0.25px !important;
+    bottom: 1.5px !important;
+    gap: 1.5px !important;
   }
 
   .dot {
-    width: 0.03px !important; /* Further reduced from 0.09px */
-    height: 0.03px !important; /* Further reduced from 0.09px */
+    width: 2.5px !important; /* Significantly reduced for minimal footprint */
+    height: 2.5px !important; /* Significantly reduced for minimal footprint */
+    border-radius: 50% !important; /* Ensure perfectly round dots */
   }
 
   .dot.active {
-    transform: scale(1.1) !important;
+    transform: scale(1.3) !important; /* Slightly larger scale for active state */
   }
 }
 
@@ -4987,17 +4989,18 @@ html, body {
 
   /* Small dots for iPhone 12/13/14 */
   .slider-dots {
-    bottom: 1px !important;
-    gap: 0.5px !important;
+    bottom: 2px !important;
+    gap: 2px !important;
   }
 
   .dot {
-    width: 0.06px !important; /* Further reduced from 0.18px */
-    height: 0.06px !important; /* Further reduced from 0.18px */
+    width: 3px !important; /* Significantly reduced for minimal footprint */
+    height: 3px !important; /* Significantly reduced for minimal footprint */
+    border-radius: 50% !important; /* Ensure perfectly round dots */
   }
 
   .dot.active {
-    transform: scale(1.1) !important;
+    transform: scale(1.3) !important; /* Slightly larger scale for active state */
   }
 }
 
@@ -5036,17 +5039,18 @@ html, body {
 
   /* Small dots for iPhone Pro Max */
   .slider-dots {
-    bottom: 1.25px !important;
-    gap: 0.5px !important;
+    bottom: 2px !important;
+    gap: 2px !important;
   }
 
   .dot {
-    width: 0.06px !important; /* Further reduced from 0.18px */
-    height: 0.06px !important; /* Further reduced from 0.18px */
+    width: 3px !important; /* Significantly reduced for minimal footprint */
+    height: 3px !important; /* Significantly reduced for minimal footprint */
+    border-radius: 50% !important; /* Ensure perfectly round dots */
   }
 
   .dot.active {
-    transform: scale(1.1) !important;
+    transform: scale(1.3) !important; /* Slightly larger scale for active state */
   }
 }
 
@@ -5392,6 +5396,107 @@ html, body {
   /* Force date/time to align with teams inset */
   .match-card .match-date-time { margin-left: 0 !important; padding-left: 14px !important; text-align: left !important; }
   .match-card .match-teams { padding-left: 14px !important; }
+}
+
+/* =============================================================
+   Mobile: Bets Page Header Colors - Black text on white background
+   ============================================================= */
+@media (max-width: 767px) {
+  /* Main page headers */
+  .bets-page .bets-header h1,
+  .bets-page h1,
+  .bets-page h2 {
+    color: #000000 !important;
+  }
+
+  /* Stat labels and values */
+  .bets-page .stat-label,
+  .bets-page .stat-card .stat-label,
+  .bets-page .bets-stats .stat-label {
+    color: #000000 !important;
+  }
+
+  .bets-page .stat-value,
+  .bets-page .stat-card .stat-value,
+  .bets-page .bets-stats .stat-value {
+    color: #000000 !important;
+  }
+
+  /* Bet history header and stats */
+  .bets-page .bet-history-header h2,
+  .bets-page .bet-history-header {
+    color: #000000 !important;
+  }
+
+  .bets-page .bet-history-stats .stat-item,
+  .bets-page .stat-item {
+    color: #000000 !important;
+  }
+
+  /* Betslip header labels */
+  .bets-page .betslip-header-label,
+  .bets-page .betslip-header-value {
+    color: #000000 !important;
+  }
+
+  /* Table headers */
+  .bets-page .betslip-match-table th {
+    color: #000000 !important;
+  }
+
+  /* General text elements that might be headers */
+  .bets-page .bet-summary-title,
+  .bets-page .loading-container p,
+  .bets-page .no-bets h3,
+  .bets-page .no-bets p {
+    color: #000000 !important;
+  }
+
+  /* Filter labels and selects */
+  .bets-page .filter-group label,
+  .bets-page .filter-select {
+    color: #000000 !important;
+  }
+
+  /* Mobile betslip header - flex row layout with wrapping */
+  .betslip-header-expanded {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    justify-content: space-between !important;
+  }
+
+  .betslip-header-item {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 140px !important;
+    max-width: calc(50% - 4px) !important;
+    padding: 8px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-right: none !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 4px !important;
+  }
+
+  .betslip-header-item:last-child {
+    border-right: none !important;
+  }
+
+  .betslip-header-label,
+  .betslip-header-value {
+    font-size: 13px !important;
+  }
+
+  .betslip-header-label {
+    margin-bottom: 0 !important;
+    font-weight: 500 !important;
+  }
+
+  .betslip-header-value {
+    font-weight: 600 !important;
+  }
 }
 
 

@@ -21,7 +21,8 @@ const NowPaymentsDeposit = () => {
   const popularCurrencies = [
     { code: 'BTC', name: 'Bitcoin', icon: '₿' },
     { code: 'ETH', name: 'Ethereum', icon: 'Ξ' },
-    { code: 'USDT', name: 'Tether', icon: '₮' },
+    { code: 'USDT', name: 'Tether (ERC20)', icon: '₮' },
+    { code: 'USDTTRC20', name: 'Tether (TRC20)', icon: '₮' },
     { code: 'USDC', name: 'USD Coin', icon: '＄' },
     { code: 'LTC', name: 'Litecoin', icon: 'Ł' },
     { code: 'XRP', name: 'Ripple', icon: '✕' },
@@ -44,8 +45,8 @@ const NowPaymentsDeposit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!amount || parseFloat(amount) < 10) {
-      setError('Minimum deposit amount is $10');
+    if (!amount || parseFloat(amount) < 50) {
+      setError('Minimum deposit amount is $50');
       return;
     }
 

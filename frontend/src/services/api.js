@@ -2,7 +2,7 @@ import axios from 'axios';
 import enhancedCache from './enhancedCache';
 
 // Use environment variable for API URL, fallback to localhost for development
-const RAW_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000';
+const RAW_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const CLEAN_BASE = RAW_BASE.replace(/\/+$/, ''); // remove trailing slashes
 const API_BASE_URL = /\/api$/.test(CLEAN_BASE) ? CLEAN_BASE : `${CLEAN_BASE}/api`;
 
@@ -61,8 +61,8 @@ const responseCache = {
   }
 };
 
-async function cachedGet(path, ttlMs = null) {
-  // Use enhanced cache for 30-minute caching (ignore ttlMs parameter)
+async function cachedGet(path) {
+  // Use enhanced cache for 30-minute caching
   const cachedData = enhancedCache.getCachedData(path);
   
   if (cachedData) {
@@ -203,6 +203,12 @@ const apiService = {
   placeBet: (betData) => api.post('/bets', betData),
   getUserBets: () => api.get('/bets/my-bets'),
   getBetStatsSummary: () => api.get('/bets/stats/summary'),
+  
+  // Admin Bet Management
+  getAdminBets: (params) => api.get(`/admin/bets?${params}`),
+  updateBet: (betId, betData) => api.put(`/admin/bets/${betId}`, betData),
+  settleBet: (betId, settlementData) => api.put(`/admin/bets/${betId}/status`, settlementData),
+  bulkUpdateBets: (bulkData) => api.put('/admin/bets/bulk/status', bulkData),
 
   // Sports
   getAllSports: () => cachedGet('/sports', 120000),

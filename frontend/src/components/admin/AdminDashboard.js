@@ -19,7 +19,9 @@ import {
 import React, { useRef, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import ManageMatches from './ManageMatches';
+import ManageUsers from './ManageUsers';
 import apiService from '../../services/api';
+import WebSocketService from '../../services/websocketService';
 
 // Register Chart.js components
 ChartJS.register(
@@ -42,7 +44,6 @@ const AdminDashboard = () => {
   // Main state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [users] = useState([]);
   const location = useLocation();
 
   // State for dashboard data
@@ -65,6 +66,105 @@ const AdminDashboard = () => {
   const [bulkAction, setBulkAction] = useState('');
   const [betEditModal, setBetEditModal] = useState({ open: false, bet: null });
   const [betSettleModal, setBetSettleModal] = useState({ open: false, bet: null });
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    if (activeTab === 'bet-management') {
+      console.log('[ADMIN DASHBOARD] Connecting to WebSocket for real-time bet updates...');
+      
+      // Connect to WebSocket
+      WebSocketService.connect();
+      
+      // Listen for bet status updates
+      const handleBetStatusUpdate = (data) => {
+        console.log('[ADMIN DASHBOARD] Received bet status update:', data);
+        
+        // Update the specific bet in the current list
+        setBets(prevBets => {
+          return prevBets.map(bet => {
+            if (bet._id === data.betId) {
+              return {
+                ...bet,
+                status: data.status,
+                actualWin: data.actualWin || bet.actualWin,
+                updatedAt: new Date().toISOString()
+              };
+            }
+            return bet;
+          });
+        });
+        
+        // Update last refresh time
+        setLastRefresh(new Date());
+      };
+
+      // Listen for new bets
+      const handleNewBet = (data) => {
+        console.log('[ADMIN DASHBOARD] Received new bet:', data);
+        
+        // Add new bet to the beginning of the list if it matches current filters
+        if (shouldIncludeBet(data)) {
+          setBets(prevBets => [data, ...prevBets]);
+          setLastRefresh(new Date());
+        }
+      };
+
+      // Listen for bet updates
+      const handleBetUpdate = (data) => {
+        console.log('[ADMIN DASHBOARD] Received bet update:', data);
+        
+        // Update the specific bet
+        setBets(prevBets => {
+          return prevBets.map(bet => {
+            if (bet._id === data.betId || bet._id === data._id) {
+              return { ...bet, ...data };
+            }
+            return bet;
+          });
+        });
+        
+        setLastRefresh(new Date());
+      };
+
+      // Helper function to check if bet should be included based on current filters
+      const shouldIncludeBet = (bet) => {
+        if (betStatusFilter && bet.status !== betStatusFilter) {
+          return false;
+        }
+        if (betSearchQuery) {
+          const searchLower = betSearchQuery.toLowerCase();
+          const matchesSearch = 
+            bet.userId?.username?.toLowerCase().includes(searchLower) ||
+            bet.userId?.email?.toLowerCase().includes(searchLower) ||
+            bet.homeTeam?.toLowerCase().includes(searchLower) ||
+            bet.awayTeam?.toLowerCase().includes(searchLower) ||
+            bet.league?.toLowerCase().includes(searchLower) ||
+            bet.market?.toLowerCase().includes(searchLower) ||
+            bet.selection?.toLowerCase().includes(searchLower);
+          
+          if (!matchesSearch) {
+            return false;
+          }
+        }
+        return true;
+      };
+
+      // Add event listeners
+      WebSocketService.on('bet_status_update', handleBetStatusUpdate);
+      WebSocketService.on('new_bet', handleNewBet);
+      WebSocketService.on('bet_update', handleBetUpdate);
+
+      // Cleanup function
+      return () => {
+        console.log('[ADMIN DASHBOARD] Cleaning up WebSocket listeners...');
+        WebSocketService.off('bet_status_update', handleBetStatusUpdate);
+        WebSocketService.off('new_bet', handleNewBet);
+        WebSocketService.off('bet_update', handleBetUpdate);
+      };
+    }
+  }, [activeTab, betStatusFilter, betSearchQuery]);
 
   // Sample chart data
   const bettingActivityData = {
@@ -296,6 +396,13 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-fetch bets when bet-management tab is active
+  useEffect(() => {
+    if (activeTab === 'bet-management') {
+      fetchBets();
+    }
+  }, [activeTab]);
+
   // Render functions for different sections
   const renderDashboard = () => (
     <div className="admin-dashboard-content">
@@ -349,59 +456,7 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderUserManagement = () => (
-    <div className="admin-table-container">
-      <div className="table-header">
-        <div className="search-filter">
-          <FontAwesomeIcon icon={faSearch} />
-          <input type="text" placeholder="Search users..." />
-          <FontAwesomeIcon icon={faFilter} />
-          <select>
-            <option>All Status</option>
-            <option>Active</option>
-            <option>Inactive</option>
-          </select>
-        </div>
-      </div>
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user.id}>
-              <td>{user.id}</td>
-              <td>{user.name}</td>
-              <td>{user.email}</td>
-              <td>
-                <span className={`status-badge ${user.status}`}>
-                  {user.status}
-                </span>
-              </td>
-              <td>
-                <button className="btn-edit">Edit</button>
-                <button className="btn-delete">Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="table-footer">
-        <div className="pagination">
-          <button>Previous</button>
-          <span>Page 1 of 5</span>
-          <button>Next</button>
-        </div>
-        <button className="btn-export">Export to CSV</button>
-      </div>
-    </div>
-  );
+  const renderUserManagement = () => <ManageUsers />;
 
   // Bet management functions
   const fetchBets = async () => {
@@ -493,6 +548,12 @@ const AdminDashboard = () => {
   };
 
   const exportBetsToCSV = () => {
+    // Check if there are bets to export
+    if (!bets || bets.length === 0) {
+      alert('No bets available to export');
+      return;
+    }
+
     const csvData = bets.map(bet => ({
       'Bet ID': bet._id,
       'User': bet.userId?.username || 'N/A',
@@ -507,6 +568,12 @@ const AdminDashboard = () => {
       'Status': bet.status,
       'Created': new Date(bet.createdAt).toLocaleString()
     }));
+
+    // Double check that csvData has content
+    if (csvData.length === 0) {
+      alert('No valid bet data to export');
+      return;
+    }
 
     const csv = [
       Object.keys(csvData[0]).join(','),
@@ -553,6 +620,34 @@ const AdminDashboard = () => {
     }
   }, [activeTab, currentBetPage, betSearchQuery, betStatusFilter]);
 
+  // Enhanced real-time polling for bet management
+  useEffect(() => {
+    let betPollingInterval;
+    
+    if (activeTab === 'bet-management') {
+      // Initial fetch
+      setIsAutoRefreshing(true);
+      fetchBets().finally(() => setIsAutoRefreshing(false));
+      setLastRefresh(new Date());
+      
+      // Set up more frequent polling for bet data (every 30 seconds)
+      betPollingInterval = setInterval(() => {
+        console.log('[BET MANAGEMENT] Auto-refreshing bet data...');
+        setIsAutoRefreshing(true);
+        fetchBets().finally(() => {
+          setIsAutoRefreshing(false);
+          setLastRefresh(new Date());
+        });
+      }, 30000); // 30 seconds
+    }
+    
+    return () => {
+      if (betPollingInterval) {
+        clearInterval(betPollingInterval);
+      }
+    };
+  }, [activeTab]);
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -594,6 +689,28 @@ const AdminDashboard = () => {
           >
             {betLoading ? 'Loading...' : 'Refresh'}
           </button>
+        </div>
+        
+        {/* Real-time data indicator */}
+        <div className="real-time-indicator">
+          <div className="refresh-status">
+            {isAutoRefreshing ? (
+              <span className="refreshing">
+                <span className="spinner"></span>
+                Auto-refreshing...
+              </span>
+            ) : (
+              <span className="idle">
+                <span className="status-dot"></span>
+                Live Data
+              </span>
+            )}
+          </div>
+          {lastRefresh && (
+            <div className="last-refresh">
+              Last updated: {lastRefresh.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </div>
       
@@ -874,34 +991,70 @@ const AdminDashboard = () => {
               </button>
             </div>
             <div className="modal-body">
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                // Handle bet edit
-                setBetEditModal({ open: false, bet: null });
+                const formData = new FormData(e.target);
+                const stake = parseFloat(formData.get('stake'));
+                const odds = parseFloat(formData.get('odds'));
+                const selection = formData.get('selection');
+                const market = formData.get('market');
+
+                try {
+                  const response = await apiService.put(`/admin/bets/${betEditModal.bet._id}`, {
+                    stake,
+                    odds,
+                    selection,
+                    market
+                  });
+
+                  if (response.data.success) {
+                    alert('Bet updated successfully');
+                    setBetEditModal({ open: false, bet: null });
+                    fetchBets(); // Refresh the bet list
+                  }
+                } catch (error) {
+                  console.error('Failed to update bet:', error);
+                  alert('Failed to update bet: ' + (error.response?.data?.error || error.message));
+                }
               }}>
                 <div className="form-group">
                   <label style={{ color: 'black' }}>Stake:</label>
                   <input 
+                    name="stake"
                     type="number" 
                     step="0.01" 
                     min="0.01"
                     defaultValue={betEditModal.bet?.stake}
+                    required
                   />
                 </div>
                 <div className="form-group">
                   <label style={{ color: 'black' }}>Odds:</label>
                   <input 
+                    name="odds"
                     type="number" 
                     step="0.01" 
                     min="1.01"
                     defaultValue={betEditModal.bet?.odds}
+                    required
                   />
                 </div>
                 <div className="form-group">
                   <label style={{ color: 'black' }}>Selection:</label>
                   <input 
+                    name="selection"
                     type="text"
                     defaultValue={betEditModal.bet?.selection}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ color: 'black' }}>Market:</label>
+                  <input 
+                    name="market"
+                    type="text"
+                    defaultValue={betEditModal.bet?.market}
+                    required
                   />
                 </div>
                 <div className="form-actions">
@@ -930,10 +1083,27 @@ const AdminDashboard = () => {
               </button>
             </div>
             <div className="modal-body">
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                // Handle bet settlement
-                setBetSettleModal({ open: false, bet: null });
+                const formData = new FormData(e.target);
+                const status = formData.get('status');
+                const actualWin = parseFloat(formData.get('actualWin')) || 0;
+
+                try {
+                  const response = await apiService.put(`/admin/bets/${betSettleModal.bet._id}/status`, {
+                    status,
+                    actualWin: status === 'won' ? actualWin : 0
+                  });
+
+                  if (response.data.success) {
+                    alert(`Bet ${status} successfully`);
+                    setBetSettleModal({ open: false, bet: null });
+                    fetchBets(); // Refresh the bet list
+                  }
+                } catch (error) {
+                  console.error('Failed to settle bet:', error);
+                  alert('Failed to settle bet: ' + (error.response?.data?.error || error.message));
+                }
               }}>
                 <div className="bet-info">
                   <p><strong>User:</strong> {betSettleModal.bet?.userId?.username}</p>
@@ -944,7 +1114,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="form-group">
                   <label style={{ color: 'black' }}>Status:</label>
-                  <select>
+                  <select name="status" required>
                     <option value="won">Won</option>
                     <option value="lost">Lost</option>
                     <option value="void">Void</option>
@@ -953,11 +1123,16 @@ const AdminDashboard = () => {
                 <div className="form-group">
                   <label style={{ color: 'black' }}>Actual Win Amount:</label>
                   <input 
+                    name="actualWin"
                     type="number" 
                     step="0.01" 
                     min="0"
                     placeholder="Enter actual win amount"
+                    defaultValue={betSettleModal.bet?.potentialWin}
                   />
+                  <small style={{ color: '#666', fontSize: '12px' }}>
+                    Leave empty or 0 for lost/void bets. For won bets, enter the actual payout amount.
+                  </small>
                 </div>
                 <div className="form-actions">
                   <button type="button" onClick={() => setBetSettleModal({ open: false, bet: null })}>
