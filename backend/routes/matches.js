@@ -188,7 +188,7 @@ router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TT
         .limit(limit),
       // Get odds-based matches with projection to reduce data transfer
       Odds.find(oddsQuery)
-        .select('home_team away_team commence_time sport_key sport_title bookmakers league')
+        .select('gameId home_team away_team commence_time sport_key sport_title bookmakers league')
         .lean()
         .sort({ commence_time: 1 })
         .skip(skip)
@@ -1462,7 +1462,7 @@ router.get('/sport/:sportKey', async (req, res) => {
         });
 
         return {
-          id: odds.gameId,
+          id: odds.id,
           homeTeam: odds.home_team,
           awayTeam: odds.away_team,
           startTime: odds.commence_time,
