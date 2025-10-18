@@ -11,11 +11,13 @@ import activeBetsReducer from './slices/activeBetSlice';
 const authPersistConfig = {
   key: 'auth',
   storage,
+  whitelist: ['loggedIn', 'user', 'token', 'isAdmin'], // Only persist essential auth data
 };
 
 const userPersistConfig = {
   key: 'user',
   storage,
+  whitelist: ['profile', 'preferences'], // Only persist essential user data
 };
 
 const persistAuthReducer = persistReducer(authPersistConfig, authReducer);
@@ -31,9 +33,23 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+        ignoredActions: [
+          'persist/PERSIST', 
+          'persist/REHYDRATE',
+          'persist/REGISTER',
+          'persist/PURGE',
+          'persist/FLUSH',
+          'persist/PAUSE',
+          'persist/RESUME'
+        ],
+        ignoredPaths: ['register', 'rehydrate'],
+      },
+      immutableCheck: {
+        // Disable for better performance in production
+        warnAfter: process.env.NODE_ENV === 'development' ? 32 : 128,
       },
     }),
+  devTools: process.env.NODE_ENV === 'development',
 });
 
 export const persistor = persistStore(store);

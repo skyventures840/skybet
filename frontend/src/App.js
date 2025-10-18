@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { loginSuccess } from './store/slices/authSlice';
 
 import io from 'socket.io-client';
 
-// Components
+// Core components (loaded immediately)
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Betslip from './components/Betslip';
@@ -14,26 +14,42 @@ import PrivateRoute from './components/PrivateRoute';
 import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 
-// Pages
+// Lazy-loaded pages for code splitting
 import Home from './pages/Home';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import Account from './pages/Account';
-import Bets from './pages/Bets';
-import Football from './pages/Football';
-import Basketball from './pages/Basketball';
-import Tennis from './pages/Tennis';
-import Baseball from './pages/Baseball';
-import Hockey from './pages/Hockey';
-import IceHockey from './pages/IceHockey';
-import Soccer from './pages/Soccer';
-import LiveBetting from './pages/LiveBetting';
-import OddsPage from './pages/OddsPage';
-import AdminDashboard from './pages/AdminDashboard';
-import MatchDetail from './pages/MatchDetail';
-import MatchMarkets from './pages/MatchMarkets';
-import SportFallback from './components/SportFallback';
+// const Home = React.lazy(() => import('./pages/Home'));
+const Login = React.lazy(() => import('./pages/Login'));
+const SignUp = React.lazy(() => import('./pages/SignUp'));
+const Account = React.lazy(() => import('./pages/Account'));
+const Bets = React.lazy(() => import('./pages/Bets'));
+const Football = React.lazy(() => import('./pages/Football'));
+const Basketball = React.lazy(() => import('./pages/Basketball'));
+const Tennis = React.lazy(() => import('./pages/Tennis'));
+const Baseball = React.lazy(() => import('./pages/Baseball'));
+const Hockey = React.lazy(() => import('./pages/Hockey'));
+const IceHockey = React.lazy(() => import('./pages/IceHockey'));
+const Soccer = React.lazy(() => import('./pages/Soccer'));
+const LiveBetting = React.lazy(() => import('./pages/LiveBetting'));
+const OddsPage = React.lazy(() => import('./pages/OddsPage'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const MatchDetail = React.lazy(() => import('./pages/MatchDetail'));
+const MatchMarkets = React.lazy(() => import('./pages/MatchMarkets'));
+const SportFallback = React.lazy(() => import('./components/SportFallback'));
+
 import useOddsStore from './store/oddsStore';
+
+// Loading component for Suspense fallback
+const LoadingSpinner = () => (
+  <div className="loading-spinner" style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '200px',
+    fontSize: '16px',
+    color: '#666'
+  }}>
+    <div>Loading...</div>
+  </div>
+);
 
 function App() {
   const location = useLocation();
@@ -93,7 +109,9 @@ function App() {
       console.log('Bet update received:', payload);
       try {
         window.dispatchEvent(new CustomEvent('bet:update', { detail: payload }));
-      } catch (e) {}
+      } catch (e) {
+        // Silently handle event dispatch errors
+      }
     });
 
     socket.on('disconnect', () => {
@@ -153,50 +171,52 @@ function App() {
           )}
           
           <div className="middle">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/account" element={
-                <PrivateRoute auth={{ isLoggedIn }}>
-                  <Account />
-                </PrivateRoute>
-              } />
-              <Route path="/bets" element={
-                <PrivateRoute auth={{ isLoggedIn, isAdmin, isBettingRoute: true }}>
-                  <Bets />
-                </PrivateRoute>
-              } />
-              <Route path="/football" element={<Football />} />
-              <Route path="/football/*" element={<SportFallback sport="Football" />} />
-              <Route path="/basketball" element={<Basketball />} />
-              <Route path="/basketball/*" element={<SportFallback sport="Basketball" />} />
-              <Route path="/tennis" element={<Tennis />} />
-              <Route path="/tennis/*" element={<SportFallback sport="Tennis" />} />
-              <Route path="/baseball" element={<Baseball />} />
-              <Route path="/baseball/*" element={<SportFallback sport="Baseball" />} />
-              <Route path="/hockey" element={<Hockey />} />
-              <Route path="/hockey/*" element={<SportFallback sport="Hockey" />} />
-              <Route path="/icehockey" element={<IceHockey />} />
-              <Route path="/icehockey/*" element={<SportFallback sport="Ice Hockey" />} />
-              <Route path="/soccer" element={<Soccer />} />
-              <Route path="/soccer/*" element={<SportFallback sport="Soccer" />} />
-              <Route path="/live" element={<LiveBetting />} />
-              <Route path="/admin" element={
-                <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
-                  <AdminDashboard />
-                </PrivateRoute>
-              } />
-              <Route path="/admin/matches" element={
-                <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
-                  <AdminDashboard />
-                </PrivateRoute>
-              } />
-              <Route path="/odds" element={<OddsPage />} />
-              <Route path="/match/:matchId" element={<MatchDetail />} />
-              <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/account" element={
+                  <PrivateRoute auth={{ isLoggedIn }}>
+                    <Account />
+                  </PrivateRoute>
+                } />
+                <Route path="/bets" element={
+                  <PrivateRoute auth={{ isLoggedIn, isAdmin, isBettingRoute: true }}>
+                    <Bets />
+                  </PrivateRoute>
+                } />
+                <Route path="/football" element={<Football />} />
+                <Route path="/football/*" element={<SportFallback sport="Football" />} />
+                <Route path="/basketball" element={<Basketball />} />
+                <Route path="/basketball/*" element={<SportFallback sport="Basketball" />} />
+                <Route path="/tennis" element={<Tennis />} />
+                <Route path="/tennis/*" element={<SportFallback sport="Tennis" />} />
+                <Route path="/baseball" element={<Baseball />} />
+                <Route path="/baseball/*" element={<SportFallback sport="Baseball" />} />
+                <Route path="/hockey" element={<Hockey />} />
+                <Route path="/hockey/*" element={<SportFallback sport="Hockey" />} />
+                <Route path="/icehockey" element={<IceHockey />} />
+                <Route path="/icehockey/*" element={<SportFallback sport="Ice Hockey" />} />
+                <Route path="/soccer" element={<Soccer />} />
+                <Route path="/soccer/*" element={<SportFallback sport="Soccer" />} />
+                <Route path="/live" element={<LiveBetting />} />
+                <Route path="/admin" element={
+                  <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
+                    <AdminDashboard />
+                  </PrivateRoute>
+                } />
+                <Route path="/admin/matches" element={
+                  <PrivateRoute auth={{ isLoggedIn, isAdmin, isAdminRoute: true }}>
+                    <AdminDashboard />
+                  </PrivateRoute>
+                } />
+                <Route path="/odds" element={<OddsPage />} />
+                <Route path="/match/:matchId" element={<MatchDetail />} />
+                <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
           </div>
           
           {!isAuthPage && (

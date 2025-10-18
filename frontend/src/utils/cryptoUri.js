@@ -1,6 +1,7 @@
 // Web3-friendly QR payment URI builder
 // Supports EIP-681 for ETH/ERC-20 and common schemes for major chains.
 import { ethers } from 'ethers';
+import QRCode from 'qrcode';
 
 // Convert decimal amount to integer units given token decimals
 function toUnit(amount, decimals) {
@@ -106,6 +107,34 @@ export function buildPaymentUri({ currency, address, amount, memoTag }) {
 
   // Fallback to scheme by currency
   return `${cur.toLowerCase()}:${address}?amount=${amount}`;
+}
+
+// QR Code generation functions (consolidated from cryptoQr.js)
+export function generateCryptoQR(payAddress, payCurrency, amount = null, extraId = null) {
+  return buildPaymentUri({
+    currency: payCurrency,
+    address: payAddress,
+    amount: amount,
+    memoTag: extraId
+  });
+}
+
+export async function generateCryptoQrDataUrl(uriOrParams, options = { errorCorrectionLevel: 'H' }) {
+  const uri = typeof uriOrParams === 'string'
+    ? uriOrParams
+    : generateCryptoQR(
+        uriOrParams.payAddress,
+        uriOrParams.payCurrency,
+        uriOrParams.amount,
+        uriOrParams.extraId
+      );
+  
+  try {
+    return await QRCode.toDataURL(uri, options);
+  } catch (error) {
+    console.error('QR Code generation failed:', error);
+    throw error;
+  }
 }
 
 export default buildPaymentUri;

@@ -1,24 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import VideoPlayerScheduled from './VideoPlayerScheduled';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import { addBet } from '../store/slices/activeBetSlice';
 
-const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
+const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     if (!match) return null;
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [isFavorited, setIsFavorited] = useState(false);
 
     const [showVideoSection, setShowVideoSection] = useState(false);
-
-    // Check if match is live
-    const isLiveMatch = match.status === 'live' || match.isLive;
     
-    // Check if video should be displayed based on match status and videoDisplayControl
-    const shouldShowVideo = () => {
+    // Debug logging for odds data
+    console.log('[DEBUG] MatchCard rendered with match:', {
+        id: match.id,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        odds: match.odds,
+        oddsType: typeof match.odds,
+        oddsKeys: match.odds ? Object.keys(match.odds) : 'no odds'
+    });
+
+    // Memoized calculations for better performance
+    const isLiveMatch = useMemo(() => 
+        match.status === 'live' || match.isLive, 
+        [match.status, match.isLive]
+    );
+    
+    // Memoized video display logic
+    const canShowVideo = useMemo(() => {
         if (!match.videoUrl) {
             return false;
         }
@@ -40,10 +54,7 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
                 return now >= startTime;
             }
         }
-    };
-
-    // Check if video should be displayed
-    const canShowVideo = shouldShowVideo();
+    }, [match.videoUrl, match.startTime, match.videoDisplayControl, match.status]);
     
     // Get live match time display
     const getLiveTimeDisplay = () => {
@@ -107,34 +118,31 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
         return null;
     };
 
-    const addToBetslip = (betType, odds, matchInfo) => {
+    const addToBetslip = useCallback((matchInfo, betType, odds) => {
         // Prevent adding bets for matches that have already started
         const hasStart = !!matchInfo?.startTime;
         const startDate = hasStart ? new Date(matchInfo.startTime) : null;
         if (hasStart && startDate <= new Date()) {
-            console.warn('Cannot add started match to betslip:', matchInfo?.homeTeam, 'vs', matchInfo?.awayTeam);
             return;
         }
 
         const bet = {
-            matchId: matchInfo.id || matchInfo._id, // Use id instead of _id for better compatibility
+            matchId: matchInfo.id || matchInfo._id,
             match: `${matchInfo.homeTeam} vs ${matchInfo.awayTeam}`,
             homeTeam: matchInfo.homeTeam,
             awayTeam: matchInfo.awayTeam,
             league: matchInfo.league || league,
             startTime: matchInfo.startTime,
-            market: 'winner',
-            marketDisplay: 'Winner',
-            selection: betType,
             type: betType,
             odds: odds,
             stake: 0,
-            sport: sport
+            sport: matchInfo.sport || sport
         };
-        dispatch({ type: 'activeBets/addBet', payload: bet });
-    };
+        
+        dispatch(addBet(bet));
+    }, [dispatch, league, sport]);
 
-    const getBestOdds = (oddsType) => {
+    const getBestOdds = useCallback((oddsType) => {
         if (!match.odds) return null;
         
         // Handle Map-based odds structure (new structure)
@@ -151,19 +159,30 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
         // Handle flat odds structure (from transformed API data)
         const odds = match.odds[oddsType];
         return odds && typeof odds === 'number' && odds > 0 ? odds : null;
-    };
+    }, [match.odds]);
 
-    // Get basic odds types (1, X, 2) - maximum 3
-    const getBasicOddsTypes = () => {
-        if (!match.odds) return [];
+    // Memoized basic odds types calculation
+    const basicOddsTypes = useMemo(() => {
+        console.log('🎯 MatchCard basicOddsTypes calculation for match:', match.id);
+        console.log('🎯 Match odds:', match.odds);
+        console.log('🎯 Match odds type:', typeof match.odds);
+        console.log('🎯 Is Map?', match.odds instanceof Map);
+        console.log('🎯 Has get method?', match.odds && typeof match.odds.get === 'function');
+        
+        if (!match.odds) {
+            console.log('🎯 No odds found, returning empty array');
+            return [];
+        }
         
         const basicTypes = ['1', 'X', '2'];
         const availableBasicTypes = [];
         
         // Handle Map-based odds structure (new structure)
         if (match.odds instanceof Map || (match.odds && typeof match.odds.get === 'function')) {
+            console.log('🎯 Using Map-based odds structure');
             basicTypes.forEach(type => {
                 const odds = match.odds.get ? match.odds.get(type) : match.odds[type];
+                console.log(`🎯 Map odds for ${type}:`, odds);
                 if (odds && typeof odds === 'number' && odds > 0) {
                     availableBasicTypes.push(type);
                 }
@@ -171,25 +190,33 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
         }
         // Handle nested odds structure (from matchesSeed.js)
         else if (match.odds.default && match.odds.default.odds) {
+            console.log('🎯 Using nested odds structure');
             basicTypes.forEach(type => {
                 const odds = match.odds.default.odds[type];
+                console.log(`🎯 Nested odds for ${type}:`, odds);
                 if (odds && typeof odds === 'number' && odds > 0) {
                     availableBasicTypes.push(type);
                 }
             });
         } else {
             // Handle flat odds structure (from transformed API data)
+            console.log('🎯 Using flat odds structure');
             basicTypes.forEach(type => {
                 const odds = match.odds[type];
+                console.log(`🎯 Flat odds for ${type}:`, odds, typeof odds);
                 if (odds && typeof odds === 'number' && odds > 0) {
                     availableBasicTypes.push(type);
                 }
             });
         }
         
+        console.log('🎯 Available basic types:', availableBasicTypes);
+        
         // Return maximum of 3 basic odds types
-        return availableBasicTypes.slice(0, 3);
-    };
+        const result = availableBasicTypes.slice(0, 3);
+        console.log('🎯 Final basic odds types:', result);
+        return result;
+    }, [match.odds]);
 
     // Get all available odds types for additional markets
     const getAllAvailableOddsTypes = () => {
@@ -319,9 +346,6 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
         return `${dateString} ${timeString}`;
     };
 
-    // Get basic odds types for display (maximum 3)
-    const basicOddsTypes = getBasicOddsTypes();
-    
     // Get all odds types for additional markets count
     const allOddsTypes = getAllAvailableOddsTypes();
     const additionalMarketsTotal = Math.max(0, allOddsTypes.length - basicOddsTypes.length);
@@ -443,6 +467,7 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
                         
                         {/* Odds Buttons */}
                         <div className="odds-buttons-container">
+                            {console.log('🎯 Rendering odds buttons for match:', match.id, 'basicOddsTypes:', basicOddsTypes)}
                             {basicOddsTypes.map(oddsType => {
                                 const odds = getBestOdds(oddsType);
                                 const riskAssessment = assessOddsRisk(match, odds, oddsType);
@@ -465,7 +490,7 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
                                         className={`odds-button ${isLiveMatch ? 'live-highlight' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            addToBetslip(oddsType, odds, match);
+                                            addToBetslip(match, oddsType, odds);
                                         }}
                                     >
                                         <div className="odds-value">
@@ -502,6 +527,6 @@ const MatchCard = ({ match, sport, league, showLeagueHeader = true }) => {
             </div>
         </>
     );
-};
+});
 
 export default MatchCard;

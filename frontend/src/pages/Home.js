@@ -8,9 +8,20 @@ import enhancedCache from '../services/enhancedCache';
 import oddsWebSocket from '../services/oddsWebSocket';
 
 const Home = () => {
+  console.log('🏠 Home component is rendering!');
   const [selectedTab, setSelectedTab] = useState('Featured');
   const [matches, setMatches] = useState([]);
   const [filteredMatches, setFilteredMatches] = useState([]);
+  
+  // Debug logging for matches
+  useEffect(() => {
+    console.log('🏠 Home component - matches updated:', matches.length, 'matches');
+    console.log('🏠 First match sample:', matches[0]);
+  }, [matches]);
+  
+  useEffect(() => {
+    console.log('🏠 Home component - filteredMatches updated:', filteredMatches.length, 'matches');
+  }, [filteredMatches]);
   const [popularMatches, setPopularMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -176,6 +187,7 @@ const Home = () => {
   // Filter matches based on search term, date, sidebar filter, and subcategory
   useEffect(() => {
     let filtered = matches;
+    console.log('[HOME] Starting filter process with', filtered.length, 'matches');
 
     // Sidebar filter
     if (selectedSidebarFilter) {
@@ -249,10 +261,23 @@ const Home = () => {
       });
     }
 
-    // Hide past matches (only upcoming)
+    // Show upcoming matches and recent finished matches (within last 3 days)
     const now = new Date();
-    filtered = filtered.filter(match => new Date(match.startTime) >= now);
+    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+    
+    console.log('[HOME] Date filtering - now:', now, 'threeDaysAgo:', threeDaysAgo);
+    console.log('[HOME] Before date filtering:', filtered.length, 'matches');
+    
+    // Temporarily disable date filtering to test
+    // filtered = filtered.filter(match => {
+    //   const matchDate = new Date(match.startTime);
+    //   // Show if upcoming OR if finished within last 3 days
+    //   return matchDate >= threeDaysAgo;
+    // });
+    
+    console.log('[HOME] After date filtering (disabled):', filtered.length, 'matches');
 
+    console.log('[HOME] After all filtering:', filtered.length, 'matches remain');
     setFilteredMatches(filtered);
     
     // Save filtered matches to session storage
@@ -340,10 +365,14 @@ const Home = () => {
   };
 
   // Fetch matches from API
-  const fetchMatches = async (forceRefresh = false) => {
+  const fetchMatches = async (forceRefresh = false, isBackgroundUpdate = false) => {
     try {
       setError(null);
-      setLoading(true);
+      
+      // Only show loading state if this is not a background update
+      if (!isBackgroundUpdate) {
+        setLoading(true);
+      }
       
       // Try to get cached data first
       if (!forceRefresh) {
@@ -392,28 +421,46 @@ const Home = () => {
             console.log('[HOME] Failed to save popular matches to session storage:', e);
           }
           
-          setLoading(false);
+          if (!isBackgroundUpdate) {
+            setLoading(false);
+          }
           return;
         }
       }
       
       // Fetch fresh data if no cache or force refresh
-      console.log('[HOME] Fetching fresh matches data...');
-      setLoading(true);
+      console.log('🔄 [HOME] Fetching fresh matches data...');
+      alert('🔄 [HOME] Fetching fresh matches data...');
+      if (!isBackgroundUpdate) {
+        setLoading(true);
+      }
       
+      console.log('🔄 [DEBUG] Fetching matches from API...');
+      alert('🔄 [DEBUG] Making API call to getMatches()...');
       const response = await apiService.getMatches();
-      console.log('[DEBUG] API response received:', response);
+      console.log('📡 [HOME] API Response:', response.data);
+      console.log('📡 [DEBUG] API response received:', response);
+      console.log('📊 [DEBUG] Response data type:', typeof response?.data);
+      console.log('📊 [DEBUG] Response data length:', response?.data?.length);
+      console.log('📊 [DEBUG] Response data sample:', response?.data?.slice(0, 2));
       
       const oddsData = response.data.matches || [];
-      console.log('[DEBUG] Raw odds data:', oddsData);
-      console.log('[DEBUG] Number of matches in response:', oddsData.length);
+      console.log('📊 [DEBUG] Raw odds data:', oddsData);
+      console.log('📊 [DEBUG] Number of matches in response:', oddsData.length);
+      
+
       
       // Transform odds data to match frontend format
+      console.log('🔄 [DEBUG] Transforming matches...');
       const transformedMatches = transformOddsToMatches(oddsData);
+      console.log('✅ [HOME] Transformed matches:', transformedMatches.length, 'matches');
+      console.log('✅ [DEBUG] Transformed matches count:', transformedMatches.length);
+      console.log('✅ [DEBUG] Transformed matches sample:', transformedMatches.slice(0, 2));
       // Debug log: print number of matches and a sample
-      console.log(`[DEBUG] Frontend received ${transformedMatches.length} matches`);
+      console.log(`✅ [DEBUG] Frontend received ${transformedMatches.length} matches`);
       if (transformedMatches.length > 0) {
-        console.log('[DEBUG] First match sample:', transformedMatches[0]);
+        console.log('✅ [DEBUG] First match sample:', transformedMatches[0]);
+        console.log('🎉 [DEBUG] SUCCESS! Setting', transformedMatches.length, 'matches');
       }
       setMatches(transformedMatches);
       
@@ -458,11 +505,14 @@ const Home = () => {
       setPopularMatches(uniquePopularMatches);
       
     } catch (err) {
-      console.error('Error fetching matches:', err);
+      console.error('💥 Error fetching matches:', err);
+      console.log('💥 [DEBUG] Primary API failed:', err);
+      console.log('💥 [DEBUG] Error message:', err.message);
+      console.log('💥 [DEBUG] Error response:', err.response);
       setError('Failed to load matches. Please check your connection and try again.');
       
       // Instead of falling back to sample data, try alternative API endpoints
-      console.log('[DEBUG] Primary API failed, attempting alternative data sources...');
+      console.log('💥 [DEBUG] Primary API failed, attempting alternative data sources...');
       
       try {
         // Try fetching from a different endpoint or sport-specific endpoints
@@ -476,7 +526,7 @@ const Home = () => {
           return;
         }
       } catch (alternativeErr) {
-        console.log('[DEBUG] Alternative endpoints also failed:', alternativeErr);
+        console.log('💥 [DEBUG] Alternative endpoints also failed:', alternativeErr);
       }
       
       // Only use minimal sample data as last resort, with clear indication
@@ -485,7 +535,9 @@ const Home = () => {
       setPopularMatches([]);
       setError('Unable to connect to server. The server may be temporarily unavailable. Please try refreshing the page in a few moments.');
     } finally {
-      setLoading(false);
+      if (!isBackgroundUpdate) {
+        setLoading(false);
+      }
     }
   };
 
@@ -567,86 +619,129 @@ const Home = () => {
     };
   }, []);
   
-  // Preload cached data on component mount for instant display
+  // Consolidated data loading effect for instant display and background updates
   useEffect(() => {
+    console.log('=== HOME COMPONENT MOUNTED ===');
+    console.log('[HOME] Component mounted, fetching matches...');
+    let hasInstantData = false;
+    
     // First, try to restore from session storage for instant navigation
     try {
       const sessionMatches = sessionStorage.getItem('home_matches_data');
       const sessionPopular = sessionStorage.getItem('home_popular_data');
       const sessionFiltered = sessionStorage.getItem('home_filtered_data');
       
-      if (sessionMatches && sessionPopular) {
+      if (sessionMatches || sessionPopular) {
         console.log('[HOME] Restoring data from session storage for instant display');
-        const parsedMatches = JSON.parse(sessionMatches);
-        const parsedPopular = JSON.parse(sessionPopular);
-        const parsedFiltered = sessionFiltered ? JSON.parse(sessionFiltered) : [];
         
-        setMatches(parsedMatches);
-        setPopularMatches(parsedPopular);
-        setFilteredMatches(parsedFiltered);
+        if (sessionMatches) {
+          const parsedMatches = JSON.parse(sessionMatches);
+          setMatches(parsedMatches);
+        }
+        
+        if (sessionPopular) {
+          const parsedPopular = JSON.parse(sessionPopular);
+          setPopularMatches(parsedPopular);
+          console.log('[HOME] Restored', parsedPopular.length, 'popular matches from session');
+        }
+        
+        if (sessionFiltered) {
+          const parsedFiltered = JSON.parse(sessionFiltered);
+          setFilteredMatches(parsedFiltered);
+        }
+        
         setLoading(false); // Show content immediately
+        hasInstantData = true;
       }
     } catch (e) {
       console.log('[HOME] No session storage data available');
     }
 
-    // Then, try localStorage cache as fallback
-    try {
-      const matchesCacheRaw = localStorage.getItem('cache:/matches');
-      if (matchesCacheRaw) {
-        const matchesCache = JSON.parse(matchesCacheRaw);
-        const cachedOddsData = matchesCache?.data?.matches || [];
-        const transformed = transformOddsToMatches(cachedOddsData);
-        if (transformed && transformed.length > 0) {
-          setMatches(transformed);
+    // If no session data, try localStorage cache as fallback
+    if (!hasInstantData) {
+      try {
+        const matchesCacheRaw = localStorage.getItem('cache:/matches');
+        const popularCacheRaw = localStorage.getItem('cache:/matches/popular/trending');
+        
+        if (matchesCacheRaw || popularCacheRaw) {
+          let hasMatchesCache = false;
+          let hasPopularCache = false;
+          
+          if (matchesCacheRaw) {
+            const matchesCache = JSON.parse(matchesCacheRaw);
+            const cachedOddsData = matchesCache?.data?.matches || [];
+            const transformed = transformOddsToMatches(cachedOddsData);
+            if (transformed && transformed.length > 0) {
+              setMatches(transformed);
+              hasMatchesCache = true;
+            }
+          }
+          
+          if (popularCacheRaw) {
+            const popularCache = JSON.parse(popularCacheRaw);
+            const popularData = popularCache?.data?.matches || [];
+            const now = new Date();
+            const transformedPopular = popularData
+              .filter(match => new Date(match.startTime) >= now)
+              .map(match => ({
+                id: match.id || match._id,
+                league: match.league || '',
+                subcategory: match.subcategory || '',
+                startTime: match.startTime,
+                time: new Date(match.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                odds: match.odds || {},
+                sport: match.sport || '',
+                country: match.country || '',
+                fullLeagueTitle: match.fullLeagueTitle || ''
+              }));
+            const uniquePopular = deduplicateMatches(transformedPopular);
+            if (uniquePopular && uniquePopular.length > 0) {
+              setPopularMatches(uniquePopular);
+              hasPopularCache = true;
+              console.log('[HOME] Restored', uniquePopular.length, 'popular matches from cache');
+            }
+          }
+          
+          // If we have any cached data, show it immediately
+          if (hasMatchesCache || hasPopularCache) {
+            setLoading(false);
+            hasInstantData = true;
+            console.log('[HOME] Displaying cached data instantly');
+          }
         }
+      } catch (e) {
+        console.log('[HOME] Cache restoration failed:', e);
       }
-      const popularCacheRaw = localStorage.getItem('cache:/matches/popular/trending');
-      if (popularCacheRaw) {
-        const popularCache = JSON.parse(popularCacheRaw);
-        const popularData = popularCache?.data?.matches || [];
-        const now = new Date();
-        const transformedPopular = popularData
-          // Only upcoming
-          .filter(match => new Date(match.startTime) >= now)
-          .map(match => ({
-          id: match.id || match._id,
-          league: match.league || '',
-          subcategory: match.subcategory || '',
-          startTime: match.startTime,
-          time: new Date(match.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          homeTeam: match.homeTeam,
-          awayTeam: match.awayTeam,
-          odds: match.odds || {},
-          sport: match.sport || '',
-          country: match.country || '',
-          fullLeagueTitle: match.fullLeagueTitle || ''
-        }));
-        const uniquePopular = deduplicateMatches(transformedPopular);
-        if (uniquePopular && uniquePopular.length > 0) {
-          setPopularMatches(uniquePopular);
-        }
-      }
-    } catch (e) {
-      // Ignore cache errors
     }
-    fetchMatches();
-  }, []);
-  
-  // Enhanced version that includes polling for regular updates
-  useEffect(() => {
-    // Initial fetch
-    fetchMatches();
     
-    // Set up polling interval (every 2 minutes = 120000ms)
+    // Fetch fresh data in background (don't set loading to true if we have instant data)
+    const fetchInBackground = async () => {
+      if (hasInstantData) {
+        console.log('[HOME] Fetching fresh data in background...');
+        await fetchMatches(false, true); // Don't show loading, background update
+        // Also fetch popular matches in background
+        await fetchPopularMatches();
+      } else {
+        console.log('[HOME] No cached data, fetching with loading state...');
+        await fetchMatches(false, false); // Show loading state
+        await fetchPopularMatches();
+      }
+    };
+    
+    fetchInBackground();
+    
+    // Set up polling interval (every 3 minutes = 180000ms) - reduced frequency
     const intervalId = setInterval(() => {
       console.log('[DEBUG] Polling for updated matches data...');
-      fetchMatches();
-    }, 120000);
+      fetchMatches(false, true); // Background updates only
+      fetchPopularMatches(); // Also update popular matches
+    }, 180000);
     
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   // Add retry logic for failed connections
   useEffect(() => {
@@ -788,10 +883,18 @@ const Home = () => {
   const groupedMatches = groupMatchesBySubcategory();
   
   // Debug: Log the grouped matches to see what subcategories are created
-  console.log('Grouped matches:', Object.keys(groupedMatches));
+  console.log('🏠 [HOME] Raw matches count:', matches.length);
+  console.log('🏠 [HOME] Filtered matches count:', filteredMatches.length);
+  console.log('🏠 [HOME] Grouped matches:', Object.keys(groupedMatches));
+  console.log('🏠 [HOME] Total grouped matches entries:', Object.entries(groupedMatches).length);
   Object.entries(groupedMatches).forEach(([subcategory, matches]) => {
-    console.log(`Subcategory "${subcategory}": ${matches.length} matches`);
+    console.log(`🏠 [HOME] Subcategory "${subcategory}": ${matches.length} matches`);
   });
+  
+  // Alert to force visibility of debug info
+  if (matches.length > 0 && Object.entries(groupedMatches).length > 0) {
+    console.log('🚨 [HOME] MATCHES LOADED! Should render', Object.entries(groupedMatches).reduce((total, [, matches]) => total + matches.length, 0), 'MatchCard components');
+  }
 
   // Do not gate initial render behind loading; show page immediately without loading text
 
@@ -812,6 +915,7 @@ const Home = () => {
   return (
     <div className="home-page">
       <HeroSlider />
+      
       
       {/* Popular Matches section - keep unchanged */}
       <div className="main-content">

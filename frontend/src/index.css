@@ -9881,10 +9881,31 @@ body {
     border: 1px solid #3a3a3a !important;
     color: #ffffff !important;
     border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 2px !important;
   }
   .popular-odds-button .odds-header,
   .popular-odds-button .odds-value {
     color: #ffffff !important;
+    display: block !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .popular-odds-button .odds-header {
+    font-size: clamp(10px, 2.4vw, 12px) !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+  }
+  .popular-odds-button .odds-value {
+    font-size: clamp(11px, 2.6vw, 13px) !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
   }
   .popular-odds-button:hover {
     background: #3a3a3a !important;

@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import { addBet } from '../store/slices/activeBetSlice';
 
 const PopularMatches = ({ matches }) => {
   const dispatch = useDispatch();
@@ -39,7 +40,7 @@ const PopularMatches = ({ matches }) => {
       stake: 0,
       sport: match.sport
     };
-    dispatch({ type: 'activeBets/addBet', payload: bet });
+    dispatch(addBet(bet));
   };
 
   const scrollLeft = () => {

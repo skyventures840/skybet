@@ -21,7 +21,7 @@ class OddsWebSocketService {
   connect() {
     try {
       // Use environment variable for WebSocket URL, fallback to localhost
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:10000/ws/odds';
+      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws';
       
       console.log('[ODDS WS] Connecting to:', wsUrl);
       this.ws = new WebSocket(wsUrl);
@@ -173,16 +173,24 @@ class OddsWebSocketService {
    */
   startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
-      if (this.isConnected && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: 'heartbeat' }));
-        
-        // Set timeout for heartbeat response
-        this.heartbeatTimeout = setTimeout(() => {
-          console.warn('[ODDS WS] Heartbeat timeout, closing connection');
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        try {
+          this.ws.send(JSON.stringify({ type: 'heartbeat' }));
+          
+          // Set timeout for heartbeat response
+          this.heartbeatTimeout = setTimeout(() => {
+            console.warn('[ODDS WS] Heartbeat timeout, closing connection');
+            this.ws.close();
+          }, 5000);
+        } catch (error) {
+          console.error('[ODDS WS] Error sending heartbeat:', error);
           this.ws.close();
-        }, 5000);
+        }
+      } else if (this.ws && this.ws.readyState === WebSocket.CLOSED) {
+        console.log('[ODDS WS] Connection closed during heartbeat, attempting reconnect');
+        this.connect();
       }
-    }, 30000); // Send heartbeat every 30 seconds
+    }, 20000); // Send heartbeat every 20 seconds (more frequent for hosting platforms)
   }
 
   /**

@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
+import { addBet } from '../store/slices/activeBetSlice';
 
 const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
     const dispatch = useDispatch();
@@ -22,7 +23,7 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
             stake: 0,
             sport: sport
         };
-        dispatch({ type: 'activeBets/addBet', payload: bet });
+        dispatch(addBet(bet));
     };
 
     const getBestOdds = (match, oddsType) => {
@@ -255,7 +256,7 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
                                 className={`odds-button ${isLiveMatch(match) ? 'live-highlight' : ''}`}
                                 onClick={e => {
                                     e.stopPropagation();
-                                    addToBetslip(oddsType, odds, match);
+                                    addToBetslip(match, oddsType, odds);
                                 }}
                             >
                                 <div className="odds-value">{odds.toFixed(2)}</div>

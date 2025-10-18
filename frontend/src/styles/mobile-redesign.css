@@ -673,12 +673,14 @@
     height: 36px !important; /* Increased height for better touch targets */
     margin: 0 2px !important; /* Small margin for spacing */
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
-    padding: 8px 12px !important; /* Increased padding for better appearance */
+    padding: 4px 8px !important; /* Adjusted padding for better vertical alignment */
     font-size: clamp(11px, 2.8vw, 13px) !important; /* Larger font for better readability */
     box-sizing: border-box !important;
     border-radius: 8px !important; /* Slightly larger border radius */
+    gap: 1px !important; /* Small gap between label and value */
   }
 }

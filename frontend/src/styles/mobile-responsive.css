@@ -2628,31 +2628,37 @@ html, body {
 
   /* Ensure perfect vertical alignment: label above odds, centered */
   .popular-odds-button {
-    gap: 2px; /* Tight spacing between label and value */
+    gap: 2px !important; /* Tight spacing between label and value */
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
   }
   .popular-odds-button .odds-header {
-    display: block;
-    text-align: center;
-    font-size: clamp(10px, 2.4vw, 12px);
-    font-weight: 700;
-    line-height: 1;
-    margin: 0;
-    padding: 0;
-    height: 14px; /* Fixed to align across buttons */
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    color: var(--text-muted);
+    display: block !important;
+    text-align: center !important;
+    font-size: clamp(10px, 2.4vw, 12px) !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    color: var(--text-muted) !important;
   }
   .popular-odds-button .odds-value {
-    display: block;
-    text-align: center;
-    font-size: clamp(11px, 2.6vw, 13px);
-    font-weight: 800;
-    line-height: 1;
-    margin: 0;
-    padding: 0;
-    min-height: 16px; /* Fixed to align across buttons */
+    display: block !important;
+    text-align: center !important;
+    font-size: clamp(11px, 2.6vw, 13px) !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
   }
 
   .odds-button:hover {

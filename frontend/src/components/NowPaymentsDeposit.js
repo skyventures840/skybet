@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 
 import apiService from '../services/api';
 import QRCode from 'qrcode.react';
-import buildPaymentUri from '../utils/cryptoUri';
-import { generateCryptoQR } from '../utils/cryptoQr';
+import buildPaymentUri, { generateCryptoQR } from '../utils/cryptoUri';
 import './Deposit.css';
 
 const NowPaymentsDeposit = () => {

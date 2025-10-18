@@ -62,10 +62,13 @@ const responseCache = {
 };
 
 async function cachedGet(path) {
+  console.log(`[CACHE DEBUG] cachedGet called for path: ${path}`);
+  
   // Use enhanced cache for 30-minute caching
   const cachedData = enhancedCache.getCachedData(path);
   
   if (cachedData) {
+    console.log(`[CACHE DEBUG] Cache hit for ${path}`, cachedData);
     // Return cached data in axios-like response format
     return {
       data: cachedData,
@@ -78,12 +81,18 @@ async function cachedGet(path) {
 
   // Make network request if no valid cache
   console.log(`[ENHANCED API] Fetching fresh data for ${path}`);
-  const response = await api.get(path);
-  
-  // Cache the response data
-  enhancedCache.setCachedData(path, response.data);
-  
-  return response;
+  try {
+    const response = await api.get(path);
+    console.log(`[CACHE DEBUG] Network response for ${path}:`, response);
+    
+    // Cache the response data
+    enhancedCache.setCachedData(path, response.data);
+    
+    return response;
+  } catch (error) {
+    console.error(`[CACHE DEBUG] Network error for ${path}:`, error);
+    throw error;
+  }
 }
 
 // Request interceptor to add the auth token to headers
@@ -190,9 +199,19 @@ const apiService = {
   // Matches - Updated to use correct endpoints
   getAllMatches: () => cachedGet('/matches/all', 60000),
   // Cache main matches list briefly to avoid spinner and reflows
-  getMatches: () => cachedGet('/matches', 30000),
-  // Cache popular matches briefly
-  getPopularMatches: () => cachedGet('/matches/popular/trending', 30000),
+  getMatches: async () => {
+    console.log('[API DEBUG] getMatches called');
+    try {
+      const result = await cachedGet('/matches', 30000);
+      console.log('[API DEBUG] getMatches response:', result);
+      return result;
+    } catch (error) {
+      console.error('[API DEBUG] getMatches error:', error);
+      throw error;
+    }
+  },
+  // Cache popular matches for longer duration for instant loading
+  getPopularMatches: () => cachedGet('/matches/popular/trending', 300000), // 5 minutes cache
   getMatchById: (id) => cachedGet(`/matches/${id}`, 15000),
   getLiveMatches: () => cachedGet('/matches/live/real-time', 5000),
   addMatch: (matchData) => api.post('/admin/matches', matchData),

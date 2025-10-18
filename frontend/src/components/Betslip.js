@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback, memo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { removeBet, updateStake } from '../store/slices/activeBetSlice';
 import apiService from '../services/api';
@@ -42,34 +42,34 @@ const Betslip = () => {
     }
   };
 
-  const removeBetHandler = (index) => {
+  const removeBetHandler = useCallback((index) => {
     dispatch(removeBet(index));
-  };
+  }, [dispatch]);
 
-  const updateStakeHandler = (index, stake) => {
+  const updateStakeHandler = useCallback((index, stake) => {
     dispatch(updateStake({ index, stake }));
-  };
+  }, [dispatch]);
 
-  const incrementStake = (index, currentStake) => {
+  const incrementStake = useCallback((index, currentStake) => {
     const newStake = (parseFloat(currentStake) || 0) + 50;
     updateStakeHandler(index, newStake);
-  };
+  }, [updateStakeHandler]);
 
-  const decrementStake = (index, currentStake) => {
+  const decrementStake = useCallback((index, currentStake) => {
     const newStake = Math.max(0, (parseFloat(currentStake) || 0) - 50);
     updateStakeHandler(index, newStake);
-  };
+  }, [updateStakeHandler]);
 
-  const calculateTotalOdds = () => {
+  const totalOdds = useMemo(() => {
     if (activeTab === 'Ordinary') {
       const combined = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
       return combined.toFixed(2);
     }
     // Express: show sum of odds as an indicator
     return activeBets.reduce((total, bet) => total + (parseFloat(bet.odds) || 0), 0).toFixed(2);
-  };
+  }, [activeBets, activeTab]);
 
-  const calculatePotentialWin = () => {
+  const potentialWin = useMemo(() => {
     if (activeTab === 'Ordinary') {
       const totalStake = parseFloat(activeBets[0]?.stake || 0);
       const combined = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
@@ -79,7 +79,7 @@ const Betslip = () => {
     return activeBets
       .reduce((total, bet) => total + (parseFloat(bet.stake) || 0) * (parseFloat(bet.odds) || 1), 0)
       .toFixed(2);
-  };
+  }, [activeBets, activeTab]);
 
   const validateBets = () => {
     // Check if there are any bets to validate
@@ -129,15 +129,15 @@ const Betslip = () => {
   };
 
   // Check if betslip is valid for current tab
-  const isBetslipValid = () => {
+  const isBetslipValid = useMemo(() => {
     if (activeTab === 'Ordinary') {
       return activeBets.length >= 2;
     }
     return activeBets.length >= 1;
-  };
+  }, [activeBets.length, activeTab]);
 
   // Get validation message for current tab
-  const getValidationMessage = () => {
+  const validationMessage = useMemo(() => {
     if (activeTab === 'Ordinary') {
       if (activeBets.length === 0) {
         return 'Select at least 2 events for Ordinary bet';
@@ -150,7 +150,7 @@ const Betslip = () => {
       }
     }
     return null;
-  };
+  }, [activeBets.length, activeTab]);
 
   // Generate bet ID helper function
   const generateBetId = () => {
@@ -395,7 +395,7 @@ const Betslip = () => {
         {activeBets.length === 0 ? (
           <div className="empty-betslip">
             <div className="empty-message">
-              <p>{getValidationMessage()}</p>
+              <p>{validationMessage}</p>
             </div>
           </div>
         ) : (
@@ -404,7 +404,7 @@ const Betslip = () => {
             {activeTab === 'Ordinary' && activeBets.length > 0 && (
               <div className="events-header">
                 <div className="events-title">
-                  Events (Odds {calculateTotalOdds()})
+                  Events (Odds {totalOdds})
                 </div>
                 <button 
                   className="toggle-collapse-btn"
@@ -540,12 +540,12 @@ const Betslip = () => {
             <div className="betslip-summary">
               <div className="summary-row">
                 <span>Total odds:</span>
-                <span>{calculateTotalOdds()}</span>
+                <span>{totalOdds}</span>
               </div>
               
               <div className="summary-row">
                 <span>Potential win:</span>
-                <span>${calculatePotentialWin()}</span>
+                <span>${potentialWin}</span>
               </div>
 
               {error && (
@@ -563,7 +563,7 @@ const Betslip = () => {
               <button 
                 className="place-bet-btn" 
                 onClick={placeBet}
-                disabled={isPlacingBet || !isBetslipValid()}
+                disabled={isPlacingBet || !isBetslipValid}
               >
                 {isPlacingBet ? 'Placing Bet...' : 'Place Bet'}
               </button>
@@ -577,5 +577,5 @@ const Betslip = () => {
   );
 };
 
-export default Betslip;
+export default memo(Betslip);
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { generateCryptoQR, generateCryptoQrDataUrl } from '../utils/cryptoQr';
+import { generateCryptoQR, generateCryptoQrDataUrl } from '../utils/cryptoUri';
 
 // Renders a QR code <img> from a crypto payment URI using qrcode
 // Props: address, currency, amount, extraId, size

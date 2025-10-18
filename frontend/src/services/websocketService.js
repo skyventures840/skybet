@@ -16,7 +16,7 @@ class WebSocketService {
     
     try {
       // Use environment variable for WebSocket URL, fallback to localhost for development
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000';
+      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws';
       this.ws = new WebSocket(`${wsUrl}?token=${token}`);
       
       this.ws.onopen = () => {
@@ -152,10 +152,13 @@ class WebSocketService {
   // Start heartbeat to keep connection alive
   startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
-      if (this.isConnected) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.send('ping');
+      } else if (this.ws && this.ws.readyState === WebSocket.CLOSED) {
+        console.log('[WS] Connection closed during heartbeat, attempting reconnect');
+        this.reconnect();
       }
-    }, 30000); // Send ping every 30 seconds
+    }, 20000); // Send ping every 20 seconds (more frequent for hosting platforms)
   }
   
   // Stop heartbeat
