@@ -272,7 +272,7 @@
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 12px !important;
+    padding: 20px 12px !important;
     background: var(--card-bg) !important;
     border: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -327,7 +327,7 @@
     justify-content: space-between !important;
     width: 100% !important;
     gap: 8px !important;
-    min-height: 48px !important;
+    min-height: 80px !important;
   }
 
   /* Teams section */

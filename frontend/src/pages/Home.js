@@ -430,13 +430,11 @@ const Home = () => {
       
       // Fetch fresh data if no cache or force refresh
       console.log('🔄 [HOME] Fetching fresh matches data...');
-      alert('🔄 [HOME] Fetching fresh matches data...');
       if (!isBackgroundUpdate) {
         setLoading(true);
       }
       
       console.log('🔄 [DEBUG] Fetching matches from API...');
-      alert('🔄 [DEBUG] Making API call to getMatches()...');
       const response = await apiService.getMatches();
       console.log('📡 [HOME] API Response:', response.data);
       console.log('📡 [DEBUG] API response received:', response);

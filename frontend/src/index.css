@@ -6619,7 +6619,7 @@ body {
 .footer {
   background: var(--header-bg);
   color: var(--text-primary);
-  padding: 40px 20px;
+  padding: 20px 20px;
   border-top: 1px solid var(--border-color);
   font-size: 14px;
 }
@@ -9850,6 +9850,38 @@ body {
     overflow-x: hidden; /* keep horizontal scroll hidden */
     overflow-y: visible; /* avoid clipping card corners */
   }
+}
+
+/* =============================================================================
+   CONSISTENT Z-INDEX FOR ALL MAIN SECTIONS
+   ============================================================================= */
+/* Ensure all main content sections have the same z-index to prevent overlapping during vertical scrolling */
+.hero-slider,
+.hero-slider .slide-content,
+.sports-strip,
+.popular-matches-section,
+.popular-matches-box,
+.popular-matches-scroll,
+.popular-match-card,
+.matches-section,
+.matches-grid,
+.match-card {
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Keep hero slider dots and buttons above content */
+.hero-slider .slider-dots,
+.hero-slider .slider-btn,
+.hero-slider .prev-btn,
+.hero-slider .next-btn {
+  z-index: 2 !important;
+}
+
+/* Keep hero overlay below content */
+.hero-slider .slide-overlay {
+  z-index: 0 !important;
+}
 
   /* Popular matches: increase card height, reduce container width, keep content full width */
   .popular-match-card {
@@ -9911,7 +9943,6 @@ body {
     background: #3a3a3a !important;
     border-color: #4a4a4a !important;
   }
-}
 
 /* Extra-small screens height handled in styles/mobile-responsive.css to avoid conflicts */
 /* Bets page: expanded header uses 3-column grid with labels visible */

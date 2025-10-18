@@ -28,8 +28,8 @@ const MatchDetail = () => {
         // Always fetch real match data from API/database - no test mode
         const fetchMatch = async () => {
             try {
-                console.log('Fetching real match data for ID:', matchId);
-                const response = await apiService.getMatchById(matchId);
+                console.log('Fetching comprehensive match data with markets for ID:', matchId);
+                const response = await apiService.getMatchMarkets(matchId);
                 const matchData = response.data.match || response.data;
                 
                 console.log('Raw match data received:', matchData);
