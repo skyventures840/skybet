@@ -91,6 +91,10 @@ const betSchema = new mongoose.Schema({
 betSchema.index({ userId: 1, status: 1 });
 betSchema.index({ matchId: 1, status: 1 });
 betSchema.index({ userId: 1, createdAt: -1 });
+betSchema.index({ status: 1, createdAt: -1 }); // For admin queries
+betSchema.index({ userId: 1, status: 1, createdAt: -1 }); // User-specific status queries
+betSchema.index({ settledAt: 1 }); // For settlement queries
+betSchema.index({ market: 1, status: 1 }); // Market-specific analytics
 
 // Static method to get bets by user
 betSchema.statics.getByUser = function(userId, status = null) {

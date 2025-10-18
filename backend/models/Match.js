@@ -105,6 +105,14 @@ const matchSchema = new mongoose.Schema({
   }
 });
 
+// Compound indexes for common query patterns
+matchSchema.index({ sport: 1, status: 1, startTime: 1 }); // Most common query pattern
+matchSchema.index({ leagueId: 1, status: 1, startTime: 1 }); // League-specific queries
+matchSchema.index({ status: 1, startTime: 1 }); // Status-based queries with time sorting
+matchSchema.index({ startTime: 1, status: 1 }); // Time-based queries with status filter
+matchSchema.index({ createdAt: 1 }); // For admin queries
+matchSchema.index({ updatedAt: 1 }); // For recently updated matches
+
 // Update timestamp on save
 matchSchema.pre('save', function(next) {
   this.updatedAt = Date.now();

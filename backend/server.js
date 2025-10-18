@@ -23,6 +23,7 @@ const wheelRoutes = require('./routes/wheel');
 const { createSocketIOServer } = require('./events/socketioServer');
 // Import WebSocket server
 const WebSocketServer = require('./websocketServer');
+const keepAliveService = require('./services/keepAliveService');
 const compression = require('compression');
 const sharp = require('sharp');
 const { cache, get, set, del } = require('./utils/cache');
@@ -129,16 +130,59 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
+// Enhanced health check endpoint for hosting platforms
+app.get('/health', async (req, res) => {
   const healthy = isServerHealthy();
   const status = healthy ? 'OK' : 'UNHEALTHY';
   
-  res.status(healthy ? 200 : 503).json({
+  // Comprehensive health metrics
+  const healthData = {
     status,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    healthy
+    healthy,
+    system: {
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024)
+      },
+      cpu: process.cpuUsage(),
+      nodeVersion: process.version,
+      platform: process.platform
+    },
+    services: {
+      database: 'unknown',
+      websocket: global.websocketServer ? 'active' : 'inactive',
+      socketio: 'active'
+    }
+  };
+
+  // Check database connection
+  try {
+    if (global.mongoService && global.mongoService.isConnected()) {
+      healthData.services.database = 'connected';
+    } else {
+      healthData.services.database = 'disconnected';
+    }
+  } catch (error) {
+    healthData.services.database = 'error';
+  }
+
+  // Add WebSocket connection count if available
+  if (global.websocketServer && global.websocketServer.wss) {
+    healthData.services.websocketConnections = global.websocketServer.wss.clients.size;
+  }
+
+  res.status(healthy ? 200 : 503).json(healthData);
+});
+
+// Keep-alive endpoint for external monitoring services
+app.get('/ping', (req, res) => {
+  res.status(200).json({ 
+    pong: true, 
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime())
   });
 });
 
@@ -252,9 +296,14 @@ function startHttpAndWsServers() {
   global.websocketServer = new WebSocketServer(server);
   console.log('WebSocket server initialized');
 
+  // Initialize keep-alive service to prevent server sleeping
+  keepAliveService.initialize();
+  console.log('Keep-alive service initialized');
+
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
+    keepAliveService.stop();
     server.close(() => {
       console.log('HTTP server closed');
       if (mongoose.connection && mongoose.connection.readyState !== 0) {
@@ -270,6 +319,7 @@ function startHttpAndWsServers() {
 
   process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully');
+    keepAliveService.stop();
     server.close(() => {
       console.log('HTTP server closed');
       if (mongoose.connection && mongoose.connection.readyState !== 0) {

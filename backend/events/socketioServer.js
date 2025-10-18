@@ -4,6 +4,7 @@ const { bus } = require('../utils/cache');
 
 function createSocketIOServer(httpServer) {
   const io = new Server(httpServer, {
+    path: '/socket.io/',
     cors: {
       origin: (origin, cb) => cb(null, true),
       credentials: true

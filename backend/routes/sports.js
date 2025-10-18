@@ -40,12 +40,19 @@ router.get('/:sportId/leagues', auth, async (req, res) => {
       return res.status(404).json({ error: 'Sport not found' });
     }
 
+    // Get current time for filtering past matches
+    const now = new Date();
+
     // Get leagues with match counts
     const leagues = await Promise.all(
       sport.leagues.map(async (league) => {
         const matchCount = await Match.countDocuments({
           leagueId: league.id,
-          status: { $in: ['upcoming', 'live'] }
+          $or: [
+            { status: 'live' },
+            { status: 'upcoming', startTime: { $gte: now } },
+            { status: { $nin: ['finished', 'cancelled'] } }
+          ]
         });
 
         return {
@@ -74,18 +81,26 @@ router.get('/:sportId/matches', auth, async (req, res) => {
       return res.status(404).json({ error: 'Sport not found' });
     }
 
-    const matches = await Match.find({
+    // Get current time for filtering past matches
+    const now = new Date();
+
+    const matchQuery = {
       sport: sport.key,
-      status: status
-    })
+      status: status,
+      // Only show live and future matches
+      $or: [
+        { status: 'live' },
+        { status: 'upcoming', startTime: { $gte: now } },
+        { status: { $nin: ['finished', 'cancelled'] } }
+      ]
+    };
+
+    const matches = await Match.find(matchQuery)
     .sort({ startTime: 1 })
     .skip((page - 1) * limit)
     .limit(limit);
 
-    const total = await Match.countDocuments({
-      sport: sport.key,
-      status: status
-    });
+    const total = await Match.countDocuments(matchQuery);
 
     res.json({
       sport: sport.name,

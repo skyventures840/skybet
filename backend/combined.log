@@ -88,3 +88,13 @@
 {"level":"error","message":"Failed to create payment:","timestamp":"2025-10-17T06:11:43.144Z"}
 {"level":"info","message":"Creating mock payment due to NOWPayments unavailability or rate limiting","timestamp":"2025-10-17T06:11:43.144Z"}
 {"level":"info","message":"Payment created successfully:","orderId":"order_1760681502666_6894c2d561230e4a29a0cc82_5glw69vfs","paymentId":"mock_1760681503145_gi1ju14er","status":"waiting","timestamp":"2025-10-17T06:11:43.184Z","userId":"6894c2d561230e4a29a0cc82"}
+{"amount":60,"currency":"LTC","level":"info","message":"Attempting to create payment:","orderId":"order_1760725388910_68e274f5970e17b25fdafaed_37ca7xhwg","timestamp":"2025-10-17T18:23:08.911Z","userId":"68e274f5970e17b25fdafaed"}
+{"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-17T18:23:09.038Z"}
+{"level":"error","message":"Failed to create payment:","timestamp":"2025-10-17T18:23:09.039Z"}
+{"level":"info","message":"Creating mock payment due to NOWPayments unavailability or rate limiting","timestamp":"2025-10-17T18:23:09.040Z"}
+{"level":"info","message":"Payment created successfully:","orderId":"order_1760725388910_68e274f5970e17b25fdafaed_37ca7xhwg","paymentId":"mock_1760725389041_6jmnaq7a6","status":"waiting","timestamp":"2025-10-17T18:23:09.118Z","userId":"68e274f5970e17b25fdafaed"}
+{"amount":56,"currency":"BTC","level":"info","message":"Attempting to create payment:","orderId":"order_1760767654198_6894c2d561230e4a29a0cc82_mx7hk4m6s","timestamp":"2025-10-18T06:07:34.199Z","userId":"6894c2d561230e4a29a0cc82"}
+{"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-18T06:07:34.277Z"}
+{"level":"error","message":"Failed to create payment:","timestamp":"2025-10-18T06:07:34.278Z"}
+{"level":"info","message":"Creating mock payment due to NOWPayments unavailability or rate limiting","timestamp":"2025-10-18T06:07:34.278Z"}
+{"level":"info","message":"Payment created successfully:","orderId":"order_1760767654198_6894c2d561230e4a29a0cc82_mx7hk4m6s","paymentId":"mock_1760767654279_8s39696uo","status":"waiting","timestamp":"2025-10-18T06:07:34.320Z","userId":"6894c2d561230e4a29a0cc82"}

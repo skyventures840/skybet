@@ -7,7 +7,52 @@ const Match = require('../models/Match');
 const { auth } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const Odds = require('../models/Odds');
+const { cache, keyFor } = require('../utils/cache');
 // Removed unused matchDataEnricher import
+
+// Performance optimization: Create indexes for frequently queried fields
+const ensureIndexes = async () => {
+  try {
+    await Bet.collection.createIndex({ userId: 1, createdAt: -1 });
+    await Bet.collection.createIndex({ status: 1, createdAt: -1 });
+    await Bet.collection.createIndex({ 'bets.matchId': 1 });
+    await Match.collection.createIndex({ startTime: 1, status: 1 });
+    await Odds.collection.createIndex({ matchId: 1, type: 1 });
+  } catch (error) {
+    console.warn('Index creation warning:', error.message);
+  }
+};
+
+// Initialize indexes
+ensureIndexes();
+
+// Cache middleware for user-specific bet queries
+const cacheUserBets = (ttl = 60) => {
+  return async (req, res, next) => {
+    const cacheKey = keyFor('user_bets', {
+      userId: req.user.id,
+      page: req.query.page || 1,
+      limit: req.query.limit || 20,
+      status: req.query.status || 'all'
+    });
+
+    try {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached);
+      }
+      
+      res.set('X-Cache', 'MISS');
+      res.locals.cacheKey = cacheKey;
+      res.locals.cacheTTL = ttl;
+      next();
+    } catch (error) {
+      console.error('Cache middleware error:', error);
+      next();
+    }
+  };
+};
 
 // Enhanced match data with real team names
 const enhancedMatchData = {
@@ -315,7 +360,7 @@ router.post('/', auth, [
 });
 
 // Get user's bets
-router.get('/my-bets', auth, [
+router.get('/my-bets', auth, cacheUserBets(60), [
   body('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
   body('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be an integer between 1 and 100.'),
   body('status').optional().isIn(['pending', 'won', 'lost', 'void']).withMessage('Invalid bet status.')
@@ -335,12 +380,15 @@ router.get('/my-bets', auth, [
       query.status = status;
     }
 
-    const bets = await Bet.find(query)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-
-    const total = await Bet.countDocuments(query);
+    // Use Promise.all for parallel execution and lean() for better performance
+    const [bets, total] = await Promise.all([
+      Bet.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Bet.countDocuments(query)
+    ]);
 
     const formattedBets = bets.map(bet => {
       // Prefer actual teams/league from bet document, fallback to enhancedMatchData
@@ -387,15 +435,32 @@ router.get('/my-bets', auth, [
       };
     });
 
-    res.json({
+    const response = {
       bets: formattedBets,
       pagination: {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1
+      },
+      meta: {
+        cached: false,
+        timestamp: new Date().toISOString()
       }
-    });
+    };
+
+    // Cache the response if caching is enabled
+    if (res.locals.cacheKey && res.locals.cacheTTL) {
+      try {
+        cache.set(res.locals.cacheKey, response, res.locals.cacheTTL);
+      } catch (error) {
+        console.error('Cache set error:', error);
+      }
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Get bets error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -405,16 +470,29 @@ router.get('/my-bets', auth, [
 // Get bet by ID
 router.get('/:betId', auth, async (req, res) => {
   try {
+    // Optimized query with field projection
     const bet = await Bet.findOne({ 
       _id: req.params.betId, 
       userId: req.user.id 
-    });
+    }, {
+      market: 1,
+      selection: 1,
+      stake: 1,
+      odds: 1,
+      potentialWin: 1,
+      actualWin: 1,
+      status: 1,
+      createdAt: 1,
+      settledAt: 1,
+      matchId: 1
+    }).lean(); // Use lean() for better performance
 
     if (!bet) {
       return res.status(404).json({ error: 'Bet not found' });
     }
 
-    res.json({
+    // Cache the response if caching is available
+    const response = {
       id: bet._id,
       match: `${bet.market} bet on ${bet.selection}`,
       market: bet.market,
@@ -427,7 +505,14 @@ router.get('/:betId', auth, async (req, res) => {
       createdAt: bet.createdAt,
       settledAt: bet.settledAt,
       matchId: bet.matchId
-    });
+    };
+
+    // Cache individual bet for 5 minutes
+    if (res.locals.cacheKey) {
+      cache.set(res.locals.cacheKey, response, res.locals.cacheTTL || 300);
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Get bet error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -466,24 +551,32 @@ router.delete('/:betId', auth, async (req, res) => {
 });
 
 // Get betting statistics for user
-router.get('/stats/summary', auth, async (req, res) => {
+router.get('/stats/summary', auth, cacheUserBets(300), async (req, res) => {
   try {
     const userId = req.user.id;
     console.log(`Fetching bet stats for user: ${userId}`);
 
-    // Get comprehensive bet statistics using aggregation
+    // Optimized aggregation pipeline with better performance
     const stats = await Bet.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      { 
+        $match: { 
+          userId: new mongoose.Types.ObjectId(userId) 
+        } 
+      },
       {
         $group: {
           _id: '$status',
           count: { $sum: 1 },
-          totalStake: { $sum: '$stake' },
-          totalWin: { $sum: '$actualWin' },
-          totalPotentialWin: { $sum: '$potentialWin' }
+          totalStake: { $sum: { $ifNull: ['$stake', 0] } },
+          totalWin: { $sum: { $ifNull: ['$actualWin', 0] } },
+          totalPotentialWin: { $sum: { $ifNull: ['$potentialWin', 0] } },
+          avgOdds: { $avg: { $ifNull: ['$odds', 1] } }
         }
+      },
+      {
+        $sort: { _id: 1 }
       }
-    ]);
+    ]).allowDiskUse(true);
 
     console.log('Aggregation results:', stats);
 

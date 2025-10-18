@@ -33,8 +33,13 @@ const OddsSchema = new mongoose.Schema({
 // Add indexes for faster queries
 OddsSchema.index({ gameId: 1 });
 OddsSchema.index({ sport_key: 1 });
-// Speed up sorting and sport-specific queries
 OddsSchema.index({ commence_time: 1 });
-OddsSchema.index({ sport_key: 1, commence_time: 1 });
+OddsSchema.index({ lastFetched: 1 });
+
+// Compound indexes for common query patterns
+OddsSchema.index({ sport_key: 1, commence_time: 1 }); // Sport-specific queries with time sorting
+OddsSchema.index({ commence_time: 1, sport_key: 1 }); // Time-based queries with sport filter
+OddsSchema.index({ sport_key: 1, lastFetched: 1 }); // For data freshness checks
+OddsSchema.index({ home_team: 1, away_team: 1, commence_time: 1 }); // Team-specific queries
 
 module.exports = mongoose.model('Odds', OddsSchema);

@@ -20,6 +20,21 @@ const userSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+// Add indexes for better query performance
+userSchema.index({ username: 1 });
+userSchema.index({ email: 1 });
+userSchema.index({ isAdmin: 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ isBlocked: 1 });
+userSchema.index({ isBanned: 1 });
+userSchema.index({ lastActivity: 1 });
+userSchema.index({ createdAt: 1 });
+
+// Compound indexes for common query patterns
+userSchema.index({ isActive: 1, isBlocked: 1, isBanned: 1 }); // User status checks
+userSchema.index({ isAdmin: 1, isActive: 1 }); // Admin user queries
+userSchema.index({ lastActivity: 1, isActive: 1 }); // Active user tracking
+
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

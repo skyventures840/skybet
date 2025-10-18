@@ -7,7 +7,10 @@ const mongoose = require('mongoose');
 
 class WebSocketServer {
   constructor(server) {
-    this.wss = new WebSocket.Server({ server });
+    this.wss = new WebSocket.Server({ 
+      server,
+      path: '/ws'
+    });
     this.clients = new Map(); // Map client connections to user info
     this.userSubscriptions = new Map(); // Map user IDs to their subscriptions
     this.liveMatchesSubscribers = new Set(); // Set of clients subscribed to live matches
@@ -684,11 +687,15 @@ class WebSocketServer {
           console.log('Terminating stale WebSocket connection');
           return ws.terminate();
         }
-        
         ws.isAlive = false;
-        ws.ping();
+        try {
+          ws.ping();
+        } catch (error) {
+          console.log('Error sending ping, terminating connection:', error.message);
+          ws.terminate();
+        }
       });
-    }, 30000); // Check every 30 seconds
+    }, 25000); // Check every 25 seconds (more frequent for hosting platforms)
   }
   
   // Stop heartbeat

@@ -34,3 +34,7 @@
 {"level":"error","message":"Failed to create payment:","timestamp":"2025-10-17T05:24:57.966Z"}
 {"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-17T06:11:43.142Z"}
 {"level":"error","message":"Failed to create payment:","timestamp":"2025-10-17T06:11:43.144Z"}
+{"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-17T18:23:09.038Z"}
+{"level":"error","message":"Failed to create payment:","timestamp":"2025-10-17T18:23:09.039Z"}
+{"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-10-18T06:07:34.277Z"}
+{"level":"error","message":"Failed to create payment:","timestamp":"2025-10-18T06:07:34.278Z"}

@@ -80,15 +80,37 @@ function computeFullLeagueTitle({ sportKeyOrName, country, leagueName, fallbackS
   return parts.join('.');
 }
 
-// Simple caching middleware for matches list
-function cacheResponse(ttlSeconds = 30) {
+// Enhanced caching middleware with query-specific keys
+function cacheResponse(ttlSeconds = 300) {
   return (req, res, next) => {
-    const key = '/api/matches';
-    const cached = cacheGet(key);
-    if (cached) return res.json(cached);
+    // Create cache key based on query parameters
+    const queryParams = {
+      sport: req.query.sport,
+      status: req.query.status,
+      leagueId: req.query.leagueId,
+      page: req.query.page || '1',
+      limit: req.query.limit || '20'
+    };
+    
+    // Remove undefined values
+    Object.keys(queryParams).forEach(key => {
+      if (queryParams[key] === undefined) delete queryParams[key];
+    });
+    
+    const cached = cacheGet('/api/matches', queryParams);
+    if (cached) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cached);
+    }
+    
     const originalJson = res.json.bind(res);
     res.json = (data) => {
-      try { cacheSet(key, {}, data, ttlSeconds); } catch (e) {}
+      try { 
+        cacheSet('/api/matches', queryParams, data, ttlSeconds);
+        res.set('X-Cache', 'MISS');
+      } catch (e) {
+        console.warn('Cache set failed:', e.message);
+      }
       return originalJson(data);
     };
     next();
@@ -120,84 +142,120 @@ router.get('/all', adminAuth, async (req, res) => {
 });
 
 // Get all matches with filtering and pagination
-router.get('/', cacheResponse(30), async (req, res) => {  // Removed auth middleware
+router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TTL
   try {
     const sport = req.query.sport;
     const status = req.query.status;
     const leagueId = req.query.leagueId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Cap at 100
+    const skip = (page - 1) * limit;
 
+    // Cache league metadata for better performance
     const leagueMetaMap = await buildLeagueMetaMap();
 
-    // Get matches from both collections
-    const [adminMatches, oddsData] = await Promise.all([
-      // Get admin-created matches
-      Match.find({
-        ...(sport && { sport }),
-        ...(status && { status }),
-        ...(leagueId && { leagueId })
-      }).sort({ startTime: 1 }),
-      // Get odds-based matches
-      Odds.find({
-        ...(sport && { sport_key: sport }),
-        ...(leagueId && { league: leagueId })
-      })
+    // Get current time for filtering past matches
+    const now = new Date();
+
+    // Build optimized queries with proper indexing hints
+    const matchQuery = {
+      ...(sport && { sport }),
+      ...(status && { status }),
+      ...(leagueId && { leagueId }),
+      // Only show live and future matches (exclude finished/past matches)
+      $or: [
+        { status: 'live' },
+        { status: 'upcoming', startTime: { $gte: now } },
+        { status: { $nin: ['finished', 'cancelled'] } }
+      ]
+    };
+
+    const oddsQuery = {
+      ...(sport && { sport_key: sport }),
+      ...(leagueId && { league: leagueId }),
+      // Only show future matches from odds data
+      commence_time: { $gte: now }
+    };
+
+    // Get matches from both collections with pagination and lean queries
+    const [adminMatches, oddsData, totalAdminMatches, totalOddsData] = await Promise.all([
+      // Get admin-created matches with lean query for better performance
+      Match.find(matchQuery)
+        .lean() // Faster queries, returns plain objects
+        .populate('leagueId', 'name', null, { lean: true })
+        .sort({ startTime: 1 })
+        .skip(skip)
+        .limit(limit),
+      // Get odds-based matches with projection to reduce data transfer
+      Odds.find(oddsQuery)
+        .select('home_team away_team commence_time sport_key sport_title bookmakers league')
+        .lean()
+        .sort({ commence_time: 1 })
+        .skip(skip)
+        .limit(limit),
+      // Get total counts for pagination
+      Match.countDocuments(matchQuery),
+      Odds.countDocuments(oddsQuery)
     ]);
 
-    // Transform odds data into match format
-    const transformedOddsData = oddsData.map(odds => {
-      const firstBookmaker = odds.bookmakers[0];
-      if (!firstBookmaker) return null;
+    // Optimized transformation with reduced processing
+    const transformedOddsData = oddsData
+      .filter(odds => odds.bookmakers && odds.bookmakers.length > 0)
+      .map(odds => {
+        const firstBookmaker = odds.bookmakers[0];
+        const markets = {};
+        let additionalMarketsCount = 0;
 
-      const markets = {};
-      let additionalMarketsCount = 0;
-      const normalizeMarketKey = (key) => {
-        const k = (key || '').toLowerCase();
-        const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
-        if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
-        if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
-        if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
-        return noLay;
-      };
+        // Market key normalization function
+         const normalizeMarketKey = (key) => {
+           const k = (key || '').toLowerCase();
+           const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_');
+           if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
+           if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
+           if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
+           return noLay;
+         };
 
-      firstBookmaker.markets.forEach(market => {
-        const mKey = normalizeMarketKey(market.key);
-        if (mKey === 'h2h') {
-          market.outcomes.forEach(outcome => {
-            if (outcome.name === odds.home_team) markets['1'] = outcome.price;
-            else if (outcome.name === odds.away_team) markets['2'] = outcome.price;
-            else if (outcome.name === 'Draw') markets['X'] = outcome.price;
-          });
-        } else if (mKey === 'totals') {
-          // Normalize totals market to frontend keys Total/TM/TU
-          if (market.outcomes && market.outcomes.length >= 2) {
-            const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0];
-            const underOutcome = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1];
-            const point = overOutcome?.point ?? underOutcome?.point;
-            if (point != null) markets['Total'] = point;
-            if (overOutcome && typeof overOutcome.price === 'number') markets['TM'] = overOutcome.price;
-            if (underOutcome && typeof underOutcome.price === 'number') markets['TU'] = underOutcome.price;
+         // Optimized market processing - only process essential markets
+         if (firstBookmaker.markets) {
+           for (const market of firstBookmaker.markets) {
+             const mKey = normalizeMarketKey(market.key);
+            
+            if (mKey === 'h2h' && market.outcomes) {
+              // Process main betting markets
+              for (const outcome of market.outcomes) {
+                if (outcome.name === odds.home_team) markets['1'] = outcome.price;
+                else if (outcome.name === odds.away_team) markets['2'] = outcome.price;
+                else if (outcome.name === 'Draw') markets['X'] = outcome.price;
+              }
+            } else if (mKey === 'totals' && market.outcomes && market.outcomes.length >= 2) {
+              // Process totals efficiently
+              const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0];
+              const underOutcome = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1];
+              const point = overOutcome?.point ?? underOutcome?.point;
+              if (point != null) markets['Total'] = point;
+              if (overOutcome?.price) markets['TM'] = overOutcome.price;
+              if (underOutcome?.price) markets['TU'] = underOutcome.price;
+              additionalMarketsCount++;
+            } else if (mKey === 'spreads' && market.outcomes) {
+              // Process spreads efficiently
+              const home = market.outcomes.find(o => o.name === odds.home_team);
+              const away = market.outcomes.find(o => o.name === odds.away_team);
+              const line = home?.point ?? away?.point;
+              if (line != null) markets['handicapLine'] = line;
+              if (home?.price) markets['homeHandicap'] = home.price;
+              if (away?.price) markets['awayHandicap'] = away.price;
+              additionalMarketsCount++;
+            } else {
+              additionalMarketsCount++;
+            }
           }
-          additionalMarketsCount++;
-        } else if (mKey === 'spreads') {
-          // Normalize spreads market to handicap keys
-          if (Array.isArray(market.outcomes)) {
-            const home = market.outcomes.find(o => o.name === odds.home_team);
-            const away = market.outcomes.find(o => o.name === odds.away_team);
-            const line = home?.point ?? away?.point;
-            if (line != null) markets['handicapLine'] = line;
-            if (typeof home?.price === 'number') markets['homeHandicap'] = home.price;
-            if (typeof away?.price === 'number') markets['awayHandicap'] = away.price;
-          }
-          additionalMarketsCount++;
-        } else {
-          additionalMarketsCount++;
         }
-      });
 
-      const meta = extractLeagueMeta(leagueMetaMap, odds.sport_title);
-      const leagueName = meta?.leagueName || odds.sport_title || 'Match';
-      const country = meta?.country || '';
-      const sportDisplay = meta?.sportName || odds.sport_key;
+        const meta = extractLeagueMeta(leagueMetaMap, odds.sport_title);
+        const leagueName = meta?.leagueName || odds.sport_title || 'Match';
+        const country = meta?.country || '';
+        const sportDisplay = meta?.sportName || odds.sport_key;
       const fullLeagueTitle = computeFullLeagueTitle({
         sportKeyOrName: sportDisplay,
         country,
@@ -289,9 +347,24 @@ router.get('/', cacheResponse(30), async (req, res) => {  // Removed auth middle
     const allMatches = [...formattedAdminMatches, ...transformedOddsData]
       .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
 
+    const totalMatches = totalAdminMatches + totalOddsData;
+    const totalPages = Math.ceil(totalMatches / limit);
+
     res.json({
       matches: allMatches,
-      total: allMatches.length
+      pagination: {
+        page,
+        limit,
+        total: totalMatches,
+        pages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      },
+      meta: {
+        adminMatches: formattedAdminMatches.length,
+        oddsMatches: transformedOddsData.length,
+        cached: res.get('X-Cache') === 'HIT'
+      }
     });
 
   } catch (error) {
@@ -300,25 +373,38 @@ router.get('/', cacheResponse(30), async (req, res) => {  // Removed auth middle
   }
 });
 
-// Get matches by league ID
-router.get('/league/:leagueId', async (req, res) => {
+// Get matches by league ID with caching
+router.get('/league/:leagueId', cacheResponse(600), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const status = req.query.status || 'upcoming';
+    const skip = (page - 1) * limit;
 
-    const matches = await Match.find({
-      leagueId: req.params.leagueId,
-      status: status
-    })
-    .sort({ startTime: 1 })
-    .skip((page - 1) * limit)
-    .limit(limit);
+    // Get current time for filtering past matches
+    const now = new Date();
 
-    const total = await Match.countDocuments({ 
+    const query = {
       leagueId: req.params.leagueId,
-      status: status
-    });
+      status: status,
+      // Only show live and future matches
+      $or: [
+        { status: 'live' },
+        { status: 'upcoming', startTime: { $gte: now } },
+        { status: { $nin: ['finished', 'cancelled'] } }
+      ]
+    };
+
+    // Use Promise.all for parallel execution
+    const [matches, total] = await Promise.all([
+      Match.find(query)
+        .lean()
+        .populate('leagueId', 'name', null, { lean: true })
+        .sort({ startTime: 1 })
+        .skip(skip)
+        .limit(limit),
+      Match.countDocuments(query)
+    ]);
 
     res.json({
       matches,
@@ -326,7 +412,14 @@ router.get('/league/:leagueId', async (req, res) => {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1
+      },
+      meta: {
+        leagueId: req.params.leagueId,
+        status,
+        cached: res.get('X-Cache') === 'HIT'
       }
     });
   } catch (error) {
