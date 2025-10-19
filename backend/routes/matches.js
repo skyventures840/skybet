@@ -228,6 +228,8 @@ router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TT
                 else if (outcome.name === odds.away_team) markets['2'] = outcome.price;
                 else if (outcome.name === 'Draw') markets['X'] = outcome.price;
               }
+              // Include basic odds in additional markets count
+              additionalMarketsCount++;
             } else if (mKey === 'totals' && market.outcomes && market.outcomes.length >= 2) {
               // Process totals efficiently
               const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0];
@@ -332,7 +334,7 @@ router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TT
         sport: match.sport,
         status: match.status,
         odds: formattedOdds,
-        additionalMarkets: match.markets?.length || 0,
+        additionalMarkets: formattedOdds ? Object.keys(formattedOdds).filter(key => formattedOdds[key] && formattedOdds[key] > 0).length : 0,
         market: 'admin',
         bookmaker: 'Admin',
         videoUrl: match.videoUrl || null,
