@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import HeroSlider from '../components/HeroSlider';
 import MatchCard from '../components/MatchCard';
 import PopularMatches from '../components/PopularMatches';
+import SkeletonLoader from '../components/SkeletonLoader';
 import apiService from '../services/api';
 import SportsStrip from '../components/SportsStrip';
 import enhancedCache from '../services/enhancedCache';
@@ -25,6 +26,7 @@ const Home = () => {
   const [popularMatches, setPopularMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [attemptCount, setAttemptCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSidebarFilter, setSelectedSidebarFilter] = useState('');
@@ -368,6 +370,11 @@ const Home = () => {
   const fetchMatches = async (forceRefresh = false, isBackgroundUpdate = false) => {
     try {
       setError(null);
+      
+      // Count only user-facing attempts
+      if (!isBackgroundUpdate) {
+        setAttemptCount(prev => prev + 1);
+      }
       
       // Only show loading state if this is not a background update
       if (!isBackgroundUpdate) {
@@ -896,7 +903,11 @@ const Home = () => {
 
   // Do not gate initial render behind loading; show page immediately without loading text
 
-  if (error) {
+  const hasAnyData = matches.length > 0 || popularMatches.length > 0 || filteredMatches.length > 0;
+  const isInitialError = !!error && !hasAnyData && attemptCount <= 1;
+  const shouldShowErrorPage = !!error && !isInitialError && !hasAnyData;
+
+  if (shouldShowErrorPage) {
     return (
       <div className="home-page">
         <HeroSlider />
@@ -969,28 +980,34 @@ const Home = () => {
           </div>
 
           <div className="matches-container">
-            {Object.entries(groupedMatches).length > 0 ? (
-              Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
-                <div key={subcategory} className="competition-group">
-                  <div className="matches-list">
-                    {subcategoryMatches.map((match, index) => (
-                      <MatchCard
-                        key={match.id}
-                        match={match}
-                        sport={match.sport}
-                        league={match.league}
-                        subcategory={match.subcategory}
-                        showLeagueHeader={index === 0}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="no-matches">
-                <h3>No Matches Found</h3>
-                <p>No matches match your current filters. Try adjusting your search criteria.</p>
+            {(loading || isInitialError) ? (
+              <div className="matches-list">
+                <SkeletonLoader type="match-card" count={6} />
               </div>
+            ) : (
+              Object.entries(groupedMatches).length > 0 ? (
+                Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
+                  <div key={subcategory} className="competition-group">
+                    <div className="matches-list">
+                      {subcategoryMatches.map((match, index) => (
+                        <MatchCard
+                          key={match.id}
+                          match={match}
+                          sport={match.sport}
+                          league={match.league}
+                          subcategory={match.subcategory}
+                          showLeagueHeader={index === 0}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-matches">
+                  <h3>No Matches Found</h3>
+                  <p>No matches match your current filters. Try adjusting your search criteria.</p>
+                </div>
+              )
             )}
           </div>
         </div>

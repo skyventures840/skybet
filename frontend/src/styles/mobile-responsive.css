@@ -2917,9 +2917,11 @@ html, body {
     text-align: center;
   }
 
-  /* Additional markets button - hidden on small screens */
+  /* Additional markets button - visible on small screens */
   .additional-markets-container {
-    display: none !important; /* Hide on small screens */
+    display: flex !important; /* Show on small screens */
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .more-markets-icon {

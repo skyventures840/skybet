@@ -3,5 +3,89 @@
  * This file contains any final CSS overrides that need to take precedence
  * over other stylesheets. Use sparingly and document any overrides.
  */
+ 
+ /* Add any necessary CSS overrides here */
+ 
+ @media (max-width: 767px) {
+   /* Mobile-only: align date/time with teams in regular match cards */
+   .match-card .match-date-time,
+   .match-card .match-teams {
+     margin-left: 0 !important;
+     padding-left: 14px !important;
+     text-align: left !important;
+   }
+ }
+ 
+ /* Fixed width for regular match section on small screens */
+ @media (max-width: 767px) {
+   /* Scope to the regular matches section to avoid affecting popular matches */
+   .matches-section .matches-container,
+   .matches-section .competition-group,
+   .matches-section .matches-list {
+     width: 375px !important;
+     max-width: 375px !important;
+     min-width: 375px !important;
+     margin: 0 auto !important; /* center the fixed-width container */
+     padding-left: 0 !important;
+     padding-right: 0 !important;
+     left: auto !important;
+     right: auto !important;
+   }
+ 
+   .matches-section .match-card {
+      width: 330px !important;
+      max-width: 330px !important;
+      min-width: 330px !important;
+      margin: 8px auto !important; /* visible spacing and centering */
+      border-radius: 12px !important; /* small visual cue to notice change */
+      border: 1px solid var(--border-color) !important; /* make edges clear */
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important; /* subtle depth */
+      overflow: visible !important; /* avoid clipping content */
+      left: auto !important;
+      right: auto !important;
+      padding: 18px 22px !important; /* further horizontal inset */
+      box-sizing: border-box !important; /* include padding in width */
+      background-clip: padding-box !important; /* keep radius visually clean */
+    }
+ 
+   /* Proportionally reduce odds controls inside narrower card */
+   .matches-section .match-card .odds-buttons-container {
+     gap: 2px !important;
+     padding: 0 10px !important;
+   }
+   .matches-section .match-card .odds-button {
+     min-height: 28px !important;
+     padding: 4px 6px !important;
+     font-size: 0.9em !important;
+     flex: 1 1 0% !important;
+   }
+   .matches-section .match-card .odds-header {
+     font-size: 0.85em !important;
+   }
+ 
+   .matches-section .match-card .match-row {
+     width: 100% !important;
+   }
+ }
 
-/* Add any necessary CSS overrides here */
+/* Additional insets for inner content on small screens */
+@media (max-width: 767px) {
+  .matches-section .match-card .match-row {
+    padding: 0 14px !important; /* further inset for rows */
+  }
+  .matches-section .match-card .odds-headers-container {
+    padding: 0 12px !important; /* keep headers aligned with odds buttons */
+  }
+  .matches-section .match-card .odds-buttons-container {
+    padding: 0 12px !important; /* match headers inset for consistency */
+  }
+  .matches-section .match-card .match-date-time,
+  .matches-section .match-card .match-teams {
+    padding-left: 0 !important; /* avoid double inset; use card/row padding */
+  }
+  /* Move date to the right within regular match cards on mobile */
+  .matches-section .match-card .match-date-time {
+    text-align: right !important;
+    padding-right: 10px !important;
+  }
+}
