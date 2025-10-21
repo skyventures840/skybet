@@ -1,0 +1,286 @@
+import axios from 'axios';
+import enhancedCache from './enhancedCache';
+
+// Use environment variable for API URL, fallback to localhost for development
+const RAW_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const CLEAN_BASE = RAW_BASE.replace(/\/+$/, ''); // remove trailing slashes
+const API_BASE_URL = /\/api$/.test(CLEAN_BASE) ? CLEAN_BASE : `${CLEAN_BASE}/api`;
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true, // This is important for sending cookies/tokens with requests
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Simple in-memory cache with TTL to speed up initial loads
+const responseCache = {
+  store: new Map(),
+  get(key) {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.response;
+  },
+  set(key, response, ttl) {
+    this.store.set(key, { response, ttl, timestamp: Date.now() });
+  },
+  delete(key) {
+    this.store.delete(key);
+    try {
+      localStorage.removeItem(`cache:${key}`);
+    } catch (err) {
+      // Swallow storage errors (quota/unavailable) intentionally
+      void err;
+    }
+  },
+  invalidate(prefix) {
+    // Remove in-memory entries by prefix
+    for (const k of this.store.keys()) {
+      if (String(k).startsWith(prefix)) {
+        this.store.delete(k);
+      }
+    }
+    // Remove localStorage entries by prefix
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i) || '';
+        if (k.startsWith('cache:') && k.slice(6).startsWith(prefix)) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (err) {
+      // Swallow storage errors (quota/unavailable) intentionally
+      void err;
+    }
+  }
+};
+
+async function cachedGet(path) {
+  console.log(`[CACHE DEBUG] cachedGet called for path: ${path}`);
+  
+  // Use enhanced cache for 30-minute caching
+  const cachedData = enhancedCache.getCachedData(path);
+  
+  if (cachedData) {
+    console.log(`[CACHE DEBUG] Cache hit for ${path}`, cachedData);
+    // Return cached data in axios-like response format
+    return {
+      data: cachedData,
+      status: 200,
+      headers: {},
+      config: { url: path },
+      request: null,
+    };
+  }
+
+  // Make network request if no valid cache
+  console.log(`[ENHANCED API] Fetching fresh data for ${path}`);
+  try {
+    const response = await api.get(path);
+    console.log(`[CACHE DEBUG] Network response for ${path}:`, response);
+    
+    // Cache the response data
+    enhancedCache.setCachedData(path, response.data);
+    
+    return response;
+  } catch (error) {
+    console.error(`[CACHE DEBUG] Network error for ${path}:`, error);
+    throw error;
+  }
+}
+
+// Request interceptor to add the auth token to headers
+api.interceptors.request.use(
+  (config) => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = user?.token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for global error handling with retry logic
+api.interceptors.response.use(
+  (response) => {
+    // Auto-invalidate caches after mutating requests to keep UI fresh
+    const method = (response?.config?.method || 'get').toLowerCase();
+    const url = response?.config?.url || '';
+    if (method === 'post' || method === 'put' || method === 'delete') {
+      if (url.startsWith('/admin/matches') || url.startsWith('/matches')) {
+        enhancedCache.invalidateByPrefix('/matches');
+        responseCache.invalidate('/matches');
+      }
+      if (url.startsWith('/admin/hero')) {
+        enhancedCache.invalidateByPrefix('/admin/hero');
+        responseCache.invalidate('/admin/hero');
+      }
+      if (url.startsWith('/admin/leagues') || url.startsWith('/sports')) {
+        enhancedCache.invalidateByPrefix('/sports');
+        enhancedCache.invalidateByPrefix('/admin/leagues');
+        responseCache.invalidate('/sports');
+        responseCache.invalidate('/admin/leagues');
+      }
+      if (url.startsWith('/admin/users') || url.startsWith('/users')) {
+        enhancedCache.invalidateByPrefix('/admin/users');
+        responseCache.invalidate('/admin/users');
+      }
+    }
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Error - Response Data:', error.response.data);
+      console.error('API Error - Status:', error.response.status);
+      console.error('API Error - Headers:', error.response.headers);
+
+      if (error.response.status === 401) {
+        // Handle unauthorized errors, e.g., redirect to login
+        console.log('Unauthorized, redirecting to login...');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      
+      // Handle 429 rate limiting with retry
+      if (error.response.status === 429 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        
+        // Calculate retry delay with exponential backoff
+        const retryDelay = Math.min(1000 * Math.pow(2, originalRequest._retryCount || 0), 10000);
+        originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+        
+        console.log(`Rate limited. Retrying in ${retryDelay}ms... (attempt ${originalRequest._retryCount})`);
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        
+        // Retry the request
+        return api(originalRequest);
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('API Error - No Response:', error.request);
+      // Don't throw the error immediately, let the calling component handle it
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('API Error - Message:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
+
+const apiService = {
+  // Auth
+  login: (credentials) => api.post('/auth/login', credentials),
+  signup: (userData) => api.post('/auth/register', userData),
+
+  // Users
+  getUserProfile: () => api.get('/auth/profile'),
+  updateUserProfile: (profileData) => api.put('/auth/profile', profileData),
+  changePassword: (passwordData) => api.put('/users/change-password', passwordData),
+  getTransactions: () => api.get('/users/transactions'),
+  deposit: (depositData) => api.post('/users/deposit', depositData),
+  withdraw: (withdrawData) => api.post('/users/withdraw', withdrawData),
+
+  // Matches - Updated to use correct endpoints
+  getAllMatches: () => cachedGet('/matches/all', 60000),
+  // Cache main matches list briefly to avoid spinner and reflows
+  getMatches: async () => {
+    console.log('[API DEBUG] getMatches called');
+    try {
+      const result = await cachedGet('/matches', 30000);
+      console.log('[API DEBUG] getMatches response:', result);
+      return result;
+    } catch (error) {
+      console.error('[API DEBUG] getMatches error:', error);
+      throw error;
+    }
+  },
+  // Cache popular matches for longer duration for instant loading
+  getPopularMatches: () => cachedGet('/matches/popular/trending', 300000), // 5 minutes cache
+  getMatchById: (id) => cachedGet(`/matches/${id}`, 15000),
+  getLiveMatches: () => cachedGet('/matches/live/real-time', 5000),
+  addMatch: (matchData) => api.post('/admin/matches', matchData),
+  updateMatch: (id, matchData) => api.put(`/admin/matches/${id}`, matchData),
+  deleteMatch: (id) => api.delete(`/admin/matches/${id}`),
+
+  // Bets
+  placeBet: (betData) => api.post('/bets', betData),
+  getUserBets: () => api.get('/bets/my-bets'),
+  getBetStatsSummary: () => api.get('/bets/stats/summary'),
+  
+  // Admin Bet Management
+  getAdminBets: (params) => api.get(`/admin/bets?${params}`),
+  updateBet: (betId, betData) => api.put(`/admin/bets/${betId}`, betData),
+  settleBet: (betId, settlementData) => api.put(`/admin/bets/${betId}/status`, settlementData),
+  bulkUpdateBets: (bulkData) => api.put('/admin/bets/bulk/status', bulkData),
+
+  // Sports
+  getAllSports: () => cachedGet('/sports', 120000),
+  getMatchesBySport: (sportId) => cachedGet(`/sports/${sportId}/matches`, 30000),
+
+  // Admin
+  getAdminDashboardStats: () => cachedGet('/admin/dashboard-stats', 30000),
+  getAdminStatistics: () => cachedGet('/admin/statistics', 60000),
+  getAdminUsers: () => cachedGet('/admin/users', 30000),
+  updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  blockUser: (userId) => {
+    return api.put(`/users/${userId}/block`);
+  },
+  unblockUser: (userId) => {
+    return api.put(`/users/${userId}/unblock`);
+  },
+  // Hero Section
+  // Cache hero slides longer since they change infrequently
+  getHeroSlides: () => cachedGet('/admin/hero', 300000),
+  createHeroSlide: (data) => api.post('/admin/hero', data),
+  updateHeroSlide: (id, data) => api.put(`/admin/hero/${id}`, data),
+  deleteHeroSlide: (id) => api.delete(`/admin/hero/${id}`),
+  uploadHeroImage: (formData) => api.post('/admin/hero/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Match media uploads (Admin)
+  uploadMatchVideo: (matchId, formData) => api.post(`/admin/matches/${matchId}/video/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadMatchPoster: (matchId, formData) => api.post(`/admin/matches/${matchId}/poster/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Fallback uploads under /matches if /admin path is not reachable in some environments
+  uploadMatchVideoFallback: (matchId, formData) => api.post(`/matches/${matchId}/video/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadMatchPosterFallback: (matchId, formData) => api.post(`/matches/${matchId}/poster/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Generic uploads (pre-save)
+  uploadVideoTemp: (formData) => api.post('/admin/uploads/video', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadPosterTemp: (formData) => api.post('/admin/uploads/poster', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadVideoTempFallback: (formData) => api.post('/matches/uploads/video', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadPosterTempFallback: (formData) => api.post('/matches/uploads/poster', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Leagues
+  getLeagues: () => cachedGet('/admin/leagues', 600000),
+  createLeague: (data) => api.post('/admin/leagues', data),
+  // Fetch matches by sport key (public, no auth); cache briefly
+  getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
+  getMatchMarkets: (matchId) => cachedGet(`/matches/${matchId}/markets`, 30000),
+  // Admin: match status updates
+  setMatchStatus: (matchId, { status, homeScore, awayScore }) =>
+    api.put(`/admin/matches/${matchId}/status`, { status, homeScore, awayScore }),
+  
+  // Add wheel of fortune endpoints
+  spinWheel: (spinData) => api.post('/wheel/spin', spinData),
+  
+  // Payment endpoints
+  createPayment: (paymentData) => api.post('/payments/create', paymentData),
+  // Cache management
+  invalidateCachePrefix: (prefix) => responseCache.invalidate(prefix),
+};
+
+export default apiService;

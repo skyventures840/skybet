@@ -1,0 +1,566 @@
+
+@import 'base.css';
+@import 'layout.css';
+@import 'components.css';
+@import 'mobile-responsive.css';
+@import 'modern-mobile.css';
+@import 'mobile-redesign.css';
+
+@media (min-width: 1024px) {
+  /* Hide hamburger menu on desktop */
+  .hamburger-menu {
+    display: none;
+  }
+  
+  /* Admin dashboard - Preserve original desktop layout */
+  .admin-sidebar {
+    width: 280px;
+  }
+  
+  .admin-main-content {
+    padding: var(--spacing-xl);
+  }
+  
+  /* Modal - Preserve original desktop sizing */
+  .modal {
+    padding: var(--spacing-xl);
+    max-width: 500px;
+  }
+
+  /* Hero slider - match popular matches section width on desktop */
+  .hero-slider,
+  .hero-slider .slider-container,
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent horizontal overflow and move content inward on desktop */
+  .hero-slider,
+  .hero-slider .slider-container {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+  }
+  .hero-slider .slides-wrapper {
+    display: flex !important;
+    width: auto !important;
+    min-width: max-content !important;
+    overflow: visible !important;
+    will-change: transform;
+  }
+  .hero-slider .slide {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  .hero-slider .slide-background { position: absolute !important; inset: 0 !important; }
+  .hero-slider .slide-background img { width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center center !important; display: block !important; transform: scale(1.10) !important; transform-origin: center center !important; }
+  .hero-slider .slide-overlay { position: absolute !important; inset: 0 !important; background: rgba(0,0,0,0.25) !important; }
+  .hero-slider .slide-content {
+    position: relative !important;
+    z-index: 1 !important;
+    max-width: clamp(960px, 80vw, 1200px) !important;
+    margin-left: clamp(16px, 4vw, 40px) !important;
+    margin-right: auto !important;
+    padding: clamp(24px, 5vw, 48px) !important; /* move text inward from edges */
+    text-align: left !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Reduce slide visual size on desktop */
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(230px, 34vh, 360px) !important;
+    min-height: clamp(230px, 34vh, 360px) !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide {
+    height: 100% !important;
+  }
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+  .hero-slider .slide-title {
+    font-size: clamp(22px, 2.4vw, 32px) !important;
+  }
+  .hero-slider .slide-subtitle {
+    font-size: clamp(14px, 1.6vw, 20px) !important;
+  }
+}
+
+/* ==========================================================================
+   BROWSER-SPECIFIC FIXES
+   ========================================================================== */
+
+/* Safari-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent zoom on input focus */
+  input, select, textarea, button {
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
+  
+  /* Fix for iOS Safari rendering issues */
+  .nav-brand,
+  .hero-title,
+  .match-teams {
+    -webkit-font-smoothing: antialiased;
+    -webkit-transform: translateZ(0);
+  }
+  /* iOS Safari: ensure hero images render inside transformed containers */
+  .hero-slider .slides-wrapper {
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+  }
+  .hero-slider .slide-background img {
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+  
+  /* Fix for iOS Safari flexbox issues */
+  .navbar-container,
+  .nav-links,
+  .user-section {
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+  }
+}
+
+/* Android-specific fixes */
+@supports not (-webkit-touch-callout: none) {
+  /* Fix for text rendering issues on Android */
+  .wheel-segment span, 
+  .multiplier-btn, 
+  .bet-amount input {
+    transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* Fix for Android Chrome flexbox issues */
+  .flex,
+  .flex-col,
+  .flex-row {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+  }
+}
+
+/* Firefox-specific fixes */
+@-moz-document url-prefix() {
+  /* Fix for Firefox grid gap issues */
+  .grid,
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    gap: var(--spacing-lg);
+  }
+  
+  /* Fix for Firefox button alignment */
+  .btn {
+    display: -webkit-inline-flex;
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+  }
+}
+
+/* Edge-specific fixes */
+@supports (-ms-ime-align: auto) {
+  /* Fix for Edge CSS Grid issues */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    display: -ms-grid;
+    display: grid;
+  }
+  
+  /* Fix for Edge flexbox issues */
+  .flex {
+    display: -ms-flexbox;
+    display: flex;
+  }
+}
+
+/* ==========================================================================
+   GLOBAL PERFORMANCE & ACCESSIBILITY ENHANCEMENTS
+   ========================================================================== */
+
+/* Hardware acceleration for smooth animations */
+.hero-slider,
+.wheel,
+.btn:hover,
+.nav-link:hover {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Focus indicators for accessibility */
+.btn:focus,
+.nav-link:focus,
+.odd-button:focus,
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+  }
+
+/* Skip link for screen readers */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--primary-green);
+  color: var(--dark-bg);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  z-index: var(--z-modal);
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    border: 2px solid var(--dark-bg);
+  }
+  
+  .card,
+  .match-card {
+    border-width: 2px;
+  }
+  
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+
+    
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .hero-slide {
+    transition: none;
+  }
+  
+  .wheel {
+    transition: none;
+  }
+}
+
+/* Smaller screens: reduce hero height, left-align text, add border */
+@media (max-width: 1023px) {
+  .hero-slider,
+  .hero-slider .slider-container { height: clamp(180px, 34vh, 300px) !important; min-height: clamp(180px, 34vh, 300px) !important; }
+
+  .hero-slider { border: 1px solid rgba(255, 255, 255, 0.15); }
+
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-overlay { height: 100% !important; }
+
+  .hero-slider .slide-content { text-align: left !important; margin-left: clamp(10px, 4vw, 24px) !important; margin-right: clamp(10px, 4vw, 24px) !important; padding: clamp(12px, 5vw, 18px) !important; }
+}
+
+/* Print styles */
+@media print {
+  .navbar,
+  .admin-sidebar,
+  .hero-slider,
+  .wheel-container,
+  .btn,
+  .nav-link {
+    display: none !important;
+  }
+  
+  .main-content,
+  .admin-main-content {
+    padding: 0;
+    margin: 0;
+  }
+  
+  .card,
+  .match-card {
+    border: 1px solid #000;
+    break-inside: avoid;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+/* =============================================================
+   Global UI tweaks: reduce hero dots and remove bottom scrollbar
+   ============================================================= */
+/* Hide horizontal scrollbar globally to prevent page bottom scroll */
+html, body { overflow-x: hidden !important; }
+
+/* Ensure hero containers don’t trigger horizontal overflow */
+.hero-slider,
+.hero-slider .slider-container { overflow-x: hidden !important; }
+
+/* Smaller, minimal hero pagination dots (applies across breakpoints) */
+.hero-slider .slider-dots {
+  position: absolute;
+  bottom: 8px !important;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: calc(100% - 16px) !important; /* allow wrapping within hero width */
+  max-width: 100% !important;
+  padding: 0 8px;
+  gap: 6px;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.hero-slider .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  border: 0;
+  padding: 0;
+  line-height: 0;
+  appearance: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.hero-slider .dot.active {
+  background: var(--primary-green);
+  transform: scale(1.1);
+}
+
+/* Desktop (≥1024px): slightly larger dots */
+@media (min-width: 1024px) {
+  .hero-slider .slider-dots { gap: 8px !important; }
+  .hero-slider .dot { width: 10px !important; height: 10px !important; }
+}
+
+/* Tablet (768–1023px): medium dots */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-slider .slider-dots { gap: 4px !important; }
+  .hero-slider .dot { width: 5px !important; height: 5px !important; }
+}
+
+/* Mobile (≤767px): dots styling handled by mobile-responsive.css for device-specific optimization */
+
+/* =============================================================
+   Hero: compact height with proportionate content scaling
+   ============================================================= */
+/* Desktop (≥1024px): reduce hero height and scale content */
+@media (min-width: 1024px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(175px, 30vh, 280px) !important;
+    min-height: clamp(175px, 30vh, 280px) !important;
+    overflow: hidden !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay { height: 100% !important; }
+  .hero-title { font-size: clamp(20px, 2vw, 28px) !important; line-height: 1.15 !important; }
+  .hero-description { font-size: clamp(12px, 1.4vw, 16px) !important; line-height: 1.3 !important; }
+  .hero-slider .slider-btn { width: 32px !important; height: 32px !important; z-index: 6 !important; }
+  /* Proportional image scaling and wrapper fit to avoid clipping */
+  .hero-slider .slide-background img {
+    object-fit: cover !important;
+    object-position: center center !important;
+    transform: none !important;
+  }
+  .hero-slider .slides-wrapper {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+}
+
+/* Tablet (768–1023px): further compact hero with balanced content */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(150px, 26vh, 240px) !important;
+    min-height: clamp(150px, 26vh, 240px) !important;
+    overflow: hidden !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay { height: 100% !important; }
+  .hero-title { font-size: clamp(18px, 2.3vw, 24px) !important; line-height: 1.15 !important; }
+  .hero-description { font-size: clamp(11px, 1.8vw, 14px) !important; line-height: 1.3 !important; }
+  .hero-slider .slider-btn { width: 28px !important; height: 28px !important; z-index: 6 !important; }
+}
+
+/* Mobile (≤767px): smallest hero with clear content */
+@media (max-width: 767px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(130px, 24vh, 200px) !important;
+    min-height: clamp(130px, 24vh, 200px) !important;
+    overflow: hidden !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay { height: 100% !important; }
+  .hero-title { font-size: clamp(16px, 4.2vw, 22px) !important; line-height: 1.2 !important; }
+  .hero-description { font-size: clamp(10px, 2.8vw, 14px) !important; line-height: 1.3 !important; }
+  .hero-slider .slider-btn { width: 24px !important; height: 24px !important; z-index: 6 !important; }
+  .hero-slider .prev-btn { left: 8px !important; }
+  .hero-slider .next-btn { right: 8px !important; }
+  .hero-slider .slide-content { padding: clamp(12px, 5vw, 18px) !important; }
+}
+
+/* Increase brand text size on larger screens (desktop/tablet) */
+@media (min-width: 768px) {
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(32px, 3.2vw, 72px) !important;
+    line-height: 1.1 !important;
+  }
+}
+
+/* =============================================================
+   Popular Matches: width and corner radius overrides
+   ============================================================= */
+/* Apply corner radius globally and ensure content is clipped */
+.popular-matches-section,
+.popular-matches-box {
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+}
+
+/* =============================================================
+   Navbar Brand: width and font size tweaks
+   ============================================================= */
+/* Desktop/Tablet: give brand more space and increase size */
+@media (min-width: 768px) {
+  .navbar-left { flex: 2 1 auto !important; }
+  .navbar-right { flex: 1 1 auto !important; }
+  .nav-brand { max-width: none !important; white-space: nowrap !important; }
+}
+
+/* Mobile: significant brand size increase without breaking layout */
+@media (max-width: 767px) {
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(36px, 11vw, 56px) !important;
+    line-height: 1 !important;
+  }
+}
+
+/* On small screens, increase width to full-bleed viewport */
+@media (max-width: 767px) {
+  .popular-matches-section,
+  .popular-matches-box,
+  .popular-matches-scroll {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+  }
+}
+/* Sports strip styles */
+.sports-strip {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  align-items: center;
+}
+.sports-strip::-webkit-scrollbar {
+  height: 8px;
+}
+.sports-strip::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.25);
+  border-radius: 8px;
+}
+.sport-card {
+  flex: 0 0 auto;
+  width: 96px;
+  min-width: 96px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: rgba(40,40,40,0.9);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.sport-card:focus {
+  outline: 2px solid #4fc3f7;
+}
+.sport-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sport-icon svg {
+  width: 48px;
+  height: 48px;
+
+}
+.sport-label {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Mobile: make sports strip full-bleed to avoid container margins clipping */
+@media (max-width: 767px) {
+  .sports-strip {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(-50vw + 50%) !important;
+    margin-right: calc(-50vw + 50%) !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}

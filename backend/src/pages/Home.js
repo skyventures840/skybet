@@ -1,0 +1,1050 @@
+import React, { useState, useEffect } from 'react';
+import HeroSlider from '../components/HeroSlider';
+import MatchCard from '../components/MatchCard';
+import PopularMatches from '../components/PopularMatches';
+import SkeletonLoader from '../components/SkeletonLoader';
+import apiService from '../services/api';
+import SportsStrip from '../components/SportsStrip';
+import enhancedCache from '../services/enhancedCache';
+import oddsWebSocket from '../services/oddsWebSocket';
+
+const Home = () => {
+  console.log('🏠 Home component is rendering!');
+  const [selectedTab, setSelectedTab] = useState('Featured');
+  const [matches, setMatches] = useState([]);
+  const [filteredMatches, setFilteredMatches] = useState([]);
+  
+  // Debug logging for matches
+  useEffect(() => {
+    console.log('🏠 Home component - matches updated:', matches.length, 'matches');
+    console.log('🏠 First match sample:', matches[0]);
+  }, [matches]);
+  
+  useEffect(() => {
+    console.log('🏠 Home component - filteredMatches updated:', filteredMatches.length, 'matches');
+  }, [filteredMatches]);
+  const [popularMatches, setPopularMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedSidebarFilter, setSelectedSidebarFilter] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [sportsStripFilter, setSportsStripFilter] = useState(''); // Separate filter for SportsStrip
+  
+  const handleSelectSport = (sportKey) => {
+    // Toggle off if clicking the same sport; otherwise set sport and clear subcategory
+    // This only affects regular match cards, not popular matches
+    setSportsStripFilter(prev => (prev === sportKey ? '' : sportKey));
+    setSelectedSubcategory('');
+  };
+
+  const tabs = ['Featured', 'Competitions', 'Outrights', 'Offers', 'Free Games'];
+
+  // Global search functionality
+  useEffect(() => {
+    const handleGlobalSearch = (event) => {
+      const { searchTerm: globalSearchTerm } = event.detail;
+      setSearchTerm(globalSearchTerm);
+    };
+
+    const handleGlobalDateFilter = (event) => {
+      const { selectedDate: globalSelectedDate } = event.detail;
+      setSelectedDate(globalSelectedDate);
+    };
+
+    // Listen for global search and date filter events
+    window.addEventListener('globalSearch', handleGlobalSearch);
+    window.addEventListener('globalDateFilter', handleGlobalDateFilter);
+
+    // Check for existing search term and date in localStorage
+    const existingSearchTerm = localStorage.getItem('globalSearchTerm');
+    const existingSelectedDate = localStorage.getItem('globalSelectedDate');
+    
+    if (existingSearchTerm) {
+      setSearchTerm(existingSearchTerm);
+    }
+    if (existingSelectedDate) {
+      setSelectedDate(existingSelectedDate);
+    }
+
+    return () => {
+      window.removeEventListener('globalSearch', handleGlobalSearch);
+      window.removeEventListener('globalDateFilter', handleGlobalDateFilter);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleSidebarFilter = (event) => {
+      const filterValue = event.detail.filter;
+      console.log(`[SIDEBAR FILTER] Applying filter: ${filterValue}`);
+      setSelectedSidebarFilter(filterValue);
+    };
+    window.addEventListener('sidebarFilter', handleSidebarFilter);
+    return () => window.removeEventListener('sidebarFilter', handleSidebarFilter);
+  }, []);
+
+  // Add subcategory filter event listener for navigation from MatchMarkets
+  useEffect(() => {
+    const handleSubcategoryFilter = (event) => {
+      const { sport, subcategory } = event.detail;
+      console.log(`[FALLBACK] Filtering by subcategory: ${subcategory} in sport: ${sport}`);
+      setSelectedSubcategory(subcategory);
+      
+      // Also set the sport filter to ensure proper filtering
+      setSelectedSidebarFilter(sport);
+    };
+    window.addEventListener('subcategoryFilter', handleSubcategoryFilter);
+    return () => window.removeEventListener('subcategoryFilter', handleSubcategoryFilter);
+  }, []);
+
+
+
+  // Mapping from sidebar names to possible values in the data
+  const sidebarToDataMap = {
+    'Soccer': ['Soccer'],
+    'American Football': ['Football', 'american football', 'americanfootball', 'nfl', 'college football', 'ncaaf', 'cfl'],
+    'Hockey': ['Hockey', 'NHL', 'KHL', 'AHL', 'SHL', 'Liiga', 'DEL', 'NLA'],
+    'NHL': ['NHL'],
+    'KHL': ['KHL'],
+    'AHL': ['AHL'],
+    'SHL': ['SHL'],
+    'Liiga': ['Liiga'],
+    'DEL': ['DEL'],
+    'NLA': ['NLA'],
+    'Tennis': ['Tennis', 'ATP', 'Wimbledon', 'US Open', 'French Open'],
+    'ATP': ['ATP'],
+    'Wimbledon': ['Wimbledon'],
+    'US Open': ['US Open'],
+    'French Open': ['French Open'],
+    'Baseball': ['Baseball', 'MLB'],
+    'MLB': ['MLB'],
+    // Add more mappings as needed for other sports/leagues
+  };
+
+  // Strict sport token map for exact matching (first token of sport_key)
+  const strictSportTokenMap = {
+    'Soccer': 'soccer',
+    'American Football': 'americanfootball',
+    'Basketball': 'basketball',
+    'Baseball': 'baseball',
+    'Tennis': 'tennis',
+    'Ice Hockey': 'icehockey',
+    'Hockey': 'hockey',
+    'Cricket': 'cricket',
+    'Boxing': 'boxing',
+    'MMA': 'mma',
+    'Volleyball': 'volleyball',
+    'Rugby': 'rugby',
+    'Rugby League': 'rugbyleague',
+    'Aussie Rules': 'aussierules',
+    'Handball': 'handball',
+    'Table tennis': 'tabletennis'
+  };
+
+  // Optional: keywords that clearly indicate other sports (to guard mislabels)
+  const nonSportKeywordsBySport = {
+    'Soccer': [/\bboxing\b/i, /\bboxi\b/i, /\bmma\b/i, /\brugby\b/i],
+    'American Football': [/\bsoccer\b/i, /\brugby\b/i],
+    'Basketball': [/\bice hockey\b/i, /\bhockey\b/i],
+    'Ice Hockey': [/\bbasketball\b/i],
+    'Boxing': [/\bsoccer\b/i, /\bmma\b/i],
+    'MMA': [/\bsoccer\b/i, /\bboxing\b/i]
+  };
+ 
+  // Enhanced subcategory mapping for better fallback filtering
+  const subcategoryMappings = {
+    'EPL': ['Premier League', 'English Premier League', 'EPL', 'England Premier League'],
+    'Epl': ['Premier League', 'English Premier League', 'EPL', 'England Premier League'],
+    'Serie A': ['Serie A', 'Italian Serie A', 'Italy Serie A'],
+    'Bundesliga': ['Bundesliga', 'German Bundesliga', 'Germany Bundesliga'],
+    'La Liga': ['La Liga', 'Spanish La Liga', 'Spain La Liga'],
+    'Ligue 1': ['Ligue 1', 'French Ligue 1', 'France Ligue One'],
+    'Champions League': ['UEFA Champions League', 'Champions League', 'UCL'],
+    'Europa League': ['UEFA Europa League', 'Europa League', 'UEL'],
+    'MLS': ['Major League Soccer', 'MLS'],
+    // American Football
+    'NFL': ['National Football League', 'NFL'],
+    'NCAAF': ['NCAA Football', 'College Football', 'NCAAF'],
+    'CFL': ['Canadian Football League', 'CFL'],
+    // Basketball
+    'NBA': ['National Basketball Association', 'NBA'],
+    'EuroLeague': ['EuroLeague', 'Euro League', 'Euroliga'],
+    // Baseball
+    'MLB': ['Major League Baseball', 'MLB'],
+    // Ice Hockey
+    'NHL': ['National Hockey League', 'NHL'],
+    'KHL': ['Kontinental Hockey League', 'KHL'],
+    'AHL': ['American Hockey League', 'AHL'],
+    'SHL': ['Swedish Hockey League', 'SHL'],
+    'Liiga': ['Finnish Liiga', 'Liiga'],
+    'DEL': ['Deutsche Eishockey Liga', 'DEL'],
+    'NLA': ['National League A', 'NLA'],
+    // Tennis
+    'ATP': ['Association of Tennis Professionals', 'ATP'],
+    'WTA': ['Women’s Tennis Association', 'WTA'],
+    'Wimbledon': ['Wimbledon'],
+    'US Open': ['US Open', 'U.S. Open'],
+    'French Open': ['French Open', 'Roland Garros']
+  };
+
+  // Filter matches based on search term, date, sidebar filter, and subcategory
+  useEffect(() => {
+    let filtered = matches;
+    console.log('[HOME] Starting filter process with', filtered.length, 'matches');
+
+    // Sports Strip filter (only affects regular matches, not popular matches)
+    if (sportsStripFilter) {
+      const strictToken = strictSportTokenMap[sportsStripFilter];
+      if (strictToken) {
+        // Strict filter: exact sport token match, plus optional mislabel guards
+        const guards = nonSportKeywordsBySport[sportsStripFilter] || [];
+        filtered = filtered.filter(match => {
+          const sportToken = String(match.sport || '').toLowerCase().split('_')[0];
+          const leagueLower = String(match.league || '').toLowerCase();
+          const subLower = String(match.subcategory || '').toLowerCase();
+          const violatesGuard = guards.some(re => re.test(leagueLower) || re.test(subLower));
+          return sportToken === strictToken && !violatesGuard;
+        });
+      } else {
+        // Fallback to inclusive mapping for non-strict items (sub-leagues etc.)
+        const mappedValues = sidebarToDataMap[sportsStripFilter] || [sportsStripFilter];
+        filtered = filtered.filter(match =>
+          mappedValues.some(val =>
+            (match.sport && match.sport.toLowerCase().includes(val.toLowerCase())) ||
+            (match.league && match.league.toLowerCase().includes(val.toLowerCase())) ||
+            (match.subcategory && match.subcategory.toLowerCase().includes(val.toLowerCase()))
+          )
+        );
+      }
+    }
+
+    // Sidebar filter
+    if (selectedSidebarFilter) {
+      const strictToken = strictSportTokenMap[selectedSidebarFilter];
+      if (strictToken) {
+        // Strict filter: exact sport token match, plus optional mislabel guards
+        const guards = nonSportKeywordsBySport[selectedSidebarFilter] || [];
+        filtered = filtered.filter(match => {
+          const sportToken = String(match.sport || '').toLowerCase().split('_')[0];
+          const leagueLower = String(match.league || '').toLowerCase();
+          const subLower = String(match.subcategory || '').toLowerCase();
+          const violatesGuard = guards.some(re => re.test(leagueLower) || re.test(subLower));
+          return sportToken === strictToken && !violatesGuard;
+        });
+      } else {
+        // Fallback to inclusive mapping for non-strict items (sub-leagues etc.)
+        const mappedValues = sidebarToDataMap[selectedSidebarFilter] || [selectedSidebarFilter];
+        filtered = filtered.filter(match =>
+          mappedValues.some(val =>
+            (match.sport && match.sport.toLowerCase().includes(val.toLowerCase())) ||
+            (match.league && match.league.toLowerCase().includes(val.toLowerCase())) ||
+            (match.subcategory && match.subcategory.toLowerCase().includes(val.toLowerCase()))
+          )
+        );
+      }
+    }
+
+    // Subcategory filter - strict matching when a subcategory is selected
+    if (selectedSubcategory) {
+      const strictTokenForSport = strictSportTokenMap[selectedSidebarFilter || sportsStripFilter];
+      const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
+      const variations = (subcategoryMappings[selectedSubcategory] || [selectedSubcategory]).map(normalize);
+
+      filtered = filtered.filter(match => {
+        // Require strict sport token match if available
+        const sportToken = String(match.sport || '').toLowerCase().split('_')[0];
+        if (strictTokenForSport && sportToken !== strictTokenForSport) return false;
+
+        const leagueNorm = normalize(match.league);
+        const subcatNorm = normalize(match.subcategory);
+        const sportTitleNorm = normalize(match.sport_title);
+
+        // Strict equality against canonical variations
+        return variations.some(v => v && (leagueNorm === v || subcatNorm === v || sportTitleNorm === v));
+      });
+    }
+
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(match => {
+        return (
+          match.homeTeam?.toLowerCase().includes(searchLower) ||
+          match.awayTeam?.toLowerCase().includes(searchLower) ||
+          match.league?.toLowerCase().includes(searchLower) ||
+          match.sport?.toLowerCase().includes(searchLower) ||
+          match.subcategory?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    // Filter by date
+    if (selectedDate) {
+      const selectedDateObj = new Date(selectedDate);
+      selectedDateObj.setHours(0, 0, 0, 0);
+      const nextDay = new Date(selectedDateObj);
+      nextDay.setDate(nextDay.getDate() + 1);
+      filtered = filtered.filter(match => {
+        const matchDate = new Date(match.startTime);
+        return matchDate >= selectedDateObj && matchDate < nextDay;
+      });
+    }
+
+    // Show upcoming matches and recent finished matches (within last 3 days)
+    const now = new Date();
+    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+    
+    console.log('[HOME] Date filtering - now:', now, 'threeDaysAgo:', threeDaysAgo);
+    console.log('[HOME] Before date filtering:', filtered.length, 'matches');
+    
+    // Temporarily disable date filtering to test
+    // filtered = filtered.filter(match => {
+    //   const matchDate = new Date(match.startTime);
+    //   // Show if upcoming OR if finished within last 3 days
+    //   return matchDate >= threeDaysAgo;
+    // });
+    
+    console.log('[HOME] After date filtering (disabled):', filtered.length, 'matches');
+
+    console.log('[HOME] After all filtering:', filtered.length, 'matches remain');
+    setFilteredMatches(filtered);
+    
+    // Save filtered matches to session storage
+    try {
+      sessionStorage.setItem('home_filtered_data', JSON.stringify(filtered));
+      console.log('[HOME] Saved filtered matches data to session storage');
+    } catch (e) {
+      console.log('[HOME] Failed to save filtered matches to session storage:', e);
+    }
+  }, [matches, searchTerm, selectedDate, selectedSidebarFilter, selectedSubcategory, sportsStripFilter]);
+
+ 
+  const createMatchKey = (match) => {
+    if (!match) return null;
+    
+    // For API data format
+    if (match.home_team && match.away_team) {
+      return `${match.home_team}_${match.away_team}_${match.commence_time}_${match.sport_key}`;
+    }
+    
+    // For frontend data format
+    if (match.homeTeam && match.awayTeam) {
+      return `${match.homeTeam}_${match.awayTeam}_${match.startTime}_${match.sport}`;
+    }
+    
+    return null;
+  };
+
+  // Helper function to deduplicate matches
+  const deduplicateMatches = (matches) => {
+    const seen = new Set();
+    const uniqueMatches = [];
+    
+    matches.forEach(match => {
+      const key = createMatchKey(match);
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        uniqueMatches.push(match);
+      }
+    });
+    
+    console.log(`[DEBUG] Deduplication: ${matches.length} matches -> ${uniqueMatches.length} unique matches`);
+    return uniqueMatches;
+  };
+
+  // Transform odds data to match frontend format
+  const transformOddsToMatches = (oddsData) => {
+    const transformedMatches = oddsData.map(match => {
+      if (!match) return null;
+      
+      // Format sport key with fullstops between categories only
+      const formatSportKey = (key) => {
+        if (!key) return '';
+        // Split by underscore to get main parts (sport, league, subcategory)
+        const parts = key.split('_');
+        // Capitalize each word in each part but keep words together
+        const formattedParts = parts.map(part => 
+          part.split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+        );
+        // Join main parts with fullstops
+        return formattedParts.join('.');
+      };
+      
+      // Handle backend database format
+      return {
+        id: match._id || match.id,
+        league: match.leagueId ? formatSportKey(match.leagueId) : '',
+        subcategory: match.sport ? formatSportKey(match.sport) : '',
+        startTime: new Date(match.startTime),
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        homeTeamFlag: '🏳️',
+        awayTeamFlag: '🏳️',
+        odds: match.odds instanceof Map ? Object.fromEntries(match.odds) : match.odds || {},
+        additionalMarkets: (match.markets || []).length,
+        sport: match.sport ? match.sport.split('_')[0] : '',
+        allMarkets: match.markets || []
+      };
+    }).filter(match => match !== null);
+    
+    // Deduplicate the transformed matches
+    return deduplicateMatches(transformedMatches);
+  };
+
+  // Fetch matches from API
+  const fetchMatches = async (forceRefresh = false, isBackgroundUpdate = false) => {
+    try {
+      setError(null);
+      
+      // Count only user-facing attempts
+      if (!isBackgroundUpdate) {
+        setAttemptCount(prev => prev + 1);
+      }
+      
+      // Only show loading state if this is not a background update
+      if (!isBackgroundUpdate) {
+        setLoading(true);
+      }
+      
+      // Try to get cached data first
+      if (!forceRefresh) {
+        const cachedMatches = enhancedCache.getCachedData('/matches');
+        if (cachedMatches) {
+          console.log('[HOME] Using cached matches data');
+          const transformedMatches = transformOddsToMatches(cachedMatches.matches || []);
+          setMatches(transformedMatches);
+          
+          // Use the same data for popular matches (ensure no duplicates)
+          const now = new Date();
+          const popularMatchesData = transformedMatches
+            .filter(match => {
+              // Count valid odds (greater than 0)
+              const validOddsCount = Object.values(match.odds || {}).filter(odd => odd > 0).length;
+              // Show admin matches even with empty odds, or matches with at least 2 valid odds
+              return match.market === 'admin' || validOddsCount >= 2;
+            })
+            // Only upcoming
+            .filter(match => new Date(match.startTime) >= now)
+            .slice(0, 6)
+            .map(match => ({
+              id: match.id || match._id,
+              league: match.league || '',
+              subcategory: match.subcategory || '',
+              startTime: match.startTime,
+              time: new Date(match.startTime).toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              odds: match.odds || {},
+              sport: match.sport || '',
+              country: match.country || '',
+              fullLeagueTitle: match.fullLeagueTitle || ''
+            }));
+          
+          const uniquePopularMatches = deduplicateMatches(popularMatchesData);
+          setPopularMatches(uniquePopularMatches);
+          
+          // Save popular matches to session storage
+          try {
+            sessionStorage.setItem('home_popular_data', JSON.stringify(uniquePopularMatches));
+            console.log('[HOME] Saved popular matches data to session storage');
+          } catch (e) {
+            console.log('[HOME] Failed to save popular matches to session storage:', e);
+          }
+          
+          if (!isBackgroundUpdate) {
+            setLoading(false);
+          }
+          return;
+        }
+      }
+      
+      // Fetch fresh data if no cache or force refresh
+      console.log('🔄 [HOME] Fetching fresh matches data...');
+      if (!isBackgroundUpdate) {
+        setLoading(true);
+      }
+      
+      console.log('🔄 [DEBUG] Fetching matches from API...');
+      const response = await apiService.getMatches();
+      console.log('📡 [HOME] API Response:', response.data);
+      console.log('📡 [DEBUG] API response received:', response);
+      console.log('📊 [DEBUG] Response data type:', typeof response?.data);
+      console.log('📊 [DEBUG] Response data length:', response?.data?.length);
+      console.log('📊 [DEBUG] Response data sample:', response?.data?.slice(0, 2));
+      
+      const oddsData = response.data.matches || [];
+      console.log('📊 [DEBUG] Raw odds data:', oddsData);
+      console.log('📊 [DEBUG] Number of matches in response:', oddsData.length);
+      
+
+      
+      // Transform odds data to match frontend format
+      console.log('🔄 [DEBUG] Transforming matches...');
+      const transformedMatches = transformOddsToMatches(oddsData);
+      console.log('✅ [HOME] Transformed matches:', transformedMatches.length, 'matches');
+      console.log('✅ [DEBUG] Transformed matches count:', transformedMatches.length);
+      console.log('✅ [DEBUG] Transformed matches sample:', transformedMatches.slice(0, 2));
+      // Debug log: print number of matches and a sample
+      console.log(`✅ [DEBUG] Frontend received ${transformedMatches.length} matches`);
+      if (transformedMatches.length > 0) {
+        console.log('✅ [DEBUG] First match sample:', transformedMatches[0]);
+        console.log('🎉 [DEBUG] SUCCESS! Setting', transformedMatches.length, 'matches');
+      }
+      setMatches(transformedMatches);
+      
+      // Save to session storage for instant navigation
+      try {
+        sessionStorage.setItem('home_matches_data', JSON.stringify(transformedMatches));
+        console.log('[HOME] Saved matches data to session storage');
+      } catch (e) {
+        console.log('[HOME] Failed to save matches to session storage:', e);
+      }
+      
+      // Use the same data for popular matches (ensure no duplicates)
+      const now = new Date();
+      const popularMatchesData = transformedMatches
+        .filter(match => {
+          // Count valid odds (greater than 0)
+          const validOddsCount = Object.values(match.odds || {}).filter(odd => odd > 0).length;
+          // Show admin matches even with empty odds, or matches with at least 2 valid odds
+          return match.market === 'admin' || validOddsCount >= 2;
+        })
+        // Only upcoming
+        .filter(match => new Date(match.startTime) >= now)
+        .slice(0, 6)
+        .map(match => ({
+          id: match.id || match._id,
+          league: match.league || '',  // Ensure league is passed through
+          subcategory: match.subcategory || '',  // Ensure subcategory is passed through
+          startTime: match.startTime,
+          time: new Date(match.startTime).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          odds: match.odds || {},
+          sport: match.sport || '',
+          country: match.country || '',
+          fullLeagueTitle: match.fullLeagueTitle || ''
+        }));
+      
+      // Deduplicate popular matches as well
+      const uniquePopularMatches = deduplicateMatches(popularMatchesData);
+      setPopularMatches(uniquePopularMatches);
+      
+    } catch (err) {
+      console.error('💥 Error fetching matches:', err);
+      console.log('💥 [DEBUG] Primary API failed:', err);
+      console.log('💥 [DEBUG] Error message:', err.message);
+      console.log('💥 [DEBUG] Error response:', err.response);
+      setError('Failed to load matches. Please check your connection and try again.');
+      
+      // Instead of falling back to sample data, try alternative API endpoints
+      console.log('💥 [DEBUG] Primary API failed, attempting alternative data sources...');
+      
+      try {
+        // Try fetching from a different endpoint or sport-specific endpoints
+        const alternativeResponse = await apiService.getAllMatches();
+        if (alternativeResponse.data && alternativeResponse.data.length > 0) {
+          console.log('[DEBUG] Successfully fetched from alternative endpoint');
+          const transformedMatches = transformOddsToMatches(alternativeResponse.data);
+          setMatches(transformedMatches);
+          setPopularMatches(transformedMatches.slice(0, 6));
+          setError(null); // Clear error if alternative fetch succeeds
+          return;
+        }
+      } catch (alternativeErr) {
+        console.log('💥 [DEBUG] Alternative endpoints also failed:', alternativeErr);
+      }
+      
+      // Only use minimal sample data as last resort, with clear indication
+      console.log('[DEBUG] All data sources failed, showing connection error');
+      setMatches([]);
+      setPopularMatches([]);
+      setError('Unable to connect to server. The server may be temporarily unavailable. Please try refreshing the page in a few moments.');
+    } finally {
+      if (!isBackgroundUpdate) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Initialize WebSocket and handle odds updates
+  useEffect(() => {
+    const handleOddsUpdate = (data) => {
+      console.log('[HOME] Received odds update:', data);
+      
+      // Update matches with new odds
+      setMatches(prevMatches => 
+        prevMatches.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              odds: { ...match.odds, ...data.odds }
+            };
+          }
+          return match;
+        })
+      );
+      
+      // Update popular matches with new odds
+      setPopularMatches(prevPopular => 
+        prevPopular.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              odds: { ...match.odds, ...data.odds }
+            };
+          }
+          return match;
+        })
+      );
+    };
+
+    const handleMatchStatusUpdate = (data) => {
+      console.log('[HOME] Received match status update:', data);
+      
+      // Update match status in both matches and popular matches
+      setMatches(prevMatches => 
+        prevMatches.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              status: data.status,
+              score: data.score || match.score
+            };
+          }
+          return match;
+        })
+      );
+      
+      setPopularMatches(prevPopular => 
+        prevPopular.map(match => {
+          if (match.id === data.matchId || match._id === data.matchId) {
+            return {
+              ...match,
+              status: data.status,
+              score: data.score || match.score
+            };
+          }
+          return match;
+        })
+      );
+    };
+
+    // Subscribe to WebSocket events and store unsubscribe functions
+    const unsubscribeOddsUpdate = oddsWebSocket.subscribe('odds_update', handleOddsUpdate);
+    const unsubscribeMatchStatus = oddsWebSocket.subscribe('match_status', handleMatchStatusUpdate);
+
+    // Connect WebSocket
+    oddsWebSocket.connect();
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribeOddsUpdate();
+      unsubscribeMatchStatus();
+      oddsWebSocket.disconnect();
+    };
+  }, []);
+  
+  // Consolidated data loading effect for instant display and background updates
+  useEffect(() => {
+    console.log('=== HOME COMPONENT MOUNTED ===');
+    console.log('[HOME] Component mounted, fetching matches...');
+    let hasInstantData = false;
+    
+    // First, try to restore from session storage for instant navigation
+    try {
+      const sessionMatches = sessionStorage.getItem('home_matches_data');
+      const sessionPopular = sessionStorage.getItem('home_popular_data');
+      const sessionFiltered = sessionStorage.getItem('home_filtered_data');
+      
+      if (sessionMatches || sessionPopular) {
+        console.log('[HOME] Restoring data from session storage for instant display');
+        
+        if (sessionMatches) {
+          const parsedMatches = JSON.parse(sessionMatches);
+          setMatches(parsedMatches);
+        }
+        
+        if (sessionPopular) {
+          const parsedPopular = JSON.parse(sessionPopular);
+          setPopularMatches(parsedPopular);
+          console.log('[HOME] Restored', parsedPopular.length, 'popular matches from session');
+        }
+        
+        if (sessionFiltered) {
+          const parsedFiltered = JSON.parse(sessionFiltered);
+          setFilteredMatches(parsedFiltered);
+        }
+        
+        setLoading(false); // Show content immediately
+        hasInstantData = true;
+      }
+    } catch (e) {
+      console.log('[HOME] No session storage data available');
+    }
+
+    // If no session data, try localStorage cache as fallback
+    if (!hasInstantData) {
+      try {
+        const matchesCacheRaw = localStorage.getItem('cache:/matches');
+        const popularCacheRaw = localStorage.getItem('cache:/matches/popular/trending');
+        
+        if (matchesCacheRaw || popularCacheRaw) {
+          let hasMatchesCache = false;
+          let hasPopularCache = false;
+          
+          if (matchesCacheRaw) {
+            const matchesCache = JSON.parse(matchesCacheRaw);
+            const cachedOddsData = matchesCache?.data?.matches || [];
+            const transformed = transformOddsToMatches(cachedOddsData);
+            if (transformed && transformed.length > 0) {
+              setMatches(transformed);
+              hasMatchesCache = true;
+            }
+          }
+          
+          if (popularCacheRaw) {
+            const popularCache = JSON.parse(popularCacheRaw);
+            const popularData = popularCache?.data?.matches || [];
+            const now = new Date();
+            const transformedPopular = popularData
+              .filter(match => new Date(match.startTime) >= now)
+              .map(match => ({
+                id: match.id || match._id,
+                league: match.league || '',
+                subcategory: match.subcategory || '',
+                startTime: match.startTime,
+                time: new Date(match.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                odds: match.odds || {},
+                sport: match.sport || '',
+                country: match.country || '',
+                fullLeagueTitle: match.fullLeagueTitle || ''
+              }));
+            const uniquePopular = deduplicateMatches(transformedPopular);
+            if (uniquePopular && uniquePopular.length > 0) {
+              setPopularMatches(uniquePopular);
+              hasPopularCache = true;
+              console.log('[HOME] Restored', uniquePopular.length, 'popular matches from cache');
+            }
+          }
+          
+          // If we have any cached data, show it immediately
+          if (hasMatchesCache || hasPopularCache) {
+            setLoading(false);
+            hasInstantData = true;
+            console.log('[HOME] Displaying cached data instantly');
+          }
+        }
+      } catch (e) {
+        console.log('[HOME] Cache restoration failed:', e);
+      }
+    }
+    
+    // Fetch fresh data in background (don't set loading to true if we have instant data)
+    const fetchInBackground = async () => {
+      if (hasInstantData) {
+        console.log('[HOME] Fetching fresh data in background...');
+        await fetchMatches(false, true); // Don't show loading, background update
+        // Also fetch popular matches in background
+        await fetchPopularMatches();
+      } else {
+        console.log('[HOME] No cached data, fetching with loading state...');
+        await fetchMatches(false, false); // Show loading state
+        await fetchPopularMatches();
+      }
+    };
+    
+    fetchInBackground();
+    
+    // Set up polling interval (every 3 minutes = 180000ms) - reduced frequency
+    const intervalId = setInterval(() => {
+      console.log('[DEBUG] Polling for updated matches data...');
+      fetchMatches(false, true); // Background updates only
+      fetchPopularMatches(); // Also update popular matches
+    }, 180000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Add retry logic for failed connections
+  useEffect(() => {
+    if (error && error.includes('Unable to connect to server')) {
+      console.log('[DEBUG] Connection error detected, scheduling retry...');
+      const retryTimeout = setTimeout(() => {
+        console.log('[DEBUG] Retrying connection...');
+        fetchMatches();
+      }, 10000); // Retry after 10 seconds
+      
+      return () => clearTimeout(retryTimeout);
+    }
+  }, [error]);
+  
+  // Add a separate polling effect for popular matches
+  useEffect(() => {
+    // Set up more frequent polling for popular matches (every 1 minute)
+    const popularMatchesInterval = setInterval(() => {
+      fetchPopularMatches();
+    }, 60000);
+    
+    return () => clearInterval(popularMatchesInterval);
+  }, []);
+
+  // Navigation state management for preserving data
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Page is being hidden (user navigating away), ensure data is saved
+        try {
+          if (matches.length > 0) {
+            sessionStorage.setItem('home_matches_data', JSON.stringify(matches));
+          }
+          if (popularMatches.length > 0) {
+            sessionStorage.setItem('home_popular_data', JSON.stringify(popularMatches));
+          }
+          if (filteredMatches.length > 0) {
+            sessionStorage.setItem('home_filtered_data', JSON.stringify(filteredMatches));
+          }
+          console.log('[HOME] Data preserved for navigation');
+        } catch (e) {
+          console.log('[HOME] Failed to preserve data:', e);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [matches, popularMatches, filteredMatches]);
+  
+  // Add this new function to fetch only popular matches
+  const fetchPopularMatches = async () => {
+    try {
+      console.log('[DEBUG] Fetching popular matches...');
+      
+      const response = await apiService.getPopularMatches();
+      const popularData = response.data.matches || [];
+      const now = new Date();
+      
+      // Transform and deduplicate popular matches
+      const transformedPopular = popularData
+        // Only upcoming
+        .filter(match => new Date(match.startTime) >= now)
+        .map(match => ({
+        id: match.id || match._id,
+        league: match.league || '',
+        subcategory: match.subcategory || '',
+        startTime: match.startTime,
+        time: new Date(match.startTime).toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        odds: match.odds || {},
+        sport: match.sport || '',
+        country: match.country || '',
+        fullLeagueTitle: match.fullLeagueTitle || ''
+      }));
+      
+      const uniquePopularMatches = deduplicateMatches(transformedPopular);
+      setPopularMatches(uniquePopularMatches);
+      
+    } catch (err) {
+      console.error('Error fetching popular matches:', err);
+      // Don't set error state here to avoid disrupting the main UI
+    }
+  };
+
+  // Group matches by subcategory with canonicalization and deduplication
+  const groupMatchesBySubcategory = () => {
+    const groupedMatches = {};
+    const subcategoryUniqueMatches = {};
+
+    const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
+
+    const computeCanonicalSubcategory = (m) => {
+      const leagueNorm = normalize(m.league);
+      const subNorm = normalize(m.subcategory);
+      for (const [canonical, variations] of Object.entries(subcategoryMappings)) {
+        for (const v of variations) {
+          const vNorm = normalize(v);
+          if (vNorm && (leagueNorm === vNorm || subNorm === vNorm)) {
+            return canonical;
+          }
+        }
+      }
+      if (m.league && m.league.includes('.')) {
+        return m.league.split('.').pop().trim();
+      }
+      if (m.league) return m.league;
+      if (m.subcategory) return m.subcategory;
+      return 'Other';
+    };
+
+    filteredMatches.forEach(match => {
+      const subcategoryKey = computeCanonicalSubcategory(match);
+      if (!groupedMatches[subcategoryKey]) {
+        groupedMatches[subcategoryKey] = [];
+        subcategoryUniqueMatches[subcategoryKey] = new Set();
+      }
+      const matchKey = `${match.homeTeam}_${match.awayTeam}_${match.startTime}`;
+      if (!subcategoryUniqueMatches[subcategoryKey].has(matchKey)) {
+        subcategoryUniqueMatches[subcategoryKey].add(matchKey);
+        groupedMatches[subcategoryKey].push(match);
+      }
+    });
+
+    Object.entries(groupedMatches).forEach(([subcategory, matches]) => {
+      console.log(`[DEBUG] Subcategory "${subcategory}": ${matches.length} unique matches`);
+    });
+
+    return groupedMatches;
+  };
+
+  const groupedMatches = groupMatchesBySubcategory();
+  
+  // Debug: Log the grouped matches to see what subcategories are created
+  console.log('🏠 [HOME] Raw matches count:', matches.length);
+  console.log('🏠 [HOME] Filtered matches count:', filteredMatches.length);
+  console.log('🏠 [HOME] Grouped matches:', Object.keys(groupedMatches));
+  console.log('🏠 [HOME] Total grouped matches entries:', Object.entries(groupedMatches).length);
+  Object.entries(groupedMatches).forEach(([subcategory, matches]) => {
+    console.log(`🏠 [HOME] Subcategory "${subcategory}": ${matches.length} matches`);
+  });
+  
+  // Alert to force visibility of debug info
+  if (matches.length > 0 && Object.entries(groupedMatches).length > 0) {
+    console.log('🚨 [HOME] MATCHES LOADED! Should render', Object.entries(groupedMatches).reduce((total, [, matches]) => total + matches.length, 0), 'MatchCard components');
+  }
+
+  // Do not gate initial render behind loading; show page immediately without loading text
+
+  const hasAnyData = matches.length > 0 || popularMatches.length > 0 || filteredMatches.length > 0;
+  const isInitialError = !!error && !hasAnyData && attemptCount <= 1;
+  const shouldShowErrorPage = !!error && !isInitialError && !hasAnyData;
+
+  if (shouldShowErrorPage) {
+    return (
+      <div className="home-page">
+        <HeroSlider />
+        <div className="main-content">
+          <div className="error-container">
+            <p className="error-message">{error}</p>
+            <button onClick={fetchMatches} className="retry-btn">Retry</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="home-page">
+      <HeroSlider />
+      
+      
+      {/* Popular Matches section - keep unchanged */}
+      <div className="main-content">
+        {/* Sports strip between hero and popular matches */}
+        <SportsStrip onSelectSport={handleSelectSport} activeSport={sportsStripFilter} />
+        {(() => {
+          // Derive sport token if strict mapping exists
+          let pm = popularMatches;
+          const strictToken = strictSportTokenMap[selectedSidebarFilter];
+          if (selectedSidebarFilter) {
+            if (strictToken) {
+              pm = pm.filter(m => String(m.sport || '').toLowerCase().split('_')[0] === strictToken);
+            } else {
+              const mappedValues = sidebarToDataMap[selectedSidebarFilter] || [selectedSidebarFilter];
+              pm = pm.filter(m =>
+                mappedValues.some(val =>
+                  (m.sport && m.sport.toLowerCase().includes(val.toLowerCase())) ||
+                  (m.league && m.league.toLowerCase().includes(val.toLowerCase())) ||
+                  (m.subcategory && m.subcategory.toLowerCase().includes(val.toLowerCase()))
+                )
+              );
+            }
+          }
+          return <PopularMatches matches={pm} loading={loading} />;
+        })()}
+        
+        {/* Enhanced Matches Section */}
+        <div className="matches-section">
+          <div className="section-header">
+            <h2>Today's Matches</h2>
+            {selectedSubcategory && (
+              <div className="active-filter">
+                <span>Filtered by: {selectedSubcategory}</span>
+                <button 
+                  className="clear-filter-btn"
+                  onClick={() => setSelectedSubcategory('')}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <div className="tab-navigation">
+              {tabs.map(tab => (
+                <button
+                  key={tab}
+                  className={`tab-btn ${selectedTab === tab ? 'active' : ''}`}
+                  onClick={() => setSelectedTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="matches-container">
+            {(loading || isInitialError) ? (
+              <div className="matches-list">
+                <SkeletonLoader type="match-card" count={6} />
+              </div>
+            ) : (
+              Object.entries(groupedMatches).length > 0 ? (
+                Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
+                  <div key={subcategory} className="competition-group">
+                    <div className="matches-list">
+                      {subcategoryMatches.map((match, index) => (
+                        <MatchCard
+                          key={match.id}
+                          match={match}
+                          sport={match.sport}
+                          league={match.league}
+                          subcategory={match.subcategory}
+                          showLeagueHeader={index === 0}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-matches">
+                  <h3>No Matches Found</h3>
+                  <p>No matches match your current filters. Try adjusting your search criteria.</p>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Home;
