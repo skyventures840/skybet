@@ -30,7 +30,20 @@ async function main() {
     await mongoose.disconnect();
     process.exit(1);
   }
-  const sports = await service.getSports();
+  
+  let sports;
+  try {
+    sports = await service.getSports();
+    console.log(`Successfully fetched ${sports.length} sports from API`);
+  } catch (error) {
+    console.error('Failed to fetch sports from API:', error.message);
+    if (error.response) {
+      console.error('API Response Status:', error.response.status);
+      console.error('API Response Data:', error.response.data);
+    }
+    await mongoose.disconnect();
+    process.exit(1);
+  }
   const supportedSports = sports.filter(sport =>
     !sport.key.includes('politics') &&
     !sport.key.includes('entertainment') &&

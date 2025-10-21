@@ -14,11 +14,11 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => {
+.then(async () => {
   console.log('Connected to MongoDB');
   
   // Start cron jobs
-  startCronJobs();
+  await startCronJobs();
   
   console.log('Cron jobs started successfully');
   

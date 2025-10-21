@@ -1,0 +1,103 @@
+[2025-10-20T14:02:21.302Z] === Cron Monitor Starting ===
+[2025-10-20T14:02:21.305Z] Max restarts: 10
+[2025-10-20T14:02:21.306Z] Restart delay: 5000ms
+[2025-10-20T14:02:21.307Z] Health check interval: 30000ms
+[2025-10-20T14:02:21.309Z] Starting cron jobs...
+[2025-10-20T14:02:21.330Z] Cron jobs started successfully
+[2025-10-20T14:02:21.332Z] Health checks started (interval: 30000ms)
+[2025-10-20T14:02:21.333Z] Cron monitor is now running
+[2025-10-20T14:02:23.118Z] CRON STDOUT: Odds API Base URL: https://api.the-odds-api.com/v4
+[2025-10-20T14:02:23.204Z] CRON STDOUT: Connected to MongoDB
+[2025-10-20T14:02:23.237Z] CRON STDOUT: [32minfo[39m: All cron jobs scheduled with overlap prevention. {"service":"platypus-backend","timestamp":"2025-10-20 17:02:23"}
+[2025-10-20T14:02:23.239Z] CRON STDOUT: Cron jobs started successfully
+[2025-10-20T14:02:51.339Z] Health check passed: Cron process is running
+[2025-10-20T14:03:00.854Z] CRON STDOUT: [32minfo[39m: Starting cron job: Fetching live odds... {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.900Z] CRON STDOUT: [32minfo[39m: Starting cron job: Updating match statuses... {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.929Z] CRON STDOUT: [32minfo[39m: Starting cron job: Broadcasting live matches update... {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.936Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully broadcasted live matches update. {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.948Z] CRON STDOUT: [32minfo[39m: No live matches found, skipping live odds fetch {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.950Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully fetched live odds. {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.957Z] CRON STDOUT: [32minfo[39m: Successfully updated match statuses {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:00.962Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully updated match statuses. {"service":"platypus-backend","timestamp":"2025-10-20 17:03:00"}
+[2025-10-20T14:03:21.345Z] Health check passed: Cron process is running
+[2025-10-20T14:03:51.347Z] Health check passed: Cron process is running
+[2025-10-20T14:04:00.342Z] CRON STDOUT: [32minfo[39m: Starting cron job: Fetching live odds... {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[2025-10-20T14:04:00.355Z] CRON STDOUT: [32minfo[39m: Starting cron job: Updating match statuses... {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[2025-10-20T14:04:00.358Z] CRON STDOUT: [32minfo[39m: Starting cron job: Broadcasting live matches update... {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[2025-10-20T14:04:00.387Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully broadcasted live matches update. {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Starting cron job: Settling bets... {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Starting automated bet settlement... {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Starting automated bet settlement process... {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: No live matches found, skipping live odds fetch {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Cron job finished: Successfully fetched live odds. {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[2025-10-20T14:04:00.435Z] CRON STDOUT: [32minfo[39m: Successfully updated match statuses {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Cron job finished: Successfully updated match statuses. {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Found 0 completed matches to process {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Bet settlement completed: 0 bets settled across 0 matches {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Bet settlement completed: 0 bets settled across 0 matches {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[32minfo[39m: Cron job finished: Successfully processed bet settlements. {"service":"platypus-backend","timestamp":"2025-10-20 17:04:00"}
+[2025-10-20T14:04:21.362Z] Health check passed: Cron process is running
+[2025-10-20T14:04:32.711Z] === Cron Monitor Starting ===
+[2025-10-20T14:04:32.713Z] Max restarts: 10
+[2025-10-20T14:04:32.714Z] Restart delay: 5000ms
+[2025-10-20T14:04:32.715Z] Health check interval: 30000ms
+[2025-10-20T14:04:32.717Z] Starting cron jobs...
+[2025-10-20T14:04:32.731Z] Cron jobs started successfully
+[2025-10-20T14:04:32.733Z] Health checks started (interval: 30000ms)
+[2025-10-20T14:04:32.735Z] Cron monitor is now running
+[2025-10-20T14:04:34.565Z] CRON STDOUT: Odds API Base URL: https://api.the-odds-api.com/v4
+[2025-10-20T14:04:34.638Z] CRON STDOUT: Connected to MongoDB
+[2025-10-20T14:04:34.650Z] CRON STDOUT: [32minfo[39m: All cron jobs scheduled with overlap prevention. {"service":"platypus-backend","timestamp":"2025-10-20 17:04:34"}
+[2025-10-20T14:04:34.652Z] CRON STDOUT: Cron jobs started successfully
+[2025-10-20T14:04:51.362Z] Health check passed: Cron process is running
+[2025-10-20T14:05:00.158Z] CRON STDOUT: [32minfo[39m: Starting cron job: Fetching live odds... {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.163Z] CRON STDOUT: [32minfo[39m: Starting cron job: Updating match statuses... {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.166Z] CRON STDOUT: [32minfo[39m: Starting cron job: Broadcasting live matches update... {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.167Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully broadcasted live matches update. {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.179Z] CRON STDOUT: [32minfo[39m: No live matches found, skipping live odds fetch {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.181Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully fetched live odds. {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.194Z] CRON STDOUT: [32minfo[39m: Successfully updated match statuses {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.197Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully updated match statuses. {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.929Z] CRON STDOUT: [32minfo[39m: Starting cron job: Fetching live odds... {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.976Z] CRON STDOUT: [32minfo[39m: Starting cron job: Updating match statuses... {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.995Z] CRON STDOUT: [32minfo[39m: Starting cron job: Broadcasting live matches update... {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:00.997Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully broadcasted live matches update. {"service":"platypus-backend","timestamp":"2025-10-20 17:05:00"}
+[2025-10-20T14:05:01.004Z] CRON STDOUT: [32minfo[39m: No live matches found, skipping live odds fetch {"service":"platypus-backend","timestamp":"2025-10-20 17:05:01"}
+[2025-10-20T14:05:01.007Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully fetched live odds. {"service":"platypus-backend","timestamp":"2025-10-20 17:05:01"}
+[2025-10-20T14:05:01.029Z] CRON STDOUT: [32minfo[39m: Successfully updated match statuses {"service":"platypus-backend","timestamp":"2025-10-20 17:05:01"}
+[2025-10-20T14:05:01.041Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully updated match statuses. {"service":"platypus-backend","timestamp":"2025-10-20 17:05:01"}
+[2025-10-20T14:05:02.746Z] Health check passed: Cron process is running
+[2025-10-20T14:05:21.370Z] Health check passed: Cron process is running
+[2025-10-20T14:05:32.759Z] Health check passed: Cron process is running
+[2025-10-20T14:05:51.374Z] Health check passed: Cron process is running
+[2025-10-20T14:06:00.846Z] CRON STDOUT: [32minfo[39m: Starting cron job: Fetching live odds... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.850Z] CRON STDOUT: [32minfo[39m: Starting cron job: Updating match statuses... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.854Z] CRON STDOUT: [32minfo[39m: Starting cron job: Broadcasting live matches update... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.856Z] CRON STDOUT: [32minfo[39m: Cron job finished: Successfully broadcasted live matches update. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.860Z] CRON STDOUT: [32minfo[39m: Starting cron job: Settling bets... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.864Z] CRON STDOUT: [32minfo[39m: Starting automated bet settlement... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.868Z] CRON STDOUT: [32minfo[39m: Starting automated bet settlement process... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.868Z] CRON STDOUT: [32minfo[39m: Starting cron job: Fetching live odds... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.878Z] CRON STDOUT: [32minfo[39m: No live matches found, skipping live odds fetch {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully fetched live odds. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.893Z] CRON STDOUT: [32minfo[39m: Successfully updated match statuses {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully updated match statuses. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.879Z] CRON STDOUT: [32minfo[39m: Starting cron job: Updating match statuses... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Starting cron job: Broadcasting live matches update... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully broadcasted live matches update. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Starting cron job: Settling bets... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Starting automated bet settlement... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.895Z] CRON STDOUT: [32minfo[39m: Found 0 completed matches to process {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.898Z] CRON STDOUT: [32minfo[39m: Starting automated bet settlement process... {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: No live matches found, skipping live odds fetch {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully fetched live odds. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.917Z] CRON STDOUT: [32minfo[39m: Bet settlement completed: 0 bets settled across 0 matches {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Bet settlement completed: 0 bets settled across 0 matches {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully processed bet settlements. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.931Z] CRON STDOUT: [32minfo[39m: Successfully updated match statuses {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully updated match statuses. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Found 0 completed matches to process {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:00.971Z] CRON STDOUT: [32minfo[39m: Bet settlement completed: 0 bets settled across 0 matches {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Bet settlement completed: 0 bets settled across 0 matches {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[32minfo[39m: Cron job finished: Successfully processed bet settlements. {"service":"platypus-backend","timestamp":"2025-10-20 17:06:00"}
+[2025-10-20T14:06:02.769Z] Health check passed: Cron process is running

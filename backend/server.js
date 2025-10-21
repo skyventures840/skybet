@@ -348,12 +348,12 @@ if (mongoURI) {
     socketTimeoutMS: 30000,
     connectTimeoutMS: 30000,
   })
-  .then(() => {
+  .then(async () => {
     console.log('Connected to MongoDB');
     startHttpAndWsServers();
     // Start cron only after a successful DB connection to ensure persistence
     try {
-      startCronJobs();
+      await startCronJobs();
       console.log('Cron jobs started after successful DB connection');
     } catch (cronErr) {
       console.warn('Failed to start cron jobs:', cronErr && cronErr.message ? cronErr.message : cronErr);

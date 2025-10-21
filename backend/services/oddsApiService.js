@@ -24,6 +24,68 @@ const winstonLogger = winston.createLogger({
 
 // Optimized bookmaker mapping - one primary bookmaker per sport for efficiency
 const SPORT_BOOKMAKERS = {
+    // Soccer
+  'soccer_africa_cup_of_nations': 'pinnacle',
+  'soccer_argentina_primera_division': 'pinnacle',
+  'soccer_australia_aleague': 'pinnacle',
+  'soccer_austria_bundesliga': 'pinnacle',
+  'soccer_belgium_first_div': 'pinnacle',
+  'soccer_brazil_campeonato': 'pinnacle',
+  'soccer_brazil_serie_b': 'pinnacle',
+  'soccer_chile_campeonato': 'pinnacle',
+  'soccer_china_superleague': 'pinnacle',
+  'soccer_denmark_superliga': 'pinnacle',
+  'soccer_efl_champ': 'pinnacle',
+  'soccer_england_efl_cup': 'pinnacle',
+  'soccer_england_league1': 'pinnacle',
+  'soccer_england_league2': 'pinnacle',
+  'soccer_epl': 'pinnacle',
+  'soccer_fa_cup': 'pinnacle',
+  'soccer_fifa_world_cup': 'pinnacle',
+  'soccer_fifa_world_cup_qualifiers_europe': 'pinnacle',
+  'soccer_fifa_world_cup_qualifiers_south_america': 'pinnacle',
+  'soccer_fifa_world_cup_womens': 'pinnacle',
+  'soccer_fifa_world_cup_winner': 'pinnacle',
+  'soccer_fifa_club_world_cup': 'pinnacle',
+  'soccer_finland_veikkausliiga': 'pinnacle',
+  'soccer_france_ligue_one': 'pinnacle',
+  'soccer_france_ligue_two': 'pinnacle',
+  'soccer_germany_bundesliga': 'pinnacle',
+  'soccer_germany_bundesliga2': 'pinnacle',
+  'soccer_germany_liga3': 'pinnacle',
+  'soccer_greece_super_league': 'pinnacle',
+  'soccer_italy_serie_a': 'pinnacle',
+  'soccer_italy_serie_b': 'pinnacle',
+  'soccer_japan_j_league': 'pinnacle',
+  'soccer_korea_kleague1': 'pinnacle',
+  'soccer_league_of_ireland': 'pinnacle',
+  'soccer_mexico_ligamx': 'pinnacle',
+  'soccer_netherlands_eredivisie': 'pinnacle',
+  'soccer_norway_eliteserien': 'pinnacle',
+  'soccer_poland_ekstraklasa': 'pinnacle',
+  'soccer_portugal_primeira_liga': 'pinnacle',
+  'soccer_spain_la_liga': 'pinnacle',
+  'soccer_spain_segunda_division': 'pinnacle',
+  'soccer_spl': 'pinnacle',
+  'soccer_sweden_allsvenskan': 'pinnacle',
+  'soccer_sweden_superettan': 'pinnacle',
+  'soccer_switzerland_superleague': 'pinnacle',
+  'soccer_turkey_super_league': 'pinnacle',
+  'soccer_uefa_europa_conference_league': 'pinnacle',
+  'soccer_uefa_champs_league': 'pinnacle',
+  'soccer_uefa_champs_league_qualification': 'pinnacle',
+  'soccer_uefa_champs_league_women': 'pinnacle',
+  'soccer_uefa_europa_league': 'pinnacle',
+  'soccer_uefa_european_championship': 'pinnacle',
+  'soccer_uefa_euro_qualification': 'pinnacle',
+  'soccer_uefa_nations_league': 'pinnacle',
+  'soccer_concacaf_gold_cup': 'pinnacle',
+  'soccer_concacaf_leagues_cup': 'pinnacle',
+  'soccer_conmebol_copa_america': 'pinnacle',
+  'soccer_conmebol_copa_libertadores': 'pinnacle',
+  'soccer_conmebol_copa_sudamericana': 'pinnacle',
+  'soccer_usa_mls': 'pinnacle',
+  
   'americanfootball_cfl': 'draftkings',
   'americanfootball_ncaaf': 'draftkings',
   'americanfootball_ncaaf_championship_winner': 'draftkings',
@@ -97,77 +159,12 @@ const SPORT_BOOKMAKERS = {
   // Mixed Martial Arts
   'mma_mixed_martial_arts': 'bet365_au',
 
-  // Politics
-  'politics_us_presidential_election_winner': 'unibet',
-
-  // Rugby League
+    // Rugby League
   'rugbyleague_nrl': 'sportsbet',
   'rugbyleague_nrl_state_of_origin': 'sportsbet',
 
   // Rugby Union
   'rugbyunion_six_nations': 'williamhill',
-
-  // Soccer
-  'soccer_africa_cup_of_nations': 'pinnacle',
-  'soccer_argentina_primera_division': 'pinnacle',
-  'soccer_australia_aleague': 'pinnacle',
-  'soccer_austria_bundesliga': 'pinnacle',
-  'soccer_belgium_first_div': 'pinnacle',
-  'soccer_brazil_campeonato': 'pinnacle',
-  'soccer_brazil_serie_b': 'pinnacle',
-  'soccer_chile_campeonato': 'pinnacle',
-  'soccer_china_superleague': 'pinnacle',
-  'soccer_denmark_superliga': 'pinnacle',
-  'soccer_efl_champ': 'pinnacle',
-  'soccer_england_efl_cup': 'pinnacle',
-  'soccer_england_league1': 'pinnacle',
-  'soccer_england_league2': 'pinnacle',
-  'soccer_epl': 'pinnacle',
-  'soccer_fa_cup': 'pinnacle',
-  'soccer_fifa_world_cup': 'pinnacle',
-  'soccer_fifa_world_cup_qualifiers_europe': 'pinnacle',
-  'soccer_fifa_world_cup_qualifiers_south_america': 'pinnacle',
-  'soccer_fifa_world_cup_womens': 'pinnacle',
-  'soccer_fifa_world_cup_winner': 'pinnacle',
-  'soccer_fifa_club_world_cup': 'pinnacle',
-  'soccer_finland_veikkausliiga': 'pinnacle',
-  'soccer_france_ligue_one': 'pinnacle',
-  'soccer_france_ligue_two': 'pinnacle',
-  'soccer_germany_bundesliga': 'pinnacle',
-  'soccer_germany_bundesliga2': 'pinnacle',
-  'soccer_germany_liga3': 'pinnacle',
-  'soccer_greece_super_league': 'pinnacle',
-  'soccer_italy_serie_a': 'pinnacle',
-  'soccer_italy_serie_b': 'pinnacle',
-  'soccer_japan_j_league': 'pinnacle',
-  'soccer_korea_kleague1': 'pinnacle',
-  'soccer_league_of_ireland': 'pinnacle',
-  'soccer_mexico_ligamx': 'pinnacle',
-  'soccer_netherlands_eredivisie': 'pinnacle',
-  'soccer_norway_eliteserien': 'pinnacle',
-  'soccer_poland_ekstraklasa': 'pinnacle',
-  'soccer_portugal_primeira_liga': 'pinnacle',
-  'soccer_spain_la_liga': 'pinnacle',
-  'soccer_spain_segunda_division': 'pinnacle',
-  'soccer_spl': 'pinnacle',
-  'soccer_sweden_allsvenskan': 'pinnacle',
-  'soccer_sweden_superettan': 'pinnacle',
-  'soccer_switzerland_superleague': 'pinnacle',
-  'soccer_turkey_super_league': 'pinnacle',
-  'soccer_uefa_europa_conference_league': 'pinnacle',
-  'soccer_uefa_champs_league': 'pinnacle',
-  'soccer_uefa_champs_league_qualification': 'pinnacle',
-  'soccer_uefa_champs_league_women': 'pinnacle',
-  'soccer_uefa_europa_league': 'pinnacle',
-  'soccer_uefa_european_championship': 'pinnacle',
-  'soccer_uefa_euro_qualification': 'pinnacle',
-  'soccer_uefa_nations_league': 'pinnacle',
-  'soccer_concacaf_gold_cup': 'pinnacle',
-  'soccer_concacaf_leagues_cup': 'pinnacle',
-  'soccer_conmebol_copa_america': 'pinnacle',
-  'soccer_conmebol_copa_libertadores': 'pinnacle',
-  'soccer_conmebol_copa_sudamericana': 'pinnacle',
-  'soccer_usa_mls': 'pinnacle',
 
   // Tennis
   'tennis_atp_aus_open_singles': 'bet365_au',
@@ -282,7 +279,23 @@ class OddsApiService {
       return sports;
     } catch (error) {
       this.handleApiError(error);
-      return [];
+      
+      // If it's a 500 error, use fallback data
+      if (error.response && error.response.status === 500) {
+        winstonLogger.warn('Using fallback sports data due to API 500 error');
+        const fs = require('fs');
+        const path = require('path');
+        try {
+          const fallbackPath = path.join(__dirname, '..', 'data', 'fallbackSports.json');
+          const fallbackData = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
+          return fallbackData;
+        } catch (fallbackError) {
+          winstonLogger.error('Failed to load fallback sports data:', fallbackError);
+          throw error; // Re-throw original error if fallback fails
+        }
+      }
+      
+      throw error; // Re-throw the error for other status codes
     }
   }
 
@@ -1162,7 +1175,25 @@ class OddsApiService {
       games = response.data || [];
     } catch (err) {
       console.error(`Error fetching odds for ${sportKey} market ${market}:`, err.message);
-      return [];
+      
+      // If it's a 401 or 500 error, try to use fallback data
+      if (err.response && (err.response.status === 401 || err.response.status === 500)) {
+        winstonLogger.warn(`Using fallback odds data for ${sportKey} due to API ${err.response.status} error`);
+        const fs = require('fs');
+        const path = require('path');
+        try {
+          const fallbackPath = path.join(__dirname, '..', 'data', 'fallbackOdds.json');
+          const fallbackData = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
+          // Filter fallback data for the specific sport
+          games = fallbackData.filter(game => game.sport_key === sportKey);
+        } catch (fallbackError) {
+          winstonLogger.error('Failed to load fallback odds data:', fallbackError);
+        }
+      }
+      
+      if (games.length === 0) {
+        return [];
+      }
     }
 
     if (!Array.isArray(games)) games = [];

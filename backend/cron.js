@@ -3,9 +3,16 @@ const mongoose = require('mongoose');
 const { OddsApiService } = require('./services/oddsApiService');
 const betSettlementService = require('./services/betSettlementService');
 const logger = require('./utils/logger');
-const Match = require('./models/Match');
-const League = require('./models/League');
+const { fetchOddsForSport, fetchOddsForMultipleSports } = require('./scripts/fetchOddsModule');
+
+// Import models
 const Odds = require('./models/Odds');
+const Match = require('./models/Match');
+const Results = require('./models/Results');
+const Scores = require('./models/Scores');
+const Bet = require('./models/Bet');
+const MultiBet = require('./models/MultiBet');
+const League = require('./models/League');
 const { updateCronStatus, isServerHealthy } = require('./middleware/healthMonitor');
 
 let oddsApiService;
@@ -110,219 +117,6 @@ async function settleBets() {
  * @param {string} sportName - The display name of the sport
  * @returns {Promise<void>}
  */
-async function fetchOddsForSport(sportKey, sportName) {
-  // Ensure DB is connected before attempting any persistence
-  if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-    logger.warn(`Skipping odds fetch for ${sportName} (${sportKey}) because MongoDB is not connected`);
-    return;
-  }
-  if (!oddsApiService) {
-    logger.warn('OddsApiService is not available, skipping odds fetch');
-    return;
-  }
-  
-  try {
-    // Use the comprehensive getUpcomingOdds method which includes all priority markets
-    logger.info(`Fetching comprehensive odds with priority markets for ${sportName} (${sportKey})`);
-    const games = await oddsApiService.getUpcomingOdds(sportKey);
-    logger.info(`Fetched ${Array.isArray(games) ? games.length : 0} events for ${sportName} (${sportKey})`);
-    
-    // Helper: map Odds API sport_key to internal sport enum
-    const mapSportKeyToInternal = (key) => {
-      if (!key) return 'soccer';
-      if (key.startsWith('americanfootball')) return 'football';
-      if (key.startsWith('basketball')) return 'basketball';
-      if (key.startsWith('soccer')) return 'soccer';
-      if (key.startsWith('baseball')) return 'baseball';
-      if (key.startsWith('icehockey')) return 'hockey';
-      if (key.startsWith('tennis')) return 'tennis';
-      return 'soccer';
-    };
-
-    // Helper: normalize markets to a compact odds map (aligned with OddsApiService)
-    const normalizeMarketKey = (key) => {
-      const k = (key || '').toLowerCase();
-      const noLay = k
-        .replace(/_?lay$/i, '')
-        .replace(/\blay\b/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .replace(/\s/g, '_');
-      if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h';
-      if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals';
-      if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads';
-      if (noLay === 'btts' || noLay === 'both_teams_to_score') return 'both_teams_to_score';
-      if (noLay === 'draw_no_bet') return 'draw_no_bet';
-      if (noLay === 'outrights' || noLay === 'outright') return 'outrights';
-      if (noLay === 'team_totals') return 'team_totals';
-      if (noLay === 'alternate_team_totals') return 'alternate_team_totals';
-      if (noLay === 'alternate_totals') return 'alternate_totals';
-      if (noLay === 'alternate_spreads') return 'alternate_spreads';
-      if (noLay === 'h2h_3_way') return 'h2h_3_way';
-      if (noLay === 'double_chance') return 'double_chance';
-      return noLay;
-    };
-
-    const buildOddsMapFromBookmakers = (bookmakers, homeTeam, awayTeam) => {
-      const marketsMap = {};
-      if (!Array.isArray(bookmakers) || bookmakers.length === 0) return marketsMap;
-      const firstBookmaker = bookmakers[0];
-      if (!firstBookmaker || !Array.isArray(firstBookmaker.markets)) return marketsMap;
-      firstBookmaker.markets.forEach(market => {
-        const mKey = normalizeMarketKey(market.key);
-        if (mKey === 'h2h') {
-          market.outcomes.forEach(outcome => {
-            if (outcome.name === homeTeam) {
-              marketsMap['1'] = outcome.price;
-              marketsMap['homeWin'] = outcome.price;
-            } else if (outcome.name === awayTeam) {
-              marketsMap['2'] = outcome.price;
-              marketsMap['awayWin'] = outcome.price;
-            } else if (/draw/i.test(outcome.name)) {
-              marketsMap['X'] = outcome.price;
-              marketsMap['draw'] = outcome.price;
-            }
-          });
-        } else if (mKey === 'totals') {
-          if (Array.isArray(market.outcomes) && market.outcomes.length >= 2) {
-            const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0];
-            const underOutcome = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1];
-            const point = overOutcome?.point ?? underOutcome?.point;
-            if (point != null) marketsMap['total'] = point;
-            if (overOutcome && typeof overOutcome.price === 'number') marketsMap['over'] = overOutcome.price;
-            if (underOutcome && typeof underOutcome.price === 'number') marketsMap['under'] = underOutcome.price;
-          }
-        } else if (mKey === 'spreads') {
-          if (Array.isArray(market.outcomes)) {
-            const home = market.outcomes.find(o => o.name === homeTeam);
-            const away = market.outcomes.find(o => o.name === awayTeam);
-            const line = home?.point ?? away?.point;
-            if (line != null) marketsMap['handicapLine'] = line;
-            if (typeof home?.price === 'number') marketsMap['homeHandicap'] = home.price;
-            if (typeof away?.price === 'number') marketsMap['awayHandicap'] = away.price;
-          }
-        }
-      });
-      return marketsMap;
-    };
-
-    // Ensure a League exists and obtain its ObjectId for reference
-    const ensureLeague = async () => {
-      try {
-        const externalPrefix = sportKey.split('_')[0] || sportKey;
-        const existing = await League.findOne({ leagueId: sportKey });
-        if (existing) return existing._id;
-        const created = await League.create({
-          name: sportName || sportKey,
-          leagueId: sportKey,
-          externalPrefix
-        });
-        return created._id;
-      } catch (err) {
-        logger.warn(`League upsert failed for ${sportKey}: ${err?.message || err}`);
-        return null;
-      }
-    };
-
-    const leagueObjectId = await ensureLeague();
-
-    // Persist Match records as well for frontend and live updates
-    if (Array.isArray(games) && games.length > 0) {
-      const internalSport = mapSportKeyToInternal(sportKey);
-      const matchBulkOps = games.map(game => {
-        const oddsMap = buildOddsMapFromBookmakers(game.bookmakers, game.home_team, game.away_team);
-        return ({
-          updateOne: {
-            filter: { externalId: game.id },
-            update: {
-              $set: {
-                externalId: game.id,
-                leagueId: leagueObjectId,
-                sport: internalSport,
-                homeTeam: game.home_team,
-                awayTeam: game.away_team,
-                startTime: new Date(game.commence_time),
-                odds: oddsMap,
-                status: 'upcoming'
-              }
-            },
-            upsert: true
-          }
-        });
-      });
-      await Match.bulkWrite(matchBulkOps, { ordered: false, setDefaultsOnInsert: true });
-      logger.info(`Saved ${games.length} match records for ${sportName} (${sportKey})`);
-    } else {
-      logger.info(`No games returned for ${sportName} (${sportKey}), attempting fallback from saved Odds...`);
-      // Fallback: derive matches from saved Odds documents if available
-      try {
-        const oddsDocs = await Odds.find({ sport_key: sportKey }).limit(250);
-        if (Array.isArray(oddsDocs) && oddsDocs.length > 0) {
-          const internalSport = mapSportKeyToInternal(sportKey);
-          const matchBulkOps = oddsDocs.map(oddsDoc => {
-            const oddsMap = buildOddsMapFromBookmakers(oddsDoc.bookmakers, oddsDoc.home_team, oddsDoc.away_team);
-            return ({
-              updateOne: {
-                filter: { externalId: oddsDoc.gameId },
-                update: {
-                  $set: {
-                    externalId: oddsDoc.gameId,
-                    leagueId: leagueObjectId,
-                    sport: internalSport,
-                    homeTeam: oddsDoc.home_team,
-                    awayTeam: oddsDoc.away_team,
-                    startTime: new Date(oddsDoc.commence_time),
-                    odds: oddsMap,
-                    status: 'upcoming'
-                  }
-                },
-                upsert: true
-              }
-            });
-          });
-          await Match.bulkWrite(matchBulkOps, { ordered: false, setDefaultsOnInsert: true });
-          logger.info(`Fallback saved ${oddsDocs.length} match records for ${sportName} (${sportKey})`);
-        } else {
-          logger.info(`No saved Odds found for fallback for ${sportName} (${sportKey})`);
-        }
-      } catch (fbErr) {
-        logger.error(`Fallback match save failed for ${sportName} (${sportKey}):`, fbErr);
-      }
-    }
-
-    // Log rate-limit info if available
-    if (typeof oddsApiService.getLastRateLimitInfo === 'function') {
-      const rateInfo = oddsApiService.getLastRateLimitInfo();
-      if (rateInfo) {
-        const remaining = typeof rateInfo.remaining === 'number' ? rateInfo.remaining : 'unknown';
-        const used = typeof rateInfo.used === 'number' ? rateInfo.used : 'unknown';
-        logger.info(`Rate limit info for ${sportName}: remaining=${remaining}, used=${used}`);
-      }
-    }
-
-    // Log a brief sample summary for observability
-    if (Array.isArray(games) && games.length > 0) {
-      const sample = games[0];
-      const bookmakerCount = Array.isArray(sample.bookmakers) ? sample.bookmakers.length : 0;
-      logger.info(`Sample odds saved: gameId=${sample.id}, commence_time=${sample.commence_time}, home_team=${sample.home_team}, away_team=${sample.away_team}, bookmaker_count=${bookmakerCount}`);
-    }
-
-    // Verification similar to simpleFetchAndVerify: ensure odds exist for this sport
-    try {
-      const sportOddsCount = await Odds.countDocuments({ sport_key: sportKey });
-      logger.info(`Odds documents saved for ${sportName} (${sportKey}): ${sportOddsCount}`);
-    } catch (countErr) {
-      logger.warn(`Could not verify odds count for ${sportName} (${sportKey}): ${countErr && countErr.message ? countErr.message : countErr}`);
-    }
-
-    logger.info(`Successfully fetched and saved all markets for ${sportName}`);
-    // Small delay to avoid rate limiting between sports
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  } catch (error) {
-    logger.error(`Error fetching all markets for ${sportName}:`, error);
-  }
-}
-
 /**
  * @function broadcastLiveMatchesUpdate
  * @description Broadcasts live matches update to all WebSocket subscribers
@@ -402,7 +196,7 @@ async function fetchLiveOdds() {
  * @function startCronJobs
  * @description Initializes and starts all scheduled cron jobs for the application.
  */
-const startCronJobs = () => {
+const startCronJobs = async () => {
   // Add job overlap prevention
   let isOddsFetching = false;
   let isLiveOddsFetching = false;
@@ -410,6 +204,43 @@ const startCronJobs = () => {
   let isBroadcasting = false;
   let isCleaningUp = false;
   let isBetSettling = false;
+
+  // Immediate fetch on startup to populate data
+  logger.info('🚀 Starting immediate data fetch on startup...');
+  
+  try {
+    // Check if MongoDB is connected before immediate fetch
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      logger.info('📊 Performing immediate odds, scores, and results fetch...');
+      
+      // Fetch sports list and use fetchOdds module for immediate fetch
+      if (oddsApiService) {
+        const sportsList = await oddsApiService.getSports();
+        if (sportsList && sportsList.length > 0) {
+          const supportedSports = sportsList.filter(sport =>
+            sport && sport.key &&
+            !sport.key.includes('politics') &&
+            !sport.key.includes('entertainment') &&
+            sport.key !== 'golf_the_open_championship_winner'
+          ).slice(0, 5); // Limit to first 5 sports for immediate fetch to avoid rate limits
+
+          logger.info(`🎯 Immediately fetching data for ${supportedSports.length} priority sports using fetchOdds module...`);
+          
+          // Use fetchOdds module for consistent data fetching
+          const results = await fetchOddsForMultipleSports(supportedSports, false);
+          logger.info('✅ Immediate fetch completed:', results);
+        } else {
+          logger.warn('No sports available for immediate fetch');
+        }
+      } else {
+        logger.warn('OddsApiService not available for immediate fetch');
+      }
+    } else {
+      logger.warn('MongoDB not connected, skipping immediate fetch');
+    }
+  } catch (error) {
+    logger.error('❌ Error during immediate startup fetch:', error);
+  }
 
   // Fetch upcoming odds every 30 minutes
   cron.schedule('*/30 * * * *', async () => {
@@ -433,36 +264,35 @@ const startCronJobs = () => {
     updateCronStatus(true, 'odds-fetch');
     
   try {
-    logger.info('Starting cron job: Fetching upcoming odds for all supported sports...');
+    logger.info('Starting cron job: Executing fetchOdds.js script for all supported sports...');
 
-      // Dynamically fetch sports from the Odds API
-      const sportsList = await oddsApiService.getSports();
-      if (!sportsList || sportsList.length === 0) {
-        logger.warn('No sports returned by Odds API; skipping odds fetch.');
+    // Execute fetchOdds.js script directly
+    const fetchOddsProcess = spawn('node', ['scripts/fetchOdds.js'], {
+      cwd: __dirname,
+      stdio: 'pipe'
+    });
+
+    fetchOddsProcess.stdout.on('data', (data) => {
+      logger.info(`fetchOdds.js: ${data.toString().trim()}`);
+    });
+
+    fetchOddsProcess.stderr.on('data', (data) => {
+      logger.error(`fetchOdds.js error: ${data.toString().trim()}`);
+    });
+
+    fetchOddsProcess.on('close', (code) => {
+      if (code === 0) {
+        logger.info('✅ Scheduled odds fetch completed successfully');
       } else {
-        // Exclude non-sport categories and novelty keys
-        const supportedSports = sportsList.filter(sport =>
-          sport && sport.key &&
-          !sport.key.includes('politics') &&
-          !sport.key.includes('entertainment') &&
-          sport.key !== 'golf_the_open_championship_winner'
-        );
-
-        logger.info(`Processing ${supportedSports.length} supported sports`);
-
-        // Process sports sequentially to reduce load
-        for (const sport of supportedSports) {
-          const displayName = sport.title || sport.group || sport.name || sport.key;
-          await fetchOddsForSport(sport.key, displayName);
-          // Add delay between sports to prevent overwhelming the API
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
+        logger.error(`❌ fetchOdds.js exited with code ${code}`);
       }
+      isOddsFetching = false;
+      updateCronStatus(false, 'odds-fetch');
+    });
 
-      logger.info('Cron job finished: Successfully fetched odds for supported sports.');
-    } catch (error) {
+    logger.info('Cron job finished: Successfully started fetchOdds.js script.');
+  } catch (error) {
       logger.error('Error in odds fetching cron job:', error);
-    } finally {
       isOddsFetching = false;
       updateCronStatus(false, 'odds-fetch');
     }

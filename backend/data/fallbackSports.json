@@ -1,0 +1,82 @@
+[
+  {
+    "key": "soccer_epl",
+    "group": "Soccer",
+    "title": "English Premier League",
+    "description": "English Premier League",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_spain_la_liga",
+    "group": "Soccer", 
+    "title": "La Liga - Spain",
+    "description": "Spanish La Liga",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_italy_serie_a",
+    "group": "Soccer",
+    "title": "Serie A - Italy", 
+    "description": "Italian Serie A",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_germany_bundesliga",
+    "group": "Soccer",
+    "title": "German Bundesliga",
+    "description": "German Bundesliga",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_france_ligue_one",
+    "group": "Soccer",
+    "title": "Ligue 1 - France",
+    "description": "French Ligue 1", 
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_uefa_champs_league",
+    "group": "Soccer",
+    "title": "UEFA Champions League",
+    "description": "UEFA Champions League",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "soccer_usa_mls",
+    "group": "Soccer",
+    "title": "MLS",
+    "description": "Major League Soccer",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "americanfootball_nfl",
+    "group": "American Football",
+    "title": "NFL",
+    "description": "National Football League",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "basketball_nba",
+    "group": "Basketball",
+    "title": "NBA",
+    "description": "National Basketball Association",
+    "active": true,
+    "has_outrights": false
+  },
+  {
+    "key": "icehockey_nhl",
+    "group": "Ice Hockey",
+    "title": "NHL",
+    "description": "National Hockey League",
+    "active": true,
+    "has_outrights": false
+  }
+]

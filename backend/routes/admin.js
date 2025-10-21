@@ -147,75 +147,92 @@ router.post('/matches', adminAuth, [
     });
     await match.save();
     
-    // Creates odds entry for frontend visibility
-    let oddsDoc = {
-      gameId: externalId,
-      sport_key: sport || 'football',
-      sport_title: leagueName,
-      commence_time: match.startTime,
-      home_team: teams.home,
-      away_team: teams.away,
-      bookmakers: [
-        {
-          key: 'default',
-          title: 'Default',
-          last_update: new Date(),
-          markets: [
-            {
-              key: 'h2h',
-              last_update: new Date(),
-              outcomes: [
-                { name: teams.home, price: homeWin }
-              ]
-            }
-          ]
-        }
-      ],
-      lastFetched: new Date(),
-    };
-
-    // Add draw if provided
-    if (draw) {
-      oddsDoc.bookmakers[0].markets[0].outcomes.splice(1, 0, { name: 'Draw', price: draw });
-    }
-    
-    // Add away team
-    oddsDoc.bookmakers[0].markets[0].outcomes.push({ name: teams.away, price: awayWin });
-
-    // Append totals market if provided
-    if (totalLine && overPrice && underPrice) {
-      oddsDoc.bookmakers[0].markets.push({
-        key: 'totals',
-        last_update: new Date(),
-        outcomes: [
-          { name: `Over ${totalLine}`, price: overPrice, point: totalLine },
-          { name: `Under ${totalLine}`, price: underPrice, point: totalLine }
-        ]
-      });
-    }
-
-    // Add any other custom additional markets
-    Object.keys(odds).forEach(key => {
-      if (!['homeWin', 'awayWin', 'draw', 'total', 'over', 'under'].includes(key)) {
-        const value = Number(odds[key]);
-        if (value && value > 1) {
-          oddsDoc.bookmakers[0].markets.push({
-            key: key.toLowerCase(),
+    // Creates odds entry for frontend visibility only if odds are provided
+    if (homeWin || draw || awayWin) {
+      let oddsDoc = {
+        gameId: externalId,
+        sport_key: sport || 'football',
+        sport_title: leagueName,
+        commence_time: match.startTime,
+        home_team: teams.home,
+        away_team: teams.away,
+        bookmakers: [
+          {
+            key: 'default',
+            title: 'Default',
             last_update: new Date(),
-            outcomes: [
-              { name: key, price: value, point: null }
-            ]
+            markets: []
+          }
+        ],
+        lastFetched: new Date(),
+      };
+
+      // Only create h2h market if we have valid odds
+      if (homeWin || draw || awayWin) {
+        const h2hOutcomes = [];
+        
+        // Add home team outcome if odds provided
+        if (homeWin && homeWin > 1) {
+          h2hOutcomes.push({ name: teams.home, price: homeWin });
+        }
+        
+        // Add draw if provided
+        if (draw && draw > 1) {
+          h2hOutcomes.push({ name: 'Draw', price: draw });
+        }
+        
+        // Add away team outcome if odds provided
+        if (awayWin && awayWin > 1) {
+          h2hOutcomes.push({ name: teams.away, price: awayWin });
+        }
+
+        // Only add h2h market if we have at least one valid outcome
+        if (h2hOutcomes.length > 0) {
+          oddsDoc.bookmakers[0].markets.push({
+            key: 'h2h',
+            last_update: new Date(),
+            outcomes: h2hOutcomes
           });
         }
       }
-    });
-            // Removed enrichMatchTeams call
-    await Odds.updateOne(
-      { gameId: oddsDoc.gameId },
-      { $set: oddsDoc },
-      { upsert: true }
-    );
-    // --- End Odds sync ---
+
+      // Append totals market if provided
+      if (totalLine && overPrice && underPrice) {
+        oddsDoc.bookmakers[0].markets.push({
+          key: 'totals',
+          last_update: new Date(),
+          outcomes: [
+            { name: `Over ${totalLine}`, price: overPrice, point: totalLine },
+            { name: `Under ${totalLine}`, price: underPrice, point: totalLine }
+          ]
+        });
+      }
+
+      // Add any other custom additional markets
+      Object.keys(odds).forEach(key => {
+        if (!['homeWin', 'awayWin', 'draw', 'total', 'over', 'under'].includes(key)) {
+          const value = Number(odds[key]);
+          if (value && value > 1) {
+            oddsDoc.bookmakers[0].markets.push({
+              key: key.toLowerCase(),
+              last_update: new Date(),
+              outcomes: [
+                { name: key, price: value, point: null }
+              ]
+            });
+          }
+        }
+      });
+
+      // Only save to Odds collection if we have markets
+      if (oddsDoc.bookmakers[0].markets.length > 0) {
+        await Odds.updateOne(
+          { gameId: oddsDoc.gameId },
+          { $set: oddsDoc },
+          { upsert: true }
+        );
+      }
+    }
     res.status(201).json({ id: match._id });
   } catch (error) {
     console.error('Create match error:', error);

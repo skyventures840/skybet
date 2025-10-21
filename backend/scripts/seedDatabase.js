@@ -68,13 +68,13 @@ class DatabaseSeeder {
       // Clear existing data
       await Odds.deleteMany({});
       await Match.deleteMany({});
-      logger.info('Cleared existing data');
+      console.log('Cleared existing data');
 
       // Get all JSON files in the backend directory
       const files = fs.readdirSync(path.join(__dirname, '..'))
         .filter(file => file.endsWith('.json') && file.includes('_matches_'));
 
-      logger.info(`Found ${files.length} match data files`);
+      console.log(`Found ${files.length} match data files`);
 
       let totalMatches = 0;
       let totalOdds = 0;
@@ -85,7 +85,7 @@ class DatabaseSeeder {
           const fileContent = fs.readFileSync(filePath, 'utf8');
           const matches = JSON.parse(fileContent);
 
-          logger.info(`Processing ${file} with ${matches.length} matches`);
+          console.log(`Processing ${file} with ${matches.length} matches`);
 
           // Transform and save matches
           const transformedMatches = matches.map(match => this.transformMatchData(match));
@@ -102,7 +102,7 @@ class DatabaseSeeder {
 
             await Odds.bulkWrite(bulkOps, { ordered: false });
             totalOdds += transformedMatches.length;
-            logger.info(`Saved ${transformedMatches.length} odds records from ${file}`);
+            console.log(`Saved ${transformedMatches.length} odds records from ${file}`);
           }
 
           // Also save to Match collection for compatibility
@@ -128,19 +128,19 @@ class DatabaseSeeder {
 
             await Match.bulkWrite(matchBulkOps, { ordered: false });
             totalMatches += matchData.length;
-            logger.info(`Saved ${matchData.length} match records from ${file}`);
+            console.log(`Saved ${matchData.length} match records from ${file}`);
           }
 
         } catch (error) {
-          logger.error(`Error processing file ${file}:`, error.message);
+          console.error(`Error processing file ${file}:`, error.message);
           continue;
         }
       }
 
-      logger.info(`Database seeding completed. Total odds: ${totalOdds}, Total matches: ${totalMatches}`);
+      console.log(`Database seeding completed. Total odds: ${totalOdds}, Total matches: ${totalMatches}`);
 
     } catch (error) {
-      logger.error('Error seeding database:', error);
+      console.error('Error seeding database:', error);
       throw error;
     } finally {
       await this.disconnect();
@@ -157,7 +157,7 @@ class DatabaseSeeder {
       // Clear existing data
       await Odds.deleteMany({});
       await Match.deleteMany({});
-      logger.info('Cleared existing data');
+      console.log('Cleared existing data');
 
       // Import and use the OddsFetcher
       const OddsFetcher = require('./fetchOdds');
@@ -171,14 +171,14 @@ class DatabaseSeeder {
         sport.key !== 'golf_the_open_championship_winner'
       );
 
-      logger.info(`Processing ${supportedSports.length} sports from live API`);
+      console.log(`Processing ${supportedSports.length} sports from live API`);
 
       let totalMatches = 0;
       let totalOdds = 0;
 
       for (const sport of supportedSports) {
         try {
-          logger.info(`Processing sport: ${sport.title} (${sport.key})`);
+          console.log(`Processing sport: ${sport.title} (${sport.key})`);
           
           const matches = await fetcher.fetchAllOddsForSport(sport.key);
           
@@ -221,22 +221,22 @@ class DatabaseSeeder {
             await Match.bulkWrite(matchBulkOps, { ordered: false });
             totalMatches += matchData.length;
 
-            logger.info(`Saved ${transformedMatches.length} matches for ${sport.title}`);
+            console.log(`Saved ${transformedMatches.length} matches for ${sport.title}`);
           }
 
           // Rate limiting between sports
           await new Promise(resolve => setTimeout(resolve, 2000));
 
         } catch (error) {
-          logger.error(`Error processing sport ${sport.key}:`, error.message);
+          console.error(`Error processing sport ${sport.key}:`, error.message);
           continue;
         }
       }
 
-      logger.info(`Live API seeding completed. Total odds: ${totalOdds}, Total matches: ${totalMatches}`);
+      console.log(`Live API seeding completed. Total odds: ${totalOdds}, Total matches: ${totalMatches}`);
 
     } catch (error) {
-      logger.error('Error seeding from live API:', error);
+      console.error('Error seeding from live API:', error);
       throw error;
     } finally {
       await this.disconnect();
@@ -252,19 +252,19 @@ async function main() {
   const mode = args[0] || 'json';
 
   if (mode === 'live') {
-    logger.info('Starting live API seeding...');
+    console.log('Starting live API seeding...');
     await seeder.seedFromLiveAPI();
   } else {
-    logger.info('Starting JSON file seeding...');
+    console.log('Starting JSON file seeding...');
     await seeder.seedFromJsonFiles();
   }
 }
 
 if (require.main === module) {
   main().catch(error => {
-    logger.error('Seeding failed:', error);
+    console.error('Seeding failed:', error);
     process.exit(1);
   });
 }
 
-module.exports = DatabaseSeeder; 
+module.exports = DatabaseSeeder;
