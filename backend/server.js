@@ -34,8 +34,14 @@ const startCronJobs = require('./cron');
 // Import health monitoring
 const { healthMonitor, isServerHealthy, updateCronStatus, incrementErrorCount } = require('./middleware/healthMonitor');
 
+// Import MongoDB utilities
+const { MongoConnectionMonitor, handleMongoError } = require('./services/mongoService');
+
 const app = express();
 const PORT = process.env.PORT_BACKEND || process.env.PORT || 10000;
+
+// Global MongoDB connection monitor
+let mongoMonitor = null;
 
 // Avoid buffering writes when MongoDB is not connected
 mongoose.set('bufferCommands', false);
@@ -155,18 +161,29 @@ app.get('/health', async (req, res) => {
       database: 'unknown',
       websocket: global.websocketServer ? 'active' : 'inactive',
       socketio: 'active'
+    },
+    mongodb: {
+      connected: mongoose.connection.readyState === 1,
+      state: mongoose.connection.readyState,
+      host: mongoose.connection.host,
+      name: mongoose.connection.name
     }
   };
 
   // Check database connection
   try {
-    if (global.mongoService && global.mongoService.isConnected()) {
+    if (mongoose.connection.readyState === 1) {
       healthData.services.database = 'connected';
     } else {
       healthData.services.database = 'disconnected';
     }
   } catch (error) {
     healthData.services.database = 'error';
+  }
+
+  // Add MongoDB connection health if monitor is available
+  if (mongoMonitor) {
+    healthData.mongodb.health = mongoMonitor.getHealthStatus();
   }
 
   // Add WebSocket connection count if available
@@ -320,6 +337,12 @@ function startHttpAndWsServers() {
   process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully');
     keepAliveService.stop();
+    
+    // Stop MongoDB monitoring
+    if (mongoMonitor) {
+      mongoMonitor.stopMonitoring();
+    }
+    
     server.close(() => {
       console.log('HTTP server closed');
       if (mongoose.connection && mongoose.connection.readyState !== 0) {
@@ -334,6 +357,61 @@ function startHttpAndWsServers() {
   });
 }
 
+// MongoDB connection with enhanced error handling and monitoring
+const connectToMongoDB = async () => {
+  try {
+    console.log('Connecting to MongoDB...');
+    
+    const mongoUri = process.env.MONGODB_EXTERNAL_URI || process.env.MONGODB_URI;
+    if (!mongoUri) {
+      throw new Error('MongoDB URI not found in environment variables');
+    }
+
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 60000,
+      socketTimeoutMS: 60000,
+      connectTimeoutMS: 60000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      retryReads: true,
+      bufferCommands: false,
+      heartbeatFrequencyMS: 10000,
+      family: 4
+    });
+
+    console.log('Connected to MongoDB successfully');
+    
+    // Initialize connection monitor
+    mongoMonitor = new MongoConnectionMonitor(mongoose.connection);
+    mongoMonitor.startMonitoring();
+    
+    // Set up connection event handlers
+    mongoose.connection.on('error', (error) => {
+      console.error('MongoDB connection error:', error);
+      handleMongoError(error);
+      incrementErrorCount();
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('MongoDB disconnected');
+      incrementErrorCount();
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('MongoDB reconnected');
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    handleMongoError(error);
+    incrementErrorCount();
+    throw error;
+  }
+};
+
 // Connect to MongoDB if configured; otherwise start server in degraded mode
 const mongoURI = process.env.MONGODB_URI || process.env.MONGODB_EXTERNAL_URI;
 
@@ -341,29 +419,25 @@ if (mongoURI) {
   console.log('🔗 Attempting to connect to MongoDB...');
   console.log('📍 MongoDB URI configured:', mongoURI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
-  mongoose.connect(mongoURI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 30000,
-    socketTimeoutMS: 30000,
-    connectTimeoutMS: 30000,
-  })
-  .then(async () => {
-    console.log('Connected to MongoDB');
-    startHttpAndWsServers();
-    // Start cron only after a successful DB connection to ensure persistence
-    try {
-      await startCronJobs();
-      console.log('Cron jobs started after successful DB connection');
-    } catch (cronErr) {
-      console.warn('Failed to start cron jobs:', cronErr && cronErr.message ? cronErr.message : cronErr);
-    }
-  })
-  .catch((err) => {
-    console.warn('⚠️ Failed to connect to MongoDB, starting server without DB:', err && err.message ? err.message : err);
-    startHttpAndWsServers();
-    // Intentionally do NOT start cron when DB is unavailable to avoid non-persistent writes
-  });
+  connectToMongoDB()
+    .then(async () => {
+      console.log('Connected to MongoDB');
+      
+      // Start cron jobs after successful MongoDB connection
+      startCronJobs();
+      updateCronStatus(true);
+      
+      // Start HTTP and WebSocket servers
+      startHttpAndWsServers();
+    })
+    .catch((error) => {
+      console.error('MongoDB connection failed:', error);
+      incrementErrorCount();
+      
+      // Start server in degraded mode without MongoDB
+      console.log('Starting server in degraded mode without MongoDB...');
+      startHttpAndWsServers();
+    });
 } else {
   console.warn('⚠️ MONGODB_URI not set; starting server without DB connection');
   startHttpAndWsServers();
