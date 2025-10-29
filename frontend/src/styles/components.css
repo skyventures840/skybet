@@ -829,6 +829,9 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
+  position: relative;
+  z-index: 1;
+  min-width: 300px;
 }
 
 /* Expand/Collapse buttons */
@@ -1084,6 +1087,9 @@
 @media (max-width: 768px) {
   .bet-history-header {
     padding: var(--spacing-sm);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
   }
   
   .bet-history-title-section {
@@ -1114,6 +1120,8 @@
     gap: var(--spacing-xs);
     padding: var(--spacing-xs);
     width: 100%;
+    min-width: auto;
+    justify-content: space-between;
   }
   
   .filter-group {

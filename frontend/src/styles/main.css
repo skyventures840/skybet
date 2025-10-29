@@ -346,8 +346,8 @@ html, body { overflow-x: hidden !important; }
 }
 
 .hero-slider .dot {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
   border: 0;
@@ -365,14 +365,14 @@ html, body { overflow-x: hidden !important; }
 
 /* Desktop (≥1024px): slightly larger dots */
 @media (min-width: 1024px) {
-  .hero-slider .slider-dots { gap: 12px !important; }
-  .hero-slider .dot { width: 14px !important; height: 14px !important; }
+  .hero-slider .slider-dots { gap: 8px !important; }
+  .hero-slider .dot { width: 10px !important; height: 10px !important; }
 }
 
 /* Tablet (768–1023px): medium dots */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .hero-slider .slider-dots { gap: 6px !important; }
-  .hero-slider .dot { width: 7px !important; height: 7px !important; }
+  .hero-slider .slider-dots { gap: 4px !important; }
+  .hero-slider .dot { width: 5px !important; height: 5px !important; }
 }
 
 /* Mobile (≤767px): dots styling handled by mobile-responsive.css for device-specific optimization */

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
-import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import { computeLeagueTitleWithFlag } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
 
 const PopularMatches = ({ matches }) => {
@@ -88,12 +88,13 @@ const PopularMatches = ({ matches }) => {
             const sportKeyOrName = match.sport_key || sportName;
             const country = match.country || match.subcategory || '';
             const league = match.league || match.competition || match.tournament || '';
-            const fullLeagueTitle = match.fullLeagueTitle || computeFullLeagueTitle({
+            const leagueTitleWithFlag = computeLeagueTitleWithFlag({
               sportKeyOrName,
               country,
               leagueName: league,
               fallbackSportTitle: match.sport_title || match.sport || ''
             });
+            const fullLeagueTitle = match.fullLeagueTitle || leagueTitleWithFlag.displayTitle;
             return (
             <div key={match.id || match._id} className="popular-match-card">
               <div className="match-league">{fullLeagueTitle}</div>

@@ -319,7 +319,7 @@ const Bets = () => {
                   >
                     <option value="all">All</option>
                     <option value="single">Single</option>
-                    <option value="parlay">Parlay</option>
+                    <option value="parlay">Multibet</option>
                   </select>
                 </div>
               </div>

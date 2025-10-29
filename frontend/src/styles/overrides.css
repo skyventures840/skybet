@@ -1,10 +1,5 @@
-/* 
- * CSS Overrides
- * This file contains any final CSS overrides that need to take precedence
- * over other stylesheets. Use sparingly and document any overrides.
- */
- 
- /* Add any necessary CSS overrides here */
+
+/* Add any necessary CSS overrides here */
  
  @media (max-width: 767px) {
    /* Mobile-only: align date/time with teams in regular match cards */
@@ -22,9 +17,9 @@
    .matches-section .matches-container,
    .matches-section .competition-group,
    .matches-section .matches-list {
-     width: 375px !important;
-     max-width: 375px !important;
-     min-width: 375px !important;
+     width: 430px !important;
+     max-width: 430px !important;
+     min-width: 430px !important;
      margin: 0 auto !important; /* center the fixed-width container */
      padding-left: 0 !important;
      padding-right: 0 !important;
@@ -33,9 +28,9 @@
    }
  
    .matches-section .match-card {
-      width: 330px !important;
-      max-width: 330px !important;
-      min-width: 330px !important;
+      width: 300px !important;
+      max-width: 300px !important;
+      min-width: 300px !important;
       margin: 8px auto !important; /* visible spacing and centering */
       border-radius: 12px !important; /* small visual cue to notice change */
       border: 1px solid var(--border-color) !important; /* make edges clear */
@@ -43,7 +38,7 @@
       overflow: visible !important; /* avoid clipping content */
       left: auto !important;
       right: auto !important;
-      padding: 18px 22px !important; /* further horizontal inset */
+      padding: 16px 12px !important; /* Standardized padding to match other mobile styles */
       box-sizing: border-box !important; /* include padding in width */
       background-clip: padding-box !important; /* keep radius visually clean */
     }
@@ -51,16 +46,16 @@
    /* Proportionally reduce odds controls inside narrower card */
    .matches-section .match-card .odds-buttons-container {
      gap: 2px !important;
-     padding: 0 10px !important;
+     padding: 0 8px !important; /* Reduced padding to fit smaller card width */
    }
    .matches-section .match-card .odds-button {
      min-height: 28px !important;
-     padding: 4px 6px !important;
-     font-size: 0.9em !important;
+     padding: 4px 5px !important; /* Slightly reduced padding */
+     font-size: 0.85em !important; /* Slightly smaller font */
      flex: 1 1 0% !important;
    }
    .matches-section .match-card .odds-header {
-     font-size: 0.85em !important;
+     font-size: 0.8em !important; /* Reduced font size for headers */
    }
  
    .matches-section .match-card .match-row {
@@ -72,20 +67,34 @@
 @media (max-width: 767px) {
   .matches-section .match-card .match-row {
     padding: 0 14px !important; /* further inset for rows */
+    margin-left: 8px !important; /* move content slightly to the right */
   }
   .matches-section .match-card .odds-headers-container {
-    padding: 0 12px !important; /* keep headers aligned with odds buttons */
+    padding: 0 16px !important; /* Increased padding to reduce effective width */
+    margin-left: 20px !important; /* Increased margin for better uniformity */
+    width: calc(100% - 40px) !important; /* Reduce width to match card uniformity */
+    max-width: 260px !important; /* Set max-width for consistency */
   }
   .matches-section .match-card .odds-buttons-container {
-    padding: 0 12px !important; /* match headers inset for consistency */
+    padding: 0 16px !important; /* Increased padding to match headers */
+    margin-left: -2px !important; /* Adjusted margin for better alignment */
+    width: calc(100% - 32px) !important; /* Reduce width to match headers uniformity */
+    max-width: 268px !important; /* Set max-width for consistency */
   }
   .matches-section .match-card .match-date-time,
   .matches-section .match-card .match-teams {
-    padding-left: 0 !important; /* avoid double inset; use card/row padding */
+    padding-left: 12px !important; /* Standardized padding to match card padding */
   }
   /* Move date to the right within regular match cards on mobile */
   .matches-section .match-card .match-date-time {
     text-align: right !important;
-    padding-right: 10px !important;
+    padding-right: 8px !important; /* Reduced padding */
+  }
+  /* Move league header content to the right as well */
+  .matches-section .match-card .league-header {
+    padding-left: 12px !important; /* Standardized padding to match card padding */
+  }
+  .matches-section .match-card .league-title {
+    margin-left: 12px !important; /* Standardized margin to match padding */
   }
 }

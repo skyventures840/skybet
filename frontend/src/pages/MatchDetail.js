@@ -125,37 +125,13 @@ const MatchDetail = () => {
                     }
                 }
                 
-                // Handicap market
-                if (oddsData.homeHandicap || oddsData.awayHandicap) {
-                    const marketKey = `market_${marketIndex}`;
-                    const options = [];
-                    const handicapLine = oddsData.handicapLine || 0;
-                    
-                    if (oddsData.homeHandicap && oddsData.homeHandicap > 0) {
-                        options.push({ 
-                            name: `${matchData.homeTeam} (${handicapLine >= 0 ? '+' : ''}${handicapLine})`, 
-                            odds: oddsData.homeHandicap 
-                        });
-                    }
-                    if (oddsData.awayHandicap && oddsData.awayHandicap > 0) {
-                        options.push({ 
-                            name: `${matchData.awayTeam} (${-handicapLine >= 0 ? '+' : ''}${-handicapLine})`, 
-                            odds: oddsData.awayHandicap 
-                        });
-                    }
-                    
-                    if (options.length > 0) {
-                        markets[marketKey] = {
-                            name: 'Handicap',
-                            options: options
-                        };
-                        marketIndex++;
-                    }
-                }
+                // Handicap market - removed as separate market, handicap line will be shown in team names with brackets
                 
                 // Add any other odds fields as individual markets
+                // Exclude line values that are not bettable odds (handicapLine, total, etc.)
+                const excludedKeys = ['homeWin', 'awayWin', 'draw', 'over', 'under', 'total', 'homeHandicap', 'awayHandicap', 'handicapLine', 'handicap_line', 'Total', 'Over', 'Under'];
                 Object.entries(oddsData).forEach(([key, value]) => {
-                    if (!['homeWin', 'awayWin', 'draw', 'over', 'under', 'total', 'homeHandicap', 'awayHandicap', 'handicapLine'].includes(key) && value && value > 0) {
+                    if (!excludedKeys.includes(key) && value && value > 0) {
                         const marketKey = `market_${marketIndex}`;
                         markets[marketKey] = {
                             name: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
@@ -171,8 +147,10 @@ const MatchDetail = () => {
             return {
                 _id: matchData._id,
                 id: matchData._id,
-                homeTeam: matchData.homeTeam,
-                awayTeam: matchData.awayTeam,
+                homeTeam: matchData.homeTeam + (matchData.odds?.handicapLine ? ` (${matchData.odds.handicapLine >= 0 ? '+' : ''}${matchData.odds.handicapLine})` : ''),
+                awayTeam: matchData.awayTeam + (matchData.odds?.handicapLine ? ` (${-matchData.odds.handicapLine >= 0 ? '+' : ''}${-matchData.odds.handicapLine})` : ''),
+                originalHomeTeam: matchData.homeTeam,
+                originalAwayTeam: matchData.awayTeam,
                 homeTeamFlag: '🏳️',
                 awayTeamFlag: '🏳️',
                 competition: matchData.league || matchData.sport || 'Unknown League',
@@ -194,13 +172,12 @@ const MatchDetail = () => {
             const aggregated = new Map(); // normKey -> { key: normKey, title, options }
             matchData.bookmakers.forEach((bookmaker, bookmakerIndex) => {
                 console.log(`Processing bookmaker ${bookmakerIndex + 1}: ${bookmaker.title}`);
-                const titlePrefix = bookmakerIndex === 0 ? '' : `${bookmaker.title} - `;
                 if (bookmaker.markets) {
                     console.log('Processing markets:', bookmaker.markets);
                     bookmaker.markets.forEach((market) => {
                         const normKey = normalizeMarketKey(market.key);
                         const baseTitle = getMarketTitle(normKey);
-                        const title = `${titlePrefix}${baseTitle}`;
+                        const title = baseTitle; // Remove bookmaker prefix
                         const incoming = (market.outcomes || []).map(o => ({ name: o.name, odds: o.price, point: o.point ?? null }));
                         const existing = aggregated.get(normKey);
                         if (!existing) {

@@ -123,7 +123,6 @@ const OddsPage = () => {
                 <TableCell>Sport</TableCell>
                 <TableCell>Matchup</TableCell>
                 <TableCell>Commence Time</TableCell>
-                <TableCell>Bookmaker</TableCell>
                 <TableCell align="right">Home Team Odds</TableCell>
                 <TableCell align="right">Away Team Odds</TableCell>
               </TableRow>
@@ -155,7 +154,6 @@ const OddsPage = () => {
                       </TableCell>
                       <TableCell>{game.home_team} vs {game.away_team}</TableCell>
                       <TableCell>{new Date(game.commence_time).toLocaleString()}</TableCell>
-                      <TableCell>{bookmaker.title}</TableCell>
                       <TableCell align="right">
                         {homeOdds}
                       </TableCell>

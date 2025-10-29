@@ -31,9 +31,12 @@ const Home = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSidebarFilter, setSelectedSidebarFilter] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [sportsStripFilter, setSportsStripFilter] = useState(''); // Separate filter for SportsStrip
+  
   const handleSelectSport = (sportKey) => {
     // Toggle off if clicking the same sport; otherwise set sport and clear subcategory
-    setSelectedSidebarFilter(prev => (prev === sportKey ? '' : sportKey));
+    // This only affects regular match cards, not popular matches
+    setSportsStripFilter(prev => (prev === sportKey ? '' : sportKey));
     setSelectedSubcategory('');
   };
 
@@ -191,6 +194,32 @@ const Home = () => {
     let filtered = matches;
     console.log('[HOME] Starting filter process with', filtered.length, 'matches');
 
+    // Sports Strip filter (only affects regular matches, not popular matches)
+    if (sportsStripFilter) {
+      const strictToken = strictSportTokenMap[sportsStripFilter];
+      if (strictToken) {
+        // Strict filter: exact sport token match, plus optional mislabel guards
+        const guards = nonSportKeywordsBySport[sportsStripFilter] || [];
+        filtered = filtered.filter(match => {
+          const sportToken = String(match.sport || '').toLowerCase().split('_')[0];
+          const leagueLower = String(match.league || '').toLowerCase();
+          const subLower = String(match.subcategory || '').toLowerCase();
+          const violatesGuard = guards.some(re => re.test(leagueLower) || re.test(subLower));
+          return sportToken === strictToken && !violatesGuard;
+        });
+      } else {
+        // Fallback to inclusive mapping for non-strict items (sub-leagues etc.)
+        const mappedValues = sidebarToDataMap[sportsStripFilter] || [sportsStripFilter];
+        filtered = filtered.filter(match =>
+          mappedValues.some(val =>
+            (match.sport && match.sport.toLowerCase().includes(val.toLowerCase())) ||
+            (match.league && match.league.toLowerCase().includes(val.toLowerCase())) ||
+            (match.subcategory && match.subcategory.toLowerCase().includes(val.toLowerCase()))
+          )
+        );
+      }
+    }
+
     // Sidebar filter
     if (selectedSidebarFilter) {
       const strictToken = strictSportTokenMap[selectedSidebarFilter];
@@ -219,7 +248,7 @@ const Home = () => {
 
     // Subcategory filter - strict matching when a subcategory is selected
     if (selectedSubcategory) {
-      const strictTokenForSport = strictSportTokenMap[selectedSidebarFilter];
+      const strictTokenForSport = strictSportTokenMap[selectedSidebarFilter || sportsStripFilter];
       const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
       const variations = (subcategoryMappings[selectedSubcategory] || [selectedSubcategory]).map(normalize);
 
@@ -289,7 +318,7 @@ const Home = () => {
     } catch (e) {
       console.log('[HOME] Failed to save filtered matches to session storage:', e);
     }
-  }, [matches, searchTerm, selectedDate, selectedSidebarFilter, selectedSubcategory]);
+  }, [matches, searchTerm, selectedDate, selectedSidebarFilter, selectedSubcategory, sportsStripFilter]);
 
  
   const createMatchKey = (match) => {
@@ -395,7 +424,8 @@ const Home = () => {
             .filter(match => {
               // Count valid odds (greater than 0)
               const validOddsCount = Object.values(match.odds || {}).filter(odd => odd > 0).length;
-              return validOddsCount >= 2;
+              // Show admin matches even with empty odds, or matches with at least 2 valid odds
+              return match.market === 'admin' || validOddsCount >= 2;
             })
             // Only upcoming
             .filter(match => new Date(match.startTime) >= now)
@@ -483,7 +513,8 @@ const Home = () => {
         .filter(match => {
           // Count valid odds (greater than 0)
           const validOddsCount = Object.values(match.odds || {}).filter(odd => odd > 0).length;
-          return validOddsCount >= 2;
+          // Show admin matches even with empty odds, or matches with at least 2 valid odds
+          return match.market === 'admin' || validOddsCount >= 2;
         })
         // Only upcoming
         .filter(match => new Date(match.startTime) >= now)
@@ -839,9 +870,9 @@ const Home = () => {
     }
   };
 
-  // Group matches by subcategory with canonicalization and deduplication
-  const groupMatchesBySubcategory = () => {
-    const groupedMatches = {};
+  // Group matches by sport first, then by subcategory with canonicalization and deduplication
+  const groupMatchesBySportAndSubcategory = () => {
+    const groupedBySport = {};
     const subcategoryUniqueMatches = {};
 
     const normalize = (s) => String(s || '').toLowerCase().trim().replace(/[_.-]+/g, ' ');
@@ -865,40 +896,98 @@ const Home = () => {
       return 'Other';
     };
 
+    const getSportDisplayName = (sport) => {
+      const sportMappings = {
+        'soccer': 'Soccer',
+        'football': 'American Football',
+        'basketball': 'Basketball',
+        'tennis': 'Tennis',
+        'baseball': 'Baseball',
+        'hockey': 'Hockey',
+        'icehockey': 'Ice Hockey',
+        'mma': 'MMA',
+        'boxing': 'Boxing',
+        'golf': 'Golf',
+        'cricket': 'Cricket',
+        'rugby': 'Rugby'
+      };
+      return sportMappings[sport?.toLowerCase()] || sport || 'Other Sports';
+    };
+
     filteredMatches.forEach(match => {
+      const sportKey = match.sport || 'other';
+      const sportDisplayName = getSportDisplayName(sportKey);
       const subcategoryKey = computeCanonicalSubcategory(match);
-      if (!groupedMatches[subcategoryKey]) {
-        groupedMatches[subcategoryKey] = [];
-        subcategoryUniqueMatches[subcategoryKey] = new Set();
+      
+      // Initialize sport group if it doesn't exist
+      if (!groupedBySport[sportKey]) {
+        groupedBySport[sportKey] = {
+          displayName: sportDisplayName,
+          subcategories: {},
+          totalMatches: 0
+        };
+        subcategoryUniqueMatches[sportKey] = {};
       }
+      
+      // Initialize subcategory within sport if it doesn't exist
+      if (!groupedBySport[sportKey].subcategories[subcategoryKey]) {
+        groupedBySport[sportKey].subcategories[subcategoryKey] = [];
+        subcategoryUniqueMatches[sportKey][subcategoryKey] = new Set();
+      }
+      
       const matchKey = `${match.homeTeam}_${match.awayTeam}_${match.startTime}`;
-      if (!subcategoryUniqueMatches[subcategoryKey].has(matchKey)) {
-        subcategoryUniqueMatches[subcategoryKey].add(matchKey);
-        groupedMatches[subcategoryKey].push(match);
+      if (!subcategoryUniqueMatches[sportKey][subcategoryKey].has(matchKey)) {
+        subcategoryUniqueMatches[sportKey][subcategoryKey].add(matchKey);
+        groupedBySport[sportKey].subcategories[subcategoryKey].push(match);
+        groupedBySport[sportKey].totalMatches++;
       }
     });
 
-    Object.entries(groupedMatches).forEach(([subcategory, matches]) => {
-      console.log(`[DEBUG] Subcategory "${subcategory}": ${matches.length} unique matches`);
+    Object.entries(groupedBySport).forEach(([, sportData]) => {
+      console.log(`[DEBUG] Sport "${sportData.displayName}": ${sportData.totalMatches} total matches`);
+      Object.entries(sportData.subcategories).forEach(([subcategory, matches]) => {
+        console.log(`  - Subcategory "${subcategory}": ${matches.length} matches`);
+      });
     });
 
-    return groupedMatches;
+    return groupedBySport;
   };
 
-  const groupedMatches = groupMatchesBySubcategory();
+  const groupedMatches = groupMatchesBySportAndSubcategory();
+  
+  // State for managing expanded/collapsed sports
+  const [expandedSports, setExpandedSports] = useState({});
+  
+  // Initialize all sports as expanded by default
+  React.useEffect(() => {
+    const initialExpandedState = {};
+    Object.keys(groupedMatches).forEach(sportKey => {
+      initialExpandedState[sportKey] = true;
+    });
+    setExpandedSports(initialExpandedState);
+  }, [groupedMatches]);
+  
+  // Toggle function for expanding/collapsing sports
+  const toggleSportExpansion = (sportKey) => {
+    setExpandedSports(prev => ({
+      ...prev,
+      [sportKey]: !prev[sportKey]
+    }));
+  };
   
   // Debug: Log the grouped matches to see what subcategories are created
   console.log('🏠 [HOME] Raw matches count:', matches.length);
   console.log('🏠 [HOME] Filtered matches count:', filteredMatches.length);
-  console.log('🏠 [HOME] Grouped matches:', Object.keys(groupedMatches));
-  console.log('🏠 [HOME] Total grouped matches entries:', Object.entries(groupedMatches).length);
-  Object.entries(groupedMatches).forEach(([subcategory, matches]) => {
-    console.log(`🏠 [HOME] Subcategory "${subcategory}": ${matches.length} matches`);
+  console.log('🏠 [HOME] Grouped matches by sport:', Object.keys(groupedMatches));
+  console.log('🏠 [HOME] Total sport groups:', Object.entries(groupedMatches).length);
+  Object.entries(groupedMatches).forEach(([, sportData]) => {
+    console.log(`🏠 [HOME] Sport "${sportData.displayName}": ${sportData.totalMatches} matches in ${Object.keys(sportData.subcategories).length} subcategories`);
   });
   
   // Alert to force visibility of debug info
   if (matches.length > 0 && Object.entries(groupedMatches).length > 0) {
-    console.log('🚨 [HOME] MATCHES LOADED! Should render', Object.entries(groupedMatches).reduce((total, [, matches]) => total + matches.length, 0), 'MatchCard components');
+    const totalMatches = Object.entries(groupedMatches).reduce((total, [, sportData]) => total + sportData.totalMatches, 0);
+    console.log('🚨 [HOME] MATCHES LOADED! Should render', totalMatches, 'MatchCard components across', Object.entries(groupedMatches).length, 'sports');
   }
 
   // Do not gate initial render behind loading; show page immediately without loading text
@@ -929,7 +1018,7 @@ const Home = () => {
       {/* Popular Matches section - keep unchanged */}
       <div className="main-content">
         {/* Sports strip between hero and popular matches */}
-        <SportsStrip onSelectSport={handleSelectSport} activeSport={selectedSidebarFilter} />
+        <SportsStrip onSelectSport={handleSelectSport} activeSport={sportsStripFilter} />
         {(() => {
           // Derive sport token if strict mapping exists
           let pm = popularMatches;
@@ -986,26 +1075,41 @@ const Home = () => {
               </div>
             ) : (
               Object.entries(groupedMatches).length > 0 ? (
-                Object.entries(groupedMatches).map(([subcategory, subcategoryMatches]) => (
-                  <div key={subcategory} className="competition-group">
-                    <div className="matches-list">
-                      {subcategoryMatches.map((match, index) => (
-                        <MatchCard
-                          key={match.id}
-                          match={match}
-                          sport={match.sport}
-                          league={match.league}
-                          subcategory={match.subcategory}
-                          showLeagueHeader={index === 0}
-                        />
+                Object.entries(groupedMatches).map(([sportKey, sportData]) => (
+                  <div key={sportKey} className="sport-container">
+                    <div 
+                      className="sport-header" 
+                      onClick={() => toggleSportExpansion(sportKey)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <h3 className="sport-title">
+                        {sportData.displayName}
+                      </h3>
+                      <span className={`expand-arrow ${expandedSports[sportKey] ? 'expanded' : 'collapsed'}`}>
+                        {expandedSports[sportKey] ? '⌃' : '⌄'}
+                      </span>
+                    </div>
+                    
+                    <div className={`sport-subcategories ${expandedSports[sportKey] ? 'expanded' : 'collapsed'}`}>
+                      {Object.entries(sportData.subcategories).map(([subcategory, matches]) => (
+                        <div key={subcategory} className="subcategory-section">
+                          {matches.map((match, index) => (
+                            <MatchCard
+                              key={`${match.id}-${index}`}
+                              match={match}
+                              sport={sportKey}
+                              league={subcategory}
+                              showLeagueHeader={index === 0}
+                            />
+                          ))}
+                        </div>
                       ))}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="no-matches">
-                  <h3>No Matches Found</h3>
-                  <p>No matches match your current filters. Try adjusting your search criteria.</p>
+                  <p>No matches found</p>
                 </div>
               )
             )}

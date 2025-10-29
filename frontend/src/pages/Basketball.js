@@ -134,7 +134,8 @@ const Basketball = () => {
           return null;
         }
         // Also count markets that might be available but not displayed in main odds
-        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] !== null).length;
+        const ignoredLineKeys = ['Total','total','handicapLine','handicap_line'];
+        const displayedOddsCount = Object.keys(oddsObj).filter(key => oddsObj[key] !== null && !ignoredLineKeys.includes(key)).length;
         const totalAvailableMarkets = bookmaker.markets.filter(market => 
           market.outcomes && market.outcomes.length > 0 && 
           market.outcomes.some(outcome => outcome.price > 0)

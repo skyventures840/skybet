@@ -1,6 +1,48 @@
 // Utility to compute unified league title: "Sport.Country.League" or "Sport.League"
 // Derives sport from sport_key (first token) and country/league from remaining tokens when available.
 
+// Country flag mappings
+const COUNTRY_FLAGS = {
+  'Spain': '🇪🇸',
+  'Brazil': '🇧🇷',
+  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'France': '🇫🇷',
+  'Italy': '🇮🇹',
+  'Germany': '🇩🇪',
+  'Netherlands': '🇳🇱',
+  'Portugal': '🇵🇹',
+  'Belgium': '🇧🇪',
+  'Europe': '🇪🇺',
+  'USA': '🇺🇸',
+  'United States': '🇺🇸',
+  'Canada': '🇨🇦',
+  'Mexico': '🇲🇽',
+  'Argentina': '🇦🇷',
+  'Australia': '🇦🇺',
+  'Japan': '🇯🇵',
+  'South Korea': '🇰🇷',
+  'China': '🇨🇳',
+  'India': '🇮🇳',
+  'Russia': '🇷🇺',
+  'Turkey': '🇹🇷',
+  'Greece': '🇬🇷',
+  'Sweden': '🇸🇪',
+  'Norway': '🇳🇴',
+  'Denmark': '🇩🇰',
+  'Finland': '🇫🇮',
+  'Switzerland': '🇨🇭',
+  'Austria': '🇦🇹',
+  'Czech Republic': '🇨🇿',
+  'Poland': '🇵🇱',
+  'Ukraine': '🇺🇦',
+  'Croatia': '🇭🇷',
+  'Serbia': '🇷🇸',
+  'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+  'Ireland': '🇮🇪',
+  'Northern Ireland': '🇬🇧'
+};
+
 function titleCase(str = '') {
   return String(str)
     .replace(/[_.-]+/g, ' ')
@@ -18,6 +60,58 @@ function parseSportKey(raw = '') {
   const countryFromKey = tokens[1] || '';
   const leagueFromKey = tokens.length > 2 ? tokens.slice(2).join(' ') : '';
   return { sport, countryFromKey, leagueFromKey };
+}
+
+// Function to get country flag
+export function getCountryFlag(country) {
+  return COUNTRY_FLAGS[country] || '';
+}
+
+// Function to compute league title with flag
+export function computeLeagueTitleWithFlag({
+  sportKeyOrName,
+  country,
+  leagueName,
+  fallbackSportTitle
+}) {
+  const fullTitle = computeFullLeagueTitle({
+    sportKeyOrName,
+    country,
+    leagueName,
+    fallbackSportTitle
+  });
+  
+  // Extract country from the title to get the flag
+  const parts = fullTitle.split('.');
+  let countryName = '';
+  let leagueDisplayName = '';
+  
+  if (parts.length >= 3) {
+    // Format: Sport.Country.League
+    countryName = parts[1];
+    leagueDisplayName = parts[2];
+  } else if (parts.length === 2) {
+    // Format: Sport.League or Country.League
+    // Try to determine if first part is a country
+    if (COUNTRY_FLAGS[parts[0]]) {
+      countryName = parts[0];
+      leagueDisplayName = parts[1];
+    } else {
+      leagueDisplayName = parts[1];
+    }
+  } else {
+    leagueDisplayName = fullTitle;
+  }
+  
+  const flag = getCountryFlag(countryName);
+  
+  return {
+    fullTitle,
+    flag,
+    countryName,
+    leagueDisplayName,
+    displayTitle: flag ? `${flag} ${leagueDisplayName}` : leagueDisplayName
+  };
 }
 
 export function computeFullLeagueTitle({

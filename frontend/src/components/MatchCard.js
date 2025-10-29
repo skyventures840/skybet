@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
-import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import { computeLeagueTitleWithFlag } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
 
 const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
@@ -328,14 +328,14 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     const sportKeyOrName = match.sport_key || sportName;
     const country = match.country || match.subcategory || '';
     const leagueName = league || match.league || '';
-    const computedLeagueTitle = computeFullLeagueTitle({
+    
+    // Get league title with flag
+    const leagueTitleWithFlag = computeLeagueTitleWithFlag({
         sportKeyOrName,
         country,
         leagueName,
         fallbackSportTitle: match.sport_title || match.sport || ''
     });
-
-    const fullLeagueTitle = match.fullLeagueTitle || computedLeagueTitle || leagueName;
 
     // Removed unused formatMatchTime helper
 
@@ -373,33 +373,25 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     
     return (
         <>
+            {/* League Header */}
             {showLeagueHeader && (
                 <div className="league-header">
-                    <div 
-                        className="league-title" 
-                        data-sport={sport}
-                        style={{ maxWidth: 'calc(100% - 200px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                        <span className="arrow">▲</span>
-                        {fullLeagueTitle}
+                    <h3 className="league-title">
+                        {leagueTitleWithFlag.flag && (
+                            <span className="country-flag">{leagueTitleWithFlag.flag}</span>
+                        )}
+                        <span className="league-text">{leagueTitleWithFlag.displayTitle}</span>
+                    </h3>
+                    <div className="odds-headers">
+                        {basicOddsTypes.map(oddsType => (
+                            <div key={oddsType} className="odds-header">
+                                {oddsType}
+                            </div>
+                        ))}
                     </div>
-                    {canShowVideo && (
-                      <button
-                        className="odds-header"
-                        title={showVideoSection ? 'Hide video' : 'Show live video'}
-                        onClick={(e) => { e.stopPropagation(); setShowVideoSection(v => !v); }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        📺
-                      </button>
-                    )}
-                    {/* Show only basic odds headers */}
-                    {basicOddsTypes.map(oddsType => (
-                        <div key={oddsType} className="odds-header">{oddsType}</div>
-                    ))}
-                    <div className="odds-header"></div>
                 </div>
             )}
+            
             <div className={`match-container ${isLiveMatch ? 'live-match' : ''}`} onClick={handleMatchClick}>
                 {/* Live status badge */}
                 {isLiveMatch && (
@@ -437,12 +429,10 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                             <img className="team-flag" src={match.awayTeamFlag} alt="" />
                             {match.awayTeam}
                         </div>
-                        {/* Show market type and bookmaker for non-live matches only */}
-                        {!isLiveMatch && (match.market || match.bookmaker) && (
+                        {/* Show market type only for non-live matches */}
+                        {!isLiveMatch && match.market && (
                           <div className="match-market-info" style={{ fontSize: '0.9em', color: '#666', marginTop: 2 }}>
                             {match.market && <span>Market: {match.market}</span>}
-                            {match.market && match.bookmaker && <span> | </span>}
-                            {match.bookmaker && <span>Bookmaker: {match.bookmaker}</span>}
                           </div>
                         )}
                     </div>
