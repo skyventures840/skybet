@@ -5638,4 +5638,17 @@ html, body {
 
   @media (min-width: 768px) { .sport-container { margin-bottom: 1px; } .sport-header { padding: 2px 16px; font-size: 12px; } .subcategory-header { padding: 4px 16px; font-size: 12px; } .match-card { margin: 0; border-radius: 0; } }
 
+/* ==========================================================================
+   DESKTOP MEDIA QUERIES - Hide mobile components on desktop
+   ========================================================================== */
+
+/* Hide MobileBetslip component on desktop screens */
+@media (min-width: 769px) {
+  .mobile-betslip-overlay,
+  .mobile-betslip-modal,
+  .mobile-betslip-count {
+    display: none !important;
+  }
+}
+
 

@@ -513,6 +513,10 @@
   .middle {
     padding: 0 var(--spacing-lg);
     width: 100%;
+    margin-bottom: 0; /* Remove bottom margin */
+    flex: 1; /* Make middle section grow to fill available space */
+    display: flex;
+    flex-direction: column;
   }
   
   .bet-slip-wrapper {
@@ -528,6 +532,51 @@
   
   .sidebar {
     width: 280px;
+  }
+
+  /* Reduce spacing between main content and footer */
+  .page-content {
+    gap: 0;
+  }
+  
+  /* Remove bottom margin from matches section */
+  .matches-section {
+    margin-bottom: 0;
+    flex: 1; /* Make matches section grow to fill middle container */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Remove bottom margin from match containers */
+  .match-container,
+  .match-card {
+    margin-bottom: 0;
+  }
+  
+  /* Reduce footer top margin */
+  .footer {
+    margin-top: 0;
+    padding-top: 10px;
+  }
+
+  /* Ensure wheel modal appears properly on desktop */
+  .wheel-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .wheel-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
   }
 
   /* Popular matches: reduce strip height and add presentable radius */
