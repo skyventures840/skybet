@@ -224,9 +224,13 @@ class OddsApiService {
       timeout: parseInt(process.env.ODDS_API_TIMEOUT, 10) || 15000,
       params: {
         apiKey: config.oddsApi.apiKey,
-        regions: process.env.ODDS_API_REGIONS || 'us,us2,uk,au,eu',
+        regions: 'us,us2,uk,au,eu',  // All major regions for comprehensive coverage
         oddsFormat: 'decimal',
         dateFormat: 'iso',
+        // Enhanced default parameters from Odds API documentation
+        includeLinks: 'true',        // Include bookmaker links to events, markets, and betslips
+        includeSids: 'true',         // Include source ids for events, markets and outcomes
+        includeBetLimits: 'true'     // Include bet limits for betting exchanges
       }
     });
 
@@ -253,6 +257,13 @@ class OddsApiService {
   }
 
   /**
+   * Get the configured bookmaker for a specific sport
+   */
+  getSportBookmaker(sportKey) {
+    return SPORT_BOOKMAKERS[sportKey] || null;
+  }
+
+  /**
    * Enhanced method to get sports with caching
    */
   async getSports() {
@@ -269,9 +280,7 @@ class OddsApiService {
     }
     
     try {
-      const response = await this.client.get('/sports', {
-        params: { all: true }
-      });
+      const response = await this.client.get('/sports');
       this.lastResponseHeaders = response.headers;
       
       const sports = response.data;
@@ -333,7 +342,7 @@ class OddsApiService {
   }
 
   /**
-   * Enhanced method to get upcoming odds with optimized caching and single bookmaker per sport
+   * Enhanced method to get upcoming odds with comprehensive bookmaker coverage
    */
   async getUpcomingOdds(sportKey, market = null, retryCount = 0) {
     if (!this.isEnabled) {
@@ -345,11 +354,8 @@ class OddsApiService {
       throw new Error('Invalid sportKey provided. sportKey must be a non-empty string.');
     }
 
-    // Use optimized bookmaker for this sport
-    const primaryBookmaker = SPORT_BOOKMAKERS[sportKey] || 'draftkings';
-    
     // Check cache first
-    const cacheKey = `odds_${sportKey}_${market || 'all'}_${primaryBookmaker}`;
+    const cacheKey = `odds_${sportKey}_${market || 'all'}_all_bookmakers`;
     const cached = oddsCache.get(cacheKey);
     if (cached) {
       console.log(`Returning cached odds for ${sportKey}`);
@@ -358,167 +364,11 @@ class OddsApiService {
 
     // If a specific market is provided, fetch it
     if (market) {
-      return this._fetchAndSaveOddsForMarket(sportKey, market, primaryBookmaker);
+      return this._fetchAndSaveOddsForMarket(sportKey, market);
     }
 
     // Fetch comprehensive markets with optimized approach
-    const PRIORITY_MARKETS = [
-      'h2h',
-      'spreads', 
-      'totals',
-      'outrights',
-      'h2h_lay',
-      'outrights_lay',
-      'alternate_spreads',
-      'alternate_totals',
-      'btts',
-      'draw_no_bet',
-      'h2h_3_way',
-      'team_totals',
-      'alternate_team_totals',
-      'h2h_q1',
-      'h2h_q2',
-      'h2h_q3',
-      'h2h_q4',
-      'h2h_h1',
-      'h2h_h2',
-      'h2h_p1',
-      'h2h_p2',
-      'h2h_p3',
-      'h2h_3_way_q1',
-      'h2h_3_way_q2',
-      'h2h_3_way_q3',
-      'h2h_3_way_q4',
-      'h2h_3_way_h1',
-      'h2h_3_way_h2',
-      'h2h_3_way_p1',
-      'h2h_3_way_p2',
-      'h2h_3_way_p3',
-      'h2h_1st_1_innings',
-      'h2h_1st_3_innings',
-      'h2h_1st_5_innings',
-      'h2h_1st_7_innings',
-      'h2h_3_way_1st_1_innings',
-      'h2h_3_way_1st_3_innings',
-      'h2h_3_way_1st_5_innings',
-      'h2h_3_way_1st_7_innings',
-      'spreads_q1',
-      'spreads_q2',
-      'spreads_q3',
-      'spreads_q4',
-      'spreads_h1',
-      'spreads_h2',
-      'spreads_p1',
-      'spreads_p2',
-      'spreads_p3',
-      'spreads_1st_1_innings',
-      'spreads_1st_3_innings',
-      'spreads_1st_5_innings',
-      'spreads_1st_7_innings',
-      'alternate_spreads_1st_1_innings',
-      'alternate_spreads_1st_3_innings',
-      'alternate_spreads_1st_5_innings',
-      'alternate_spreads_1st_7_innings',
-      'alternate_spreads_q1',
-      'alternate_spreads_q2',
-      'alternate_spreads_q3',
-      'alternate_spreads_q4',
-      'alternate_spreads_h1',
-      'alternate_spreads_h2',
-      'alternate_spreads_p1',
-      'alternate_spreads_p2',
-      'alternate_spreads_p3',
-      'totals_q1',
-      'totals_q2',
-      'totals_q3',
-      'totals_q4',
-      'totals_h1',
-      'totals_h2',
-      'totals_p1',
-      'totals_p2',
-      'totals_p3',
-      'totals_1st_1_innings',
-      'totals_1st_3_innings',
-      'totals_1st_5_innings',
-      'totals_1st_7_innings',
-      'alternate_totals_1st_1_innings',
-      'alternate_totals_1st_3_innings',
-      'alternate_totals_1st_5_innings',
-      'alternate_totals_1st_7_innings',
-      'alternate_totals_q1',
-      'alternate_totals_q2',
-      'alternate_totals_q3',
-      'alternate_totals_q4',
-      'alternate_totals_h1',
-      'alternate_totals_h2',
-      'alternate_totals_p1',
-      'alternate_totals_p2',
-      'alternate_totals_p3',
-      'team_totals_h1',
-      'team_totals_h2',
-      'team_totals_q1',
-      'team_totals_q2',
-      'team_totals_q3',
-      'team_totals_q4',
-      'team_totals_p1',
-      'team_totals_p2',
-      'team_totals_p3',
-      'alternate_team_totals_h1',
-      'alternate_team_totals_h2',
-      'alternate_team_totals_q1',
-      'alternate_team_totals_q2',
-      'alternate_team_totals_q3',
-      'alternate_team_totals_q4',
-      'alternate_team_totals_p1',
-      'alternate_team_totals_p2',
-      'alternate_team_totals_p3',
-      'player_assists',
-      'player_defensive_interceptions',
-      'player_field_goals',
-      'player_kicking_points',
-      'player_pass_attempts',
-      'player_pass_completions',
-      'player_pass_interceptions',
-      'player_pass_longest_completion',
-      'player_pass_rush_yds',
-      'player_pass_rush_reception_tds',
-      'player_pass_rush_reception_yds',
-      'player_pass_tds',
-      'player_pass_yds',
-      'player_pass_yds_q1',
-      'player_pats',
-      'player_receptions',
-      'player_reception_longest',
-      'player_reception_tds',
-      'player_reception_yds',
-      'player_rush_attempts',
-      'player_rush_longest',
-      'player_rush_reception_tds',
-      'player_rush_reception_yds',
-      'player_rush_tds',
-      'player_rush_yds',
-      'player_sacks',
-      'player_solo_tackles',
-      'player_tackles_assists',
-      'player_tds_over',
-      'player_1st_td',
-      'player_anytime_td',
-      'player_last_td',
-      'player_assists_alternate',
-      'player_field_goals_alternate',
-      'player_kicking_points_alternate',
-      'player_pass_attempts_alternate',
-      'player_pass_completions_alternate',
-      'player_pass_interceptions_alternate',
-      'player_pass_longest_completion_alternate',
-      'player_pass_rush_yds_alternate',
-      'player_pass_rush_reception_tds_alternate',
-      'player_pass_rush_reception_yds_alternate',
-      'player_pass_tds_alternate',
-      'player_pass_yds_alternate',
-      'player_pats_alternate'
-    ];
-
+    const PRIORITY_MARKETS = ['h2h','spreads','totals','outrights','h2h_lay','outrights_lay','alternate_spreads','alternate_totals','btts','draw_no_bet','h2h_3_way','team_totals','alternate_team_totals','h2h_q1','h2h_q2','h2h_q3','h2h_q4','h2h_h1','h2h_h2','h2h_p1','h2h_p2','h2h_p3','h2h_3_way_q1','h2h_3_way_q2','h2h_3_way_q3','h2h_3_way_q4','h2h_3_way_h1','h2h_3_way_h2','h2h_3_way_p1','h2h_3_way_p2','h2h_3_way_p3','h2h_1st_1_innings','h2h_1st_3_innings','h2h_1st_5_innings','h2h_1st_7_innings','h2h_3_way_1st_1_innings','h2h_3_way_1st_3_innings','h2h_3_way_1st_5_innings','h2h_3_way_1st_7_innings','spreads_q1','spreads_q2','spreads_q3','spreads_q4','spreads_h1','spreads_h2','spreads_p1','spreads_p2','spreads_p3','spreads_1st_1_innings','spreads_1st_3_innings','spreads_1st_5_innings','spreads_1st_7_innings','alternate_spreads_1st_1_innings','alternate_spreads_1st_3_innings','alternate_spreads_1st_5_innings','alternate_spreads_1st_7_innings','alternate_spreads_q1','alternate_spreads_q2','alternate_spreads_q3','alternate_spreads_q4','alternate_spreads_h1','alternate_spreads_h2','alternate_spreads_p1','alternate_spreads_p2','alternate_spreads_p3','totals_q1','totals_q2','totals_q3','totals_q4','totals_h1','totals_h2','totals_p1','totals_p2','totals_p3','totals_1st_1_innings','totals_1st_3_innings','totals_1st_5_innings','totals_1st_7_innings','alternate_totals_1st_1_innings','alternate_totals_1st_3_innings','alternate_totals_1st_5_innings','alternate_totals_1st_7_innings','alternate_totals_q1','alternate_totals_q2','alternate_totals_q3','alternate_totals_q4','alternate_totals_h1','alternate_totals_h2','alternate_totals_p1','alternate_totals_p2','alternate_totals_p3','team_totals_h1','team_totals_h2','team_totals_q1','team_totals_q2','team_totals_q3','team_totals_q4','team_totals_p1','team_totals_p2','team_totals_p3','alternate_team_totals_h1','alternate_team_totals_h2','alternate_team_totals_q1','alternate_team_totals_q2','alternate_team_totals_q3','alternate_team_totals_q4','alternate_team_totals_p1','alternate_team_totals_p2','alternate_team_totals_p3','player_assists','player_defensive_interceptions','player_field_goals','player_kicking_points','player_pass_attempts','player_pass_completions','player_pass_interceptions','player_pass_longest_completion','player_pass_rush_yds','player_pass_rush_reception_tds','player_pass_rush_reception_yds','player_pass_tds','player_pass_yds','player_pass_yds_q1','player_pats','player_receptions','player_reception_longest','player_reception_tds','player_reception_yds','player_rush_attempts','player_rush_longest','player_rush_reception_tds','player_rush_reception_yds','player_rush_tds','player_rush_yds','player_sacks','player_solo_tackles','player_tackles_assists','player_tds_over','player_1st_td','player_anytime_td','player_last_td','player_assists_alternate','player_field_goals_alternate','player_kicking_points_alternate','player_pass_attempts_alternate','player_pass_completions_alternate','player_pass_interceptions_alternate','player_pass_longest_completion_alternate','player_pass_rush_yds_alternate','player_pass_rush_reception_tds_alternate','player_pass_rush_reception_yds_alternate','player_pass_tds_alternate','player_pass_yds_alternate','player_pats_alternate'];
     let supportedMarkets = [];
     try {
       const availableMarkets = await this.getMarketsForSport(sportKey);
@@ -533,7 +383,7 @@ class OddsApiService {
 
     if (supportedMarkets.length === 0) supportedMarkets = PRIORITY_MARKETS;
 
-    // Fetch odds with single bookmaker for efficiency
+    // Fetch odds with all bookmakers for comprehensive coverage
     const allOddsById = {};
     const chunkSize = 5; // Smaller chunks for better performance
 
@@ -542,8 +392,7 @@ class OddsApiService {
       try {
         const oddsForChunk = await this._fetchAndSaveOddsForMarketsBatch(
           sportKey, 
-          marketsChunk, 
-          primaryBookmaker
+          marketsChunk
         );
         
         for (const match of oddsForChunk) {
@@ -593,7 +442,7 @@ class OddsApiService {
   }
 
   /**
-   * Enhanced batch fetching with single bookmaker optimization
+   * Enhanced batch fetching with comprehensive bookmaker coverage and market fallback
    */
   async _fetchAndSaveOddsForMarketsBatch(sportKey, marketsArray, bookmaker = null) {
     if (!this.isEnabled) {
@@ -605,15 +454,23 @@ class OddsApiService {
       ? marketsArray.filter(Boolean).map(m => String(m).trim()).join(',')
       : String(marketsArray || '').trim();
 
-    // Use sport-specific bookmaker if not provided
-    const targetBookmaker = bookmaker || SPORT_BOOKMAKERS[sportKey] || 'draftkings';
-    
     const params = { 
       markets: safeMarketsCsv,
-      bookmakers: targetBookmaker
+      // Enhanced parameters from Odds API documentation
+      includeLinks: 'true',        // Include bookmaker links to events, markets, and betslips
+      includeSids: 'true',         // Include source ids for events, markets and outcomes
+      includeBetLimits: 'true'     // Include bet limits for betting exchanges
     };
+
+    // Add bookmaker parameter if specified
+    if (bookmaker) {
+      params.bookmakers = bookmaker;
+    }
     
-    console.log(`Fetching odds for ${sportKey} with bookmaker: ${targetBookmaker} and markets: ${safeMarketsCsv}`);
+    const logMessage = bookmaker 
+      ? `Fetching odds for ${sportKey} with bookmaker: ${bookmaker} and markets: ${safeMarketsCsv}`
+      : `Fetching odds for ${sportKey} with all bookmakers and markets: ${safeMarketsCsv}`;
+    console.log(logMessage);
 
     let games = [];
     const maxRetries = 2; // Reduced retries for efficiency
@@ -625,6 +482,37 @@ class OddsApiService {
         games = Array.isArray(response.data) ? response.data : [];
         break;
       } catch (err) {
+        // Enhanced error logging for 422 responses
+        if (err.response && err.response.status === 422) {
+          console.error(`422 Error for ${sportKey}:`, {
+            status: err.response.status,
+            statusText: err.response.statusText,
+            data: err.response.data,
+            markets: safeMarketsCsv,
+            url: err.config?.url
+          });
+          
+          // If it's a market validation error, try with basic markets
+          if (err.response.data && (err.response.data.message || '').includes('Markets not supported')) {
+            console.log(`Attempting fallback with basic markets for ${sportKey}`);
+            const basicParams = {
+              markets: 'h2h,spreads,totals',
+              includeLinks: 'true',
+              includeSids: 'true',
+              includeBetLimits: 'true'
+            };
+            
+            try {
+              const fallbackResponse = await this.client.get(`/sports/${sportKey}/odds`, { params: basicParams });
+              this.lastResponseHeaders = fallbackResponse.headers;
+              games = Array.isArray(fallbackResponse.data) ? fallbackResponse.data : [];
+              console.log(`Fallback successful for ${sportKey} with basic markets`);
+              break;
+            } catch (fallbackErr) {
+              console.warn(`Fallback also failed for ${sportKey}: ${fallbackErr.message}`);
+            }
+          }
+        }
         console.warn(`Batch odds fetch failed (attempt ${attempt}/${maxRetries}) for ${sportKey}: ${err.message}`);
         if (attempt < maxRetries) {
           const backoffMs = 500 * attempt;
@@ -651,9 +539,12 @@ class OddsApiService {
    */
   async _storeOddsAsync(games) {
     try {
+      console.log(`Attempting to store ${games.length} games in database`);
       await this._mergeAndUpsertOddsGames(games);
+      console.log(`Successfully stored ${games.length} games in database`);
     } catch (error) {
       console.error('Error storing odds data:', error.message);
+      console.error('Full error:', error);
     }
   }
 
@@ -1017,7 +908,12 @@ class OddsApiService {
    * Enhanced method to merge and upsert odds games with better error handling
    */
   async _mergeAndUpsertOddsGames(games) {
-    if (!Array.isArray(games) || games.length === 0) return [];
+    if (!Array.isArray(games) || games.length === 0) {
+      console.log('No games to store - array is empty or invalid');
+      return [];
+    }
+
+    console.log(`Processing ${games.length} games for database storage`);
 
     // Helper to normalize market keys consistently
     const normalizeMarketKey = (key) => {
@@ -1045,7 +941,9 @@ class OddsApiService {
 
     // Preload existing odds for these games to merge efficiently
     const gameIds = games.map(g => g.id);
+    console.log(`Looking for existing odds for game IDs: ${gameIds.slice(0, 5).join(', ')}${gameIds.length > 5 ? '...' : ''}`);
     const existingDocs = await Odds.find({ gameId: { $in: gameIds } });
+    console.log(`Found ${existingDocs.length} existing odds documents`);
     const existingMap = new Map(existingDocs.map(doc => [doc.gameId, doc]));
 
     const bulkOps = games.map(game => {
@@ -1118,6 +1016,7 @@ class OddsApiService {
           filter: { gameId: game.id },
           update: {
             $set: {
+              gameId: game.id, // Ensure gameId is set
               sport_key: game.sport_key,
               sport_title: game.sport_title,
               commence_time: new Date(game.commence_time),
@@ -1132,18 +1031,24 @@ class OddsApiService {
       };
     });
 
+    console.log(`Prepared ${bulkOps.length} bulk operations for database`);
+
     if (bulkOps.length > 0) {
       try {
         const batchSize = 50;
         for (let i = 0; i < bulkOps.length; i += batchSize) {
           const batch = bulkOps.slice(i, i + batchSize);
-          await Odds.bulkWrite(batch, { ordered: false, writeConcern: { w: 1, wtimeout: 30000 } });
+          console.log(`Writing batch ${Math.floor(i/batchSize) + 1} with ${batch.length} operations`);
+          const result = await Odds.bulkWrite(batch, { ordered: false, writeConcern: { w: 1, wtimeout: 30000 } });
+          console.log(`Batch write result: ${result.upsertedCount} upserted, ${result.modifiedCount} modified`);
           if (i + batchSize < bulkOps.length) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       } catch (bulkWriteError) {
         console.error(`MongoDB bulkWrite error during odds upsert: ${bulkWriteError.message}`);
+        console.error('Full bulkWrite error:', bulkWriteError);
+        throw bulkWriteError;
       }
     }
     return games;
@@ -1152,21 +1057,17 @@ class OddsApiService {
   /**
    * Helper to fetch odds for a single market and save to DB
    */
-  async _fetchAndSaveOddsForMarket(sportKey, market, bookmaker = null) {
+  async _fetchAndSaveOddsForMarket(sportKey, market) {
     if (!this.isEnabled) {
       console.warn('OddsApiService is disabled due to missing configuration');
       return [];
     }
 
-    // Use sport-specific bookmaker if not provided
-    const targetBookmaker = bookmaker || SPORT_BOOKMAKERS[sportKey] || 'draftkings';
-    
     const params = { 
-      markets: market,
-      bookmakers: targetBookmaker
+      markets: market
     };
     
-    console.log(`Fetching odds for ${sportKey} market ${market} with bookmaker: ${targetBookmaker}`);
+    console.log(`Fetching odds for ${sportKey} market ${market} with all bookmakers`);
 
     let games = [];
     try {
@@ -1261,6 +1162,197 @@ class OddsApiService {
   }
 
   /**
+   * Fetch additional markets for specific events using event-specific endpoint
+   * Uses the /v4/sports/{sport}/odds endpoint with eventIds parameter for better market support
+   */
+  async fetchAdditionalMarketsForEvents(sportKey, eventIds, additionalMarkets, options = {}) {
+    if (!this.isEnabled) {
+      console.warn('OddsApiService is disabled due to missing configuration');
+      return { success: false, message: 'Service disabled' };
+    }
+
+    if (!sportKey) {
+      return { success: false, message: 'Sport key is required' };
+    }
+
+    if (!Array.isArray(eventIds) || eventIds.length === 0) {
+      return { success: false, message: 'No event IDs provided' };
+    }
+
+    if (!Array.isArray(additionalMarkets) || additionalMarkets.length === 0) {
+      return { success: false, message: 'No additional markets specified' };
+    }
+
+    const {
+      regions = ['us', 'us2', 'uk', 'au', 'eu'],
+      oddsFormat = 'decimal',
+      dateFormat = 'iso',
+      includeLinks = false,
+      bookmakers = null
+    } = options;
+
+    console.log(`Fetching additional markets [${additionalMarkets.join(', ')}] for ${eventIds.length} events using event-specific endpoint`);
+
+    const results = {
+      successful: [],
+      failed: [],
+      totalProcessed: 0,
+      marketsAdded: 0,
+      events: []
+    };
+
+    try {
+      // Use the main odds endpoint with eventIds parameter for better market support
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const params = {
+        regions: regions.join(','),
+        markets: additionalMarkets.join(','),
+        oddsFormat,
+        dateFormat,
+        eventIds: eventIds.join(',')
+      };
+
+      if (includeLinks) {
+        params.includeLinks = 'true';
+      }
+
+      if (bookmakers && Array.isArray(bookmakers)) {
+        params.bookmakers = bookmakers.join(',');
+      }
+
+      const response = await this.client.get(`/sports/${sportKey}/odds`, {
+        params
+      });
+
+      this.lastResponseHeaders = response.headers;
+      const events = response.data;
+
+      if (!Array.isArray(events)) {
+        console.warn(`Invalid response format for additional markets`);
+        return { success: false, message: 'Invalid response format' };
+      }
+
+      console.log(`Retrieved ${events.length} events with additional markets`);
+
+      // Process each event
+      for (const event of events) {
+        try {
+          if (!event || !event.id) {
+            console.warn(`Invalid event data:`, event);
+            results.failed.push({ eventId: 'unknown', reason: 'Invalid event data' });
+            continue;
+          }
+
+          // Check if the event has the requested additional markets
+          const availableMarkets = new Set();
+          if (event.bookmakers && Array.isArray(event.bookmakers)) {
+            for (const bookmaker of event.bookmakers) {
+              if (bookmaker.markets && Array.isArray(bookmaker.markets)) {
+                for (const market of bookmaker.markets) {
+                  if (market.key && additionalMarkets.includes(market.key)) {
+                    availableMarkets.add(market.key);
+                  }
+                }
+              }
+            }
+          }
+
+          const marketsFound = Array.from(availableMarkets);
+          
+          if (marketsFound.length > 0) {
+            results.successful.push({ 
+              eventId: event.id, 
+              marketsFound,
+              marketsCount: marketsFound.length,
+              bookmakersCount: event.bookmakers?.length || 0
+            });
+            results.marketsAdded += marketsFound.length;
+            results.events.push(event);
+          } else {
+            results.failed.push({ 
+              eventId: event.id, 
+              reason: 'No additional markets found in response' 
+            });
+          }
+
+          results.totalProcessed++;
+
+        } catch (eventError) {
+          console.error(`Error processing event ${event?.id || 'unknown'}:`, eventError.message);
+          results.failed.push({ 
+            eventId: event?.id || 'unknown', 
+            reason: `Processing error: ${eventError.message}` 
+          });
+        }
+      }
+
+      console.log(`Additional markets fetch completed: ${results.successful.length} successful, ${results.failed.length} failed, ${results.marketsAdded} total markets added`);
+      
+      return {
+        success: true,
+        results,
+        events: results.events
+      };
+
+    } catch (error) {
+      console.error(`Error fetching additional markets for sport ${sportKey}:`, error.message);
+      
+      // Handle specific API errors
+      if (error.response?.status === 422) {
+        const errorData = error.response.data;
+        console.error(`422 Error Details:`, {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: errorData,
+          markets: additionalMarkets,
+          eventIds: eventIds.slice(0, 5), // Log first 5 event IDs
+          url: error.config?.url
+        });
+        
+        // Check if this is an INVALID_MARKET error that we can handle
+        if (errorData?.error_code === 'INVALID_MARKET' && errorData?.message) {
+          const unsupportedMarkets = errorData.message.match(/Markets not supported[^:]*: (.+)/)?.[1]?.split(', ') || [];
+          const supportedMarkets = additionalMarkets.filter(market => !unsupportedMarkets.includes(market));
+          
+          if (supportedMarkets.length > 0) {
+            console.log(`🔄 Retrying with supported markets only: [${supportedMarkets.join(', ')}]`);
+            console.log(`❌ Unsupported markets filtered out: [${unsupportedMarkets.join(', ')}]`);
+            
+            // Retry with only supported markets
+            const retryResult = await this.fetchAdditionalMarketsForEvents(sportKey, eventIds, supportedMarkets, options);
+            
+            if (retryResult.success) {
+              retryResult.message += ` (${unsupportedMarkets.length} markets were unsupported and filtered out)`;
+              retryResult.unsupportedMarkets = unsupportedMarkets;
+            }
+            
+            return retryResult;
+          }
+        }
+        
+        return { 
+          success: false, 
+          message: `API Error: ${errorData?.message || 'Unsupported markets or invalid request'}`,
+          error: 'INVALID_MARKET_OR_EVENT'
+        };
+      } else if (error.response?.status === 401) {
+        return { 
+          success: false, 
+          message: 'API quota exceeded or invalid API key',
+          error: 'API_QUOTA_OR_AUTH'
+        };
+      } else {
+        return { 
+          success: false, 
+          message: `Network or API error: ${error.message}`,
+          error: 'NETWORK_ERROR'
+        };
+      }
+    }
+  }
+
+  /**
    * Enhanced method to get odds by specific event IDs
    */
   async getOddsByEventIds(sportKey, eventIds, markets = null, bookmakers = null) {
@@ -1273,14 +1365,11 @@ class OddsApiService {
       return [];
     }
 
-    // Use sport-specific bookmaker if not provided
-    const targetBookmaker = bookmakers || SPORT_BOOKMAKERS[sportKey] || 'draftkings';
-
     const params = { eventIds: eventIds.join(',') };
     if (markets) params.markets = Array.isArray(markets) ? markets.join(',') : markets;
-    params.bookmakers = Array.isArray(targetBookmaker) ? targetBookmaker.join(',') : targetBookmaker;
+    // Remove bookmaker restriction to get all available bookmakers
     
-    console.log(`Fetching odds by event IDs for ${sportKey} with bookmaker: ${params.bookmakers}`);
+    console.log(`Fetching odds by event IDs for ${sportKey} with all bookmakers`);
 
     try {
       const response = await this.client.get(`/sports/${sportKey}/odds`, { params });
@@ -1296,6 +1385,393 @@ class OddsApiService {
       this.handleApiError(error);
       return [];
     }
+  }
+
+  /**
+   * Enhanced method to get odds by specific event IDs
+   */
+  async upsertAdditionalMarkets(sportKey, eventIds, additionalMarkets, options = {}) {
+    if (!this.isEnabled) {
+      console.warn('OddsApiService is disabled due to missing configuration');
+      return { success: false, message: 'Service disabled' };
+    }
+
+    if (!sportKey) {
+      return { success: false, message: 'Sport key is required' };
+    }
+
+    if (!Array.isArray(eventIds) || eventIds.length === 0) {
+      return { success: false, message: 'No event IDs provided' };
+    }
+
+    if (!Array.isArray(additionalMarkets) || additionalMarkets.length === 0) {
+      return { success: false, message: 'No additional markets specified' };
+    }
+
+    const {
+      regions = ['us', 'us2', 'uk', 'au', 'eu'],
+      oddsFormat = 'decimal',
+      dateFormat = 'iso',
+      includeLinks = false
+    } = options;
+
+    console.log(`Upserting additional markets [${additionalMarkets.join(', ')}] for ${eventIds.length} events`);
+
+    const results = {
+      successful: [],
+      failed: [],
+      totalProcessed: 0,
+      marketsAdded: 0
+    };
+
+    // Process events in batches to respect rate limits
+    const batchSize = 5;
+    for (let i = 0; i < eventIds.length; i += batchSize) {
+      const batch = eventIds.slice(i, i + batchSize);
+      
+      for (const eventId of batch) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          const response = await this.client.get(`/sports/${sportKey}/events/${eventId}/odds`, {
+            params: {
+              regions: regions.join(','),
+              markets: additionalMarkets.join(','),
+              oddsFormat,
+              dateFormat,
+              includeLinks
+            }
+          });
+
+          this.lastResponseHeaders = response.headers;
+          const event = response.data;
+
+          if (!event || !event.id) {
+            console.warn(`No data returned for event ${eventId}`);
+            results.failed.push({ eventId, reason: 'No data returned' });
+            continue;
+          }
+
+          // Process the event and merge with existing data
+          const mergeResult = await this._mergeAdditionalMarkets(event, additionalMarkets);
+          if (mergeResult.success) {
+            results.successful.push({ 
+              eventId: event.id, 
+              marketsAdded: mergeResult.marketsAdded,
+              bookmakersUpdated: mergeResult.bookmakersUpdated
+            });
+            results.marketsAdded += mergeResult.marketsAdded;
+          } else {
+            results.failed.push({ 
+              eventId: event.id, 
+              reason: mergeResult.error 
+            });
+          }
+
+          results.totalProcessed++;
+
+        } catch (error) {
+          console.error(`Error fetching additional markets for event ${eventId}:`, error.message);
+          
+          // Handle 422 errors specifically
+          if (error.response?.status === 422) {
+            const errorData = error.response.data;
+            console.error(`422 Error Details for event ${eventId}:`, {
+              status: error.response.status,
+              statusText: error.response.statusText,
+              data: errorData,
+              markets: additionalMarkets,
+              url: error.config?.url
+            });
+            
+            results.failed.push({ 
+              eventId, 
+              reason: `Unsupported markets: ${errorData?.message || 'Unknown 422 error'}` 
+            });
+          } else {
+            results.failed.push({ 
+              eventId, 
+              reason: error.message 
+            });
+          }
+        }
+      }
+
+      // Rate limiting between batches
+      if (i + batchSize < eventIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`Market upsert completed: ${results.successful.length} successful, ${results.failed.length} failed, ${results.marketsAdded} markets added`);
+    return results;
+  }
+
+  /**
+   * Merge additional markets into existing odds data
+   */
+  async _mergeAdditionalMarkets(eventData, targetMarkets) {
+    try {
+      // Find existing odds document
+      const existingOdds = await Odds.findOne({ gameId: eventData.id });
+      
+      if (!existingOdds) {
+        // No existing data, create new document
+        await this._mergeAndUpsertOddsGames([eventData]);
+        return { 
+          success: true, 
+          marketsAdded: this._countMarkets(eventData),
+          bookmakersUpdated: (eventData.bookmakers || []).length
+        };
+      }
+
+      // Merge additional markets with existing data
+      const existingBookmakers = existingOdds.bookmakers || [];
+      const incomingBookmakers = eventData.bookmakers || [];
+      
+      let marketsAdded = 0;
+      let bookmakersUpdated = 0;
+
+      // Create a map of existing bookmakers for efficient lookup
+      const existingBmMap = new Map(existingBookmakers.map(bm => [bm.key, bm]));
+
+      const mergedBookmakers = [...existingBookmakers];
+
+      for (const incomingBm of incomingBookmakers) {
+        const existingBmIndex = mergedBookmakers.findIndex(bm => bm.key === incomingBm.key);
+        
+        if (existingBmIndex === -1) {
+          // New bookmaker, add entirely
+          mergedBookmakers.push(incomingBm);
+          marketsAdded += (incomingBm.markets || []).length;
+          bookmakersUpdated++;
+        } else {
+          // Existing bookmaker, merge markets
+          const existingBm = mergedBookmakers[existingBmIndex];
+          const existingMarkets = existingBm.markets || [];
+          const incomingMarkets = incomingBm.markets || [];
+          
+          // Create map of existing markets
+          const existingMarketMap = new Map(existingMarkets.map(m => [m.key, m]));
+          
+          let bookmakerUpdated = false;
+          for (const incomingMarket of incomingMarkets) {
+            if (targetMarkets.includes(incomingMarket.key)) {
+              if (!existingMarketMap.has(incomingMarket.key)) {
+                // New market for this bookmaker
+                existingMarkets.push(incomingMarket);
+                marketsAdded++;
+                bookmakerUpdated = true;
+              } else {
+                // Update existing market if newer
+                const existingMarket = existingMarketMap.get(incomingMarket.key);
+                const incomingTime = new Date(incomingMarket.last_update);
+                const existingTime = new Date(existingMarket.last_update);
+                
+                if (incomingTime > existingTime) {
+                  const marketIndex = existingMarkets.findIndex(m => m.key === incomingMarket.key);
+                  existingMarkets[marketIndex] = incomingMarket;
+                  bookmakerUpdated = true;
+                }
+              }
+            }
+          }
+          
+          if (bookmakerUpdated) {
+            mergedBookmakers[existingBmIndex] = {
+              ...existingBm,
+              markets: existingMarkets,
+              last_update: new Date(incomingBm.last_update)
+            };
+            bookmakersUpdated++;
+          }
+        }
+      }
+
+      // Update the document
+      await Odds.updateOne(
+        { gameId: eventData.id },
+        {
+          $set: {
+            bookmakers: mergedBookmakers,
+            lastFetched: new Date()
+          }
+        }
+      );
+
+      return { 
+        success: true, 
+        marketsAdded,
+        bookmakersUpdated
+      };
+
+    } catch (error) {
+      console.error(`Error merging additional markets for event ${eventData.id}:`, error.message);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
+  }
+
+  /**
+   * Count total markets in event data
+   */
+  _countMarkets(eventData) {
+    return (eventData.bookmakers || []).reduce((total, bm) => {
+      return total + (bm.markets || []).length;
+    }, 0);
+  }
+
+  /**
+   * Get supported markets for a specific sport by testing with a sample request
+   */
+  async getSupportedMarkets(sportKey, testMarkets = []) {
+    if (!this.isEnabled) {
+      console.warn('OddsApiService is disabled due to missing configuration');
+      return { supported: [], unsupported: [] };
+    }
+
+    if (testMarkets.length === 0) {
+      // Use comprehensive market list for testing
+      testMarkets = [
+        'h2h', 'spreads', 'totals', 'alternate_spreads', 'alternate_totals',
+        'team_totals', 'alternate_team_totals', 'h2h_h1', 'h2h_h2',
+        'spreads_h1', 'spreads_h2', 'totals_h1', 'totals_h2',
+        'player_pass_tds', 'player_rush_yds', 'player_reception_yds',
+        'player_points', 'player_rebounds', 'player_assists'
+      ];
+    }
+
+    const supported = [];
+    const unsupported = [];
+
+    try {
+      // Test with all markets first
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const response = await this.client.get(`/sports/${sportKey}/odds`, {
+        params: {
+          regions: 'us',
+          markets: testMarkets.join(','),
+          oddsFormat: 'decimal'
+        }
+      });
+
+      // If successful, all markets are supported
+      return { supported: testMarkets, unsupported: [] };
+
+    } catch (error) {
+      if (error.response?.status === 401) {
+        // API quota reached - cannot determine market support
+        console.warn(`Cannot test market support for ${sportKey} due to API quota limit`);
+        return { supported: [], unsupported: [], error: 'API_QUOTA_REACHED' };
+      } else if (error.response?.status === 422) {
+        const errorData = error.response.data;
+        
+        if (errorData?.message?.includes('INVALID_MARKET')) {
+          // Parse the error message to identify unsupported markets
+          const errorMessage = errorData.message;
+          const match = errorMessage.match(/Markets not supported by this endpoint: (.+)/);
+          
+          if (match) {
+            const unsupportedMarketsStr = match[1];
+            const unsupportedMarketsList = unsupportedMarketsStr.split(', ').map(m => m.trim());
+            
+            // Separate supported and unsupported markets
+            for (const market of testMarkets) {
+              if (unsupportedMarketsList.includes(market)) {
+                unsupported.push(market);
+              } else {
+                supported.push(market);
+              }
+            }
+            
+            console.log(`Market support parsed from error for ${sportKey}: ${supported.length} supported, ${unsupported.length} unsupported`);
+            return { supported, unsupported };
+          } else {
+            // Test markets individually to identify which are unsupported
+            for (const market of testMarkets) {
+              try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                await this.client.get(`/sports/${sportKey}/odds`, {
+                  params: {
+                    regions: 'us',
+                    markets: market,
+                    oddsFormat: 'decimal'
+                  }
+                });
+                
+                supported.push(market);
+                
+              } catch (marketError) {
+                if (marketError.response?.status === 422) {
+                  unsupported.push(market);
+                } else if (marketError.response?.status === 401) {
+                  // API quota reached - can't determine support, skip this market
+                  console.warn(`Cannot test market ${market} due to API quota limit`);
+                } else {
+                  // Other error, assume supported but API issue
+                  supported.push(market);
+                }
+              }
+            }
+          }
+        } else {
+          // Different 422 error, assume all unsupported
+          unsupported.push(...testMarkets);
+        }
+      } else {
+        // Non-422 error, assume all supported but API issue
+        supported.push(...testMarkets);
+      }
+    }
+
+    console.log(`Market support test for ${sportKey}: ${supported.length} supported, ${unsupported.length} unsupported`);
+    return { supported, unsupported };
+  }
+
+  async testMarketsIndividually(sportKey, testMarkets) {
+    const supported = [];
+    const unsupported = [];
+    let quotaReached = false;
+
+    for (const market of testMarkets) {
+      if (quotaReached) {
+        // If quota was reached, we can't test remaining markets
+        console.warn(`Skipping remaining markets due to API quota limit`);
+        break;
+      }
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        await this.client.get(`/sports/${sportKey}/odds`, {
+          params: {
+            regions: 'us',
+            markets: market,
+            oddsFormat: 'decimal'
+          }
+        });
+        
+        supported.push(market);
+        
+      } catch (marketError) {
+        if (marketError.response?.status === 422) {
+          unsupported.push(market);
+        } else if (marketError.response?.status === 401) {
+          // API quota reached - can't determine support for remaining markets
+          quotaReached = true;
+          console.warn(`API quota reached while testing market ${market}`);
+        } else {
+          // Other error, assume supported but API issue
+          supported.push(market);
+        }
+      }
+    }
+
+    return { supported, unsupported, quotaReached };
   }
 }
 

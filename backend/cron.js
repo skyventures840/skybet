@@ -1,9 +1,9 @@
 const cron = require('node-cron');
 const mongoose = require('mongoose');
+const { spawn } = require('child_process');
 const { OddsApiService } = require('./services/oddsApiService');
 const betSettlementService = require('./services/betSettlementService');
 const logger = require('./utils/logger');
-const { fetchOddsForSport, fetchOddsForMultipleSports } = require('./scripts/fetchOddsModule');
 
 // Import models
 const Odds = require('./models/Odds');
@@ -211,10 +211,45 @@ const startCronJobs = async () => {
   try {
     // Check if MongoDB is connected before immediate fetch
     if (mongoose.connection && mongoose.connection.readyState === 1) {
-      logger.info('📊 Performing immediate odds, scores, and results fetch...');
+      logger.info('📊 Performing immediate enhanced odds and markets fetch (scores and results delayed by 15 minutes)...');
       
-      // Fetch sports list and use fetchOdds module for immediate fetch
-      if (oddsApiService) {
+      // Use enhancedFetchOdds.js script for immediate comprehensive fetch
+      logger.info('🚀 Starting immediate enhancedFetchOdds.js script for odds and markets...');
+      
+      const immediateProcess = spawn('node', ['scripts/enhancedFetchOdds.js'], {
+        cwd: __dirname,
+        stdio: 'pipe'
+      });
+
+      immediateProcess.stdout.on('data', (data) => {
+        logger.info(`enhancedFetchOdds (immediate): ${data.toString().trim()}`);
+      });
+
+      immediateProcess.stderr.on('data', (data) => {
+        logger.error(`enhancedFetchOdds (immediate) error: ${data.toString().trim()}`);
+      });
+
+      immediateProcess.on('close', (code) => {
+        if (code === 0) {
+          logger.info('✅ Immediate enhanced odds and markets fetch completed successfully');
+        } else {
+          logger.error(`❌ Immediate enhancedFetchOdds.js exited with code ${code}`);
+        }
+      });
+      
+    } else {
+      logger.warn('MongoDB not connected, skipping immediate fetch');
+    }
+  } catch (error) {
+    logger.error('❌ Error during immediate startup fetch:', error);
+  }
+
+  // Schedule scores and results fetching to start after 15 minutes
+  setTimeout(async () => {
+    logger.info('🕒 Starting delayed scores and results fetch (15 minutes after startup)...');
+    
+    try {
+      if (mongoose.connection && mongoose.connection.readyState === 1 && oddsApiService) {
         const sportsList = await oddsApiService.getSports();
         if (sportsList && sportsList.length > 0) {
           const supportedSports = sportsList.filter(sport =>
@@ -222,25 +257,33 @@ const startCronJobs = async () => {
             !sport.key.includes('politics') &&
             !sport.key.includes('entertainment') &&
             sport.key !== 'golf_the_open_championship_winner'
-          ).slice(0, 5); // Limit to first 5 sports for immediate fetch to avoid rate limits
+          ).slice(0, 5);
 
-          logger.info(`🎯 Immediately fetching data for ${supportedSports.length} priority sports using fetchOdds module...`);
+          logger.info(`📊 Fetching scores and results for ${supportedSports.length} sports...`);
           
-          // Use fetchOdds module for consistent data fetching
-          const results = await fetchOddsForMultipleSports(supportedSports, false);
-          logger.info('✅ Immediate fetch completed:', results);
-        } else {
-          logger.warn('No sports available for immediate fetch');
+          for (const sport of supportedSports) {
+            try {
+              // Fetch scores
+              logger.info(`Fetching scores for ${sport.key}...`);
+              const scores = await oddsApiService.getScores(sport.key);
+              logger.info(`✅ Fetched ${scores.length} scores for ${sport.key}`);
+              
+              // Fetch results
+              logger.info(`Fetching results for ${sport.key}...`);
+              const results = await oddsApiService.getResults(sport.key);
+              logger.info(`✅ Fetched ${results.length} results for ${sport.key}`);
+            } catch (error) {
+              logger.error(`❌ Error fetching scores/results for ${sport.key}:`, error.message);
+            }
+          }
+          
+          logger.info('✅ Delayed scores and results fetch completed');
         }
-      } else {
-        logger.warn('OddsApiService not available for immediate fetch');
       }
-    } else {
-      logger.warn('MongoDB not connected, skipping immediate fetch');
+    } catch (error) {
+      logger.error('❌ Error during delayed scores and results fetch:', error);
     }
-  } catch (error) {
-    logger.error('❌ Error during immediate startup fetch:', error);
-  }
+  }, 15 * 60 * 1000); // 15 minutes delay
 
   // Fetch upcoming odds every 30 minutes
   cron.schedule('*/30 * * * *', async () => {
@@ -264,35 +307,35 @@ const startCronJobs = async () => {
     updateCronStatus(true, 'odds-fetch');
     
   try {
-    logger.info('Starting cron job: Executing fetchOdds.js script for all supported sports...');
+    logger.info('Starting cron job: Executing enhancedFetchOdds.js script for comprehensive sports coverage...');
 
-    // Execute fetchOdds.js script directly
-    const fetchOddsProcess = spawn('node', ['scripts/fetchOdds.js'], {
+    // Execute enhancedFetchOdds.js script directly for comprehensive odds fetching
+    const fetchOddsProcess = spawn('node', ['scripts/enhancedFetchOdds.js'], {
       cwd: __dirname,
       stdio: 'pipe'
     });
 
     fetchOddsProcess.stdout.on('data', (data) => {
-      logger.info(`fetchOdds.js: ${data.toString().trim()}`);
+      logger.info(`enhancedFetchOdds.js: ${data.toString().trim()}`);
     });
 
     fetchOddsProcess.stderr.on('data', (data) => {
-      logger.error(`fetchOdds.js error: ${data.toString().trim()}`);
+      logger.error(`enhancedFetchOdds.js error: ${data.toString().trim()}`);
     });
 
     fetchOddsProcess.on('close', (code) => {
       if (code === 0) {
-        logger.info('✅ Scheduled odds fetch completed successfully');
+        logger.info('✅ Scheduled enhanced odds fetch completed successfully');
       } else {
-        logger.error(`❌ fetchOdds.js exited with code ${code}`);
+        logger.error(`❌ enhancedFetchOdds.js exited with code ${code}`);
       }
       isOddsFetching = false;
       updateCronStatus(false, 'odds-fetch');
     });
 
-    logger.info('Cron job finished: Successfully started fetchOdds.js script.');
+    logger.info('Cron job finished: Successfully started enhancedFetchOdds.js script.');
   } catch (error) {
-      logger.error('Error in odds fetching cron job:', error);
+      logger.error('Error in enhanced odds fetching cron job:', error);
       isOddsFetching = false;
       updateCronStatus(false, 'odds-fetch');
     }

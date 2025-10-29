@@ -232,4 +232,153 @@ router.get('/match/:matchId', async (req, res) => {
   }
 });
 
+// POST /api/odds/events/comprehensive - Get comprehensive odds for specific events with additional markets
+router.post('/events/comprehensive', async (req, res) => {
+  try {
+    const { 
+      sport, 
+      eventIds, 
+      basicMarkets = ['h2h'], 
+      additionalMarkets = [], 
+      regions = 'us,us2', 
+      oddsFormat = 'decimal',
+      bookmakers 
+    } = req.body;
+    
+    // Validate required parameters
+    if (!sport) {
+      return res.status(400).json({
+        success: false,
+        error: 'Sport parameter is required'
+      });
+    }
+    
+    if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'eventIds array is required and must not be empty'
+      });
+    }
+    
+    console.log(`[API] Fetching comprehensive odds for ${eventIds.length} events in ${sport}`);
+    console.log(`[API] Basic markets: [${basicMarkets.join(', ')}]`);
+    console.log(`[API] Additional markets: [${additionalMarkets.join(', ')}]`);
+    
+    // Use the comprehensive odds service to fetch event-specific data
+    const result = await oddsService.fetchComprehensiveOddsForEvents(
+      sport,
+      eventIds,
+      {
+        basicMarkets,
+        additionalMarkets,
+        regions,
+        oddsFormat,
+        bookmakers
+      }
+    );
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        events: result.combinedEvents,
+        total: result.combinedEvents?.length || 0,
+        basicOddsCount: result.basicOdds?.length || 0,
+        additionalMarkets: result.additionalMarkets,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.message,
+        details: result.error
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error fetching comprehensive event odds:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch comprehensive event odds',
+      message: error.message
+    });
+  }
+});
+
+// POST /api/odds/events/additional-markets - Get additional markets for specific events
+router.post('/events/additional-markets', async (req, res) => {
+  try {
+    const { 
+      sport, 
+      eventIds, 
+      markets = [], 
+      regions = ['us', 'us2'], 
+      oddsFormat = 'decimal',
+      bookmakers 
+    } = req.body;
+    
+    // Validate required parameters
+    if (!sport) {
+      return res.status(400).json({
+        success: false,
+        error: 'Sport parameter is required'
+      });
+    }
+    
+    if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'eventIds array is required and must not be empty'
+      });
+    }
+    
+    if (!markets || !Array.isArray(markets) || markets.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'markets array is required and must not be empty'
+      });
+    }
+    
+    console.log(`[API] Fetching additional markets for ${eventIds.length} events in ${sport}`);
+    console.log(`[API] Markets: [${markets.join(', ')}]`);
+    
+    // Use the comprehensive odds service to fetch additional markets
+    const result = await oddsService.fetchAdditionalMarketsForEvents(
+      sport,
+      eventIds,
+      markets,
+      {
+        regions,
+        oddsFormat,
+        bookmakers
+      }
+    );
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        events: result.events,
+        total: result.events?.length || 0,
+        results: result.results,
+        unsupportedMarkets: result.unsupportedMarkets,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.message,
+        details: result.error
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error fetching additional markets for events:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch additional markets for events',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

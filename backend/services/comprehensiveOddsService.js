@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { OddsApiService } = require('./oddsApiService');
 // Logger removed during cleanup - using console for now
 
 // Configuration
@@ -9,6 +10,7 @@ class ComprehensiveOddsService {
   constructor() {
     this.apiKey = ODDS_API_KEY;
     this.baseUrl = ODDS_API_BASE_URL;
+    this.oddsApiService = new OddsApiService();
   }
 
   // Comprehensive market list to attempt across sports
@@ -694,6 +696,184 @@ class ComprehensiveOddsService {
     }
     
     return updates;
+  }
+
+  /**
+   * Fetch additional markets for specific events using the enhanced event-specific approach
+   * This method leverages the OddsApiService's event-specific endpoint for better market support
+   * @param {string} sportKey - Sport key
+   * @param {string[]} eventIds - Array of event IDs
+   * @param {string[]} additionalMarkets - Array of additional market keys to fetch
+   * @param {Object} options - Additional options (regions, oddsFormat, etc.)
+   * @returns {Promise<Object>} Result object with success status and enhanced event data
+   */
+  async fetchAdditionalMarketsForEvents(sportKey, eventIds, additionalMarkets, options = {}) {
+    if (!this.oddsApiService) {
+      console.warn('OddsApiService not available for event-specific additional markets');
+      return { success: false, message: 'Service not available' };
+    }
+
+    // Use the enhanced event-specific approach from OddsApiService
+    const result = await this.oddsApiService.fetchAdditionalMarketsForEvents(
+      sportKey, 
+      eventIds, 
+      additionalMarkets, 
+      {
+        regions: options.regions || ['us', 'us2', 'uk', 'au', 'eu'],
+        oddsFormat: options.oddsFormat || 'decimal',
+        dateFormat: options.dateFormat || 'iso',
+        includeLinks: options.includeLinks || false,
+        bookmakers: options.bookmakers || null
+      }
+    );
+
+    if (result.success && result.events) {
+      // Apply the same bookmaker merging logic used in other methods
+      result.events = result.events.map(event => {
+        const mergedEvents = this.mergeBookmakerData([event], 'fanduel', 'betmgm');
+        return mergedEvents[0] || event;
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Enhanced method to fetch comprehensive odds with additional markets for specific events
+   * Combines basic odds fetching with event-specific additional markets
+   * @param {string} sportKey - Sport key
+   * @param {string[]} eventIds - Array of event IDs
+   * @param {Object} options - Comprehensive options for odds and additional markets
+   * @returns {Promise<Object>} Combined result with basic odds and additional markets
+   */
+  async fetchComprehensiveOddsForEvents(sportKey, eventIds, options = {}) {
+    const {
+      basicMarkets = ['h2h', 'spreads', 'totals'],
+      additionalMarkets = [],
+      regions = 'us,us2',
+      primaryBookmaker = 'fanduel',
+      fallbackBookmaker = 'betmgm',
+      oddsFormat = 'decimal'
+    } = options;
+
+    console.log(`Fetching comprehensive odds for ${eventIds.length} events in ${sportKey}`);
+
+    const results = {
+      success: false,
+      basicOdds: [],
+      additionalMarkets: null,
+      combinedEvents: [],
+      message: ''
+    };
+
+    try {
+      // Step 1: Fetch basic odds for the events
+      console.log(`Fetching basic markets: [${basicMarkets.join(', ')}]`);
+      
+      // Use existing fetchOddsWithFallback for basic markets
+      let basicOddsData = [];
+      for (const market of basicMarkets) {
+        try {
+          const marketData = await this.fetchOddsWithFallback(
+            sportKey, 
+            regions, 
+            market, 
+            primaryBookmaker, 
+            fallbackBookmaker, 
+            oddsFormat
+          );
+          
+          if (marketData && marketData.length > 0) {
+            // Filter to only requested event IDs
+            const filteredData = marketData.filter(event => eventIds.includes(event.id));
+            basicOddsData = this.mergeEventsAcrossCalls(basicOddsData, filteredData, primaryBookmaker, fallbackBookmaker);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch basic market ${market}: ${error.message}`);
+        }
+      }
+
+      results.basicOdds = basicOddsData;
+      console.log(`Retrieved basic odds for ${basicOddsData.length} events`);
+
+      // Step 2: Fetch additional markets if specified
+      if (additionalMarkets.length > 0) {
+        console.log(`Fetching additional markets: [${additionalMarkets.join(', ')}]`);
+        
+        const additionalResult = await this.fetchAdditionalMarketsForEvents(
+          sportKey, 
+          eventIds, 
+          additionalMarkets, 
+          { regions: regions.split(','), oddsFormat }
+        );
+
+        results.additionalMarkets = additionalResult;
+        
+        if (additionalResult.success && additionalResult.events) {
+          console.log(`Retrieved additional markets for ${additionalResult.events.length} events`);
+          
+          // Step 3: Merge basic odds with additional markets
+          results.combinedEvents = this.mergeBasicAndAdditionalMarkets(basicOddsData, additionalResult.events);
+          console.log(`Combined data for ${results.combinedEvents.length} events`);
+        }
+      } else {
+        results.combinedEvents = basicOddsData;
+      }
+
+      results.success = true;
+      results.message = `Successfully fetched comprehensive odds for ${results.combinedEvents.length} events`;
+
+      return results;
+
+    } catch (error) {
+      console.error(`Error in fetchComprehensiveOddsForEvents: ${error.message}`);
+      results.message = `Error: ${error.message}`;
+      return results;
+    }
+  }
+
+  /**
+   * Helper method to merge basic odds data with additional markets data
+   * @private
+   */
+  mergeBasicAndAdditionalMarkets(basicEvents, additionalEvents) {
+    const additionalEventsMap = new Map(additionalEvents.map(event => [event.id, event]));
+    
+    return basicEvents.map(basicEvent => {
+      const additionalEvent = additionalEventsMap.get(basicEvent.id);
+      
+      if (!additionalEvent) {
+        return basicEvent;
+      }
+
+      // Merge bookmakers from both sources
+      const mergedBookmakers = [...(basicEvent.bookmakers || [])];
+      const basicBookmakerKeys = new Set(mergedBookmakers.map(b => b.key));
+
+      // Add bookmakers from additional markets that aren't already present
+      (additionalEvent.bookmakers || []).forEach(additionalBookmaker => {
+        const existingBookmaker = mergedBookmakers.find(b => b.key === additionalBookmaker.key);
+        
+        if (existingBookmaker) {
+          // Merge markets from additional bookmaker into existing one
+          const existingMarketKeys = new Set((existingBookmaker.markets || []).map(m => m.key));
+          (additionalBookmaker.markets || []).forEach(market => {
+            if (!existingMarketKeys.has(market.key)) {
+              existingBookmaker.markets = existingBookmaker.markets || [];
+              existingBookmaker.markets.push(market);
+            }
+          });
+        } else {
+          // Add the entire bookmaker if not present
+          mergedBookmakers.push(additionalBookmaker);
+        }
+      });
+
+      return {
+        ...basicEvent,
+        bookmakers: mergedBookmakers
+      };
+    });
   }
 }
 

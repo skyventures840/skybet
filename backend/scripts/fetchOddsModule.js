@@ -80,6 +80,39 @@ async function fetchOddsForSport(sportKey, sportTitle, clearExisting = false) {
     const sportOddsCount = await Odds.countDocuments({ sport_key: sportKey });
     logger.info(`Odds documents saved for ${sportKey}: ${sportOddsCount}`);
 
+    // Fetch additional markets for saved games
+    let additionalMarketsCount = 0;
+    if (games.length > 0) {
+      try {
+        logger.info(`Fetching additional markets for ${sportKey}...`);
+        
+        // Define additional markets based on sport
+        let additionalMarkets = [];
+        if (sportKey === 'americanfootball_nfl') {
+          additionalMarkets = ['alternate_spreads', 'alternate_totals', 'team_totals', 'alternate_team_totals'];
+        } else if (sportKey === 'basketball_nba') {
+          additionalMarkets = ['alternate_spreads', 'alternate_totals', 'team_totals'];
+        } else if (sportKey.includes('basketball') || sportKey.includes('americanfootball')) {
+          additionalMarkets = ['alternate_spreads', 'alternate_totals'];
+        }
+
+        if (additionalMarkets.length > 0) {
+          const eventIds = games.map(game => game.id);
+          const additionalResult = await service.upsertAdditionalMarkets(
+            sportKey,
+            eventIds,
+            additionalMarkets
+          );
+          
+          additionalMarketsCount = additionalResult.marketsAdded || 0;
+          logger.info(`Added ${additionalMarketsCount} additional markets for ${sportKey}`);
+          logger.info(`Additional markets result: ${additionalResult.successful.length} successful, ${additionalResult.failed.length} failed`);
+        }
+      } catch (error) {
+        logger.error(`Error fetching additional markets for ${sportKey}:`, error.message);
+      }
+    }
+
     // Fetch and store results data (completed games)
     let resultsCount = 0;
     try {
@@ -112,12 +145,13 @@ async function fetchOddsForSport(sportKey, sportTitle, clearExisting = false) {
       odds: sportOddsCount,
       matches: matchCount,
       results: resultsCount,
-      scores: scoresCount
+      scores: scoresCount,
+      additionalMarkets: additionalMarketsCount
     };
 
   } catch (error) {
     logger.error(`Error processing sport ${sportKey}:`, error.message);
-    return { odds: 0, matches: 0, results: 0, scores: 0 };
+    return { odds: 0, matches: 0, results: 0, scores: 0, additionalMarkets: 0 };
   }
 }
 
