@@ -15,8 +15,29 @@ class WebSocketService {
     }
     
     try {
-      // Use environment variable for WebSocket URL, fallback to localhost for development
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws';
+      // Construct WebSocket URL with proper protocol and path
+      let wsUrl;
+      const envWsUrl = process.env.REACT_APP_WS_URL;
+      
+      if (envWsUrl) {
+        // Production environment - convert HTTP(S) to WS(S) and add /ws path
+        if (envWsUrl.startsWith('https://')) {
+          wsUrl = envWsUrl.replace('https://', 'wss://');
+        } else if (envWsUrl.startsWith('http://')) {
+          wsUrl = envWsUrl.replace('http://', 'ws://');
+        } else {
+          wsUrl = envWsUrl;
+        }
+        
+        // Ensure /ws path is added if not present
+        if (!wsUrl.endsWith('/ws') && !wsUrl.includes('/ws')) {
+          wsUrl = wsUrl.replace(/\/$/, '') + '/ws';
+        }
+      } else {
+        // Development fallback
+        wsUrl = 'ws://localhost:5000/ws';
+      }
+      
       this.ws = new WebSocket(`${wsUrl}?token=${token}`);
       
       this.ws.onopen = () => {

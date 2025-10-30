@@ -447,7 +447,7 @@ const Betslip = () => {
                   {activeTab === 'Ordinary' && isExpanded && (
                     <div className="bet-details-expanded">
                       <div className="bet-line-sub">
-                        <span className="bet-line-market">Type: 1x2</span>
+                        <span className="bet-line-market">Type: {bet.market || 'Match Result'}</span>
                         <span className="bet-line-bullet">•</span>
                         <span className="bet-line-selection">Pick: {selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
                       </div>
@@ -472,9 +472,9 @@ const Betslip = () => {
                   {activeTab === 'Express' && (
                     <>
                       <div className="bet-line-sub">
-                        <span className="bet-line-market">Match Result</span>
+                        <span className="bet-line-market">Type: {bet.market || 'Match Result'}</span>
                         <span className="bet-line-bullet">•</span>
-                        <span className="bet-line-selection">{selectionDisplay}</span>
+                        <span className="bet-line-selection">Pick: {selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
                       </div>
                       
                       {when && (

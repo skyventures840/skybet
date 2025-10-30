@@ -20,8 +20,28 @@ class OddsWebSocketService {
    */
   connect() {
     try {
-      // Use environment variable for WebSocket URL, fallback to localhost
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws';
+      // Construct WebSocket URL with proper protocol and path
+      let wsUrl;
+      const envWsUrl = process.env.REACT_APP_WS_URL;
+      
+      if (envWsUrl) {
+        // Production environment - convert HTTP(S) to WS(S) and add /ws path
+        if (envWsUrl.startsWith('https://')) {
+          wsUrl = envWsUrl.replace('https://', 'wss://');
+        } else if (envWsUrl.startsWith('http://')) {
+          wsUrl = envWsUrl.replace('http://', 'ws://');
+        } else {
+          wsUrl = envWsUrl;
+        }
+        
+        // Ensure /ws path is added if not present
+        if (!wsUrl.endsWith('/ws') && !wsUrl.includes('/ws')) {
+          wsUrl = wsUrl.replace(/\/$/, '') + '/ws';
+        }
+      } else {
+        // Development fallback
+        wsUrl = 'ws://localhost:5000/ws';
+      }
       
       console.log('[ODDS WS] Connecting to:', wsUrl);
       this.ws = new WebSocket(wsUrl);
@@ -122,7 +142,7 @@ class OddsWebSocketService {
   }
 
   /**
-   * Handle WebSocket connection close
+   * Handle connection close with improved reconnection logic
    */
   handleClose(event) {
     console.log('[ODDS WS] Connection closed:', event.code, event.reason);
@@ -134,17 +154,56 @@ class OddsWebSocketService {
     // Notify subscribers of disconnection
     this.notifySubscribers('connection', { status: 'disconnected' });
     
-    // Schedule reconnection if not a clean close
-    if (event.code !== 1000) {
+    // Clear any existing reconnection timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+    
+    // Don't reconnect if it was a clean close (code 1000) or authentication failure (code 1008)
+    if (event.code === 1000 || event.code === 1008) {
+      console.log('[ODDS WS] Connection closed cleanly or due to auth failure, not reconnecting');
+      return;
+    }
+    
+    // In production, be more conservative with reconnection attempts
+    const isProduction = process.env.NODE_ENV === 'production';
+    const maxAttempts = isProduction ? 3 : 10; // Fewer attempts in production
+    
+    if (this.reconnectAttempts < maxAttempts) {
       this.scheduleReconnect();
+    } else {
+      console.error('[ODDS WS] Maximum reconnection attempts reached');
+      if (isProduction) {
+        console.error('[ODDS WS] Production WebSocket connection failed permanently. Please check:');
+        console.error('1. Backend server status at:', process.env.REACT_APP_WS_URL);
+        console.error('2. Network connectivity');
+        console.error('3. Environment variable configuration');
+      }
+      this.notifySubscribers('connectionFailed', { 
+        attempts: this.reconnectAttempts,
+        lastError: event 
+      });
     }
   }
 
   /**
-   * Handle WebSocket errors
+   * Handle WebSocket errors with production-specific handling
    */
   handleError(error) {
     console.error('[ODDS WS] WebSocket error:', error);
+    
+    // In production, if we get connection errors, try to provide helpful feedback
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[ODDS WS] Production WebSocket connection failed. This may be due to:');
+      console.warn('- Backend server not running or not deployed');
+      console.warn('- Incorrect REACT_APP_WS_URL environment variable');
+      console.warn('- Network connectivity issues');
+      console.warn('- WebSocket endpoint not properly configured on backend');
+    }
+    
+    this.isConnected = false;
+    
+    // Don't immediately reconnect on error, let the close handler manage reconnection
     this.notifySubscribers('error', { error });
   }
 

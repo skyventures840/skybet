@@ -319,8 +319,8 @@ const MobileBetslip = () => {
                     
                     <div className="mobile-bet-details">
                       <div className="mobile-bet-selection">
-                        <span className="mobile-bet-market">Match Result</span>
-                        <span className="mobile-bet-pick">{selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
+                        <span className="mobile-bet-market">Type: {bet.market || 'Match Result'}</span>
+                        <span className="mobile-bet-pick">Pick: {selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
                       </div>
                       
                       {when && (
