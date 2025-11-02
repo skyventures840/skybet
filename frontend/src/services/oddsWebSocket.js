@@ -24,6 +24,9 @@ class OddsWebSocketService {
       let wsUrl;
       const envWsUrl = process.env.REACT_APP_WS_URL;
       
+      console.log('[ODDS WS] Environment WS URL:', envWsUrl);
+      console.log('[ODDS WS] Node Environment:', process.env.NODE_ENV);
+      
       if (envWsUrl) {
         // Production environment - convert HTTP(S) to WS(S) and add /ws path
         if (envWsUrl.startsWith('https://')) {
@@ -43,6 +46,7 @@ class OddsWebSocketService {
         wsUrl = 'ws://localhost:5000/ws';
       }
       
+      console.log('[ODDS WS] Final constructed URL:', wsUrl);
       console.log('[ODDS WS] Connecting to:', wsUrl);
       this.ws = new WebSocket(wsUrl);
 
