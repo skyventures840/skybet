@@ -69,6 +69,6 @@
       "last 1 safari version"
     ]
   },
-  "homepage": ".",
+  "homepage": "/",
   "buildDirectory": "build"
 }
