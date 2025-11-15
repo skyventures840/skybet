@@ -256,16 +256,13 @@ class OddsApiService {
     );
   }
 
-  /**
-   * Get the configured bookmaker for a specific sport
-   */
+
   getSportBookmaker(sportKey) {
-    return SPORT_BOOKMAKERS[sportKey] || null;
+
+    return null;
   }
 
-  /**
-   * Enhanced method to get sports with caching
-   */
+  
   async getSports() {
     if (!this.isEnabled) {
       console.warn('OddsApiService is disabled due to missing configuration');
@@ -479,6 +476,8 @@ class OddsApiService {
       try {
         const response = await this.client.get(`/sports/${sportKey}/odds`, { params });
         this.lastResponseHeaders = response.headers;
+        const rlInfo3 = this.getLastRateLimitInfo();
+        console.log(`Rate limit: remaining=${rlInfo3.requestsRemaining}, used=${rlInfo3.requestsUsed}`);
         games = Array.isArray(response.data) ? response.data : [];
         break;
       } catch (err) {
@@ -1112,6 +1111,10 @@ class OddsApiService {
     if (error.response) {
       const status = error.response.status;
       const message = error.response.data?.message || error.message;
+      const headers = error.response.headers || {};
+      const remaining = headers['x-requests-remaining'];
+      const used = headers['x-requests-used'];
+      const reset = headers['x-requests-reset'];
       
       switch (status) {
         case 401:
@@ -1124,7 +1127,7 @@ class OddsApiService {
           winstonLogger.warn('Odds API request validation failed.', { status, message });
           break;
         case 429:
-          winstonLogger.warn('Odds API rate limit exceeded.', { status, message });
+          winstonLogger.warn('Odds API rate limit exceeded.', { status, message, remaining, used, reset });
           break;
         case 500:
           winstonLogger.error('Odds API server error.', { status, message });
@@ -1226,6 +1229,8 @@ class OddsApiService {
       });
 
       this.lastResponseHeaders = response.headers;
+      const rlInfo = this.getLastRateLimitInfo();
+      console.log(`Rate limit: remaining=${rlInfo.requestsRemaining}, used=${rlInfo.requestsUsed}`);
       const events = response.data;
 
       if (!Array.isArray(events)) {
@@ -1339,8 +1344,20 @@ class OddsApiService {
       } else if (error.response?.status === 401) {
         return { 
           success: false, 
-          message: 'API quota exceeded or invalid API key',
-          error: 'API_QUOTA_OR_AUTH'
+          message: 'Unauthorized: invalid or missing API key',
+          error: 'AUTH_ERROR'
+        };
+      } else if (error.response?.status === 429) {
+        const headers = error.response.headers || {};
+        return {
+          success: false,
+          message: 'Rate limit exceeded. Please retry after reset.',
+          error: 'RATE_LIMIT_EXCEEDED',
+          rateLimit: {
+            remaining: headers['x-requests-remaining'] || null,
+            used: headers['x-requests-used'] || null,
+            reset: headers['x-requests-reset'] || null
+          }
         };
       } else {
         return { 
@@ -1374,6 +1391,8 @@ class OddsApiService {
     try {
       const response = await this.client.get(`/sports/${sportKey}/odds`, { params });
       this.lastResponseHeaders = response.headers;
+      const rlInfo2 = this.getLastRateLimitInfo();
+      console.log(`Rate limit: remaining=${rlInfo2.requestsRemaining}, used=${rlInfo2.requestsUsed}`);
       
       const games = response.data || [];
       

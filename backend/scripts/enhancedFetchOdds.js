@@ -6,17 +6,7 @@ const Odds = require('../models/Odds');
 const Match = require('../models/Match');
 const logger = require('../utils/logger');
 
-/**
- * Enhanced Odds Fetching Script
- * 
- * Workflow:
- * 1. Fetch basic odds for a sport (h2h, spreads, totals)
- * 2. Check what additional markets are supported for that sport
- * 3. If additional markets are supported, fetch them using event-specific endpoints
- * 4. Upsert additional markets to the existing basic odds
- * 5. Move to the next sport
- */
-
+ 
 class EnhancedOddsFetcher {
   constructor() {
     this.oddsService = new OddsApiService();
@@ -491,18 +481,13 @@ class EnhancedOddsFetcher {
     try {
       logger.info(`\n=== Fetching Basic Odds for ${sportTitle} (${sportKey}) ===`);
       
-      // Get sport-specific bookmaker from OddsApiService
-      const bookmaker = this.oddsService.getSportBookmaker(sportKey);
-      if (bookmaker) {
-        logger.info(`Using sport-specific bookmaker: ${bookmaker}`);
-      } else {
-        logger.info(`No specific bookmaker configured for ${sportKey}, using all bookmakers`);
-      }
+      // Use all bookmakers for comprehensive coverage
+      logger.info(`Using all bookmakers for ${sportKey}`);
       
       const games = await this.oddsService._fetchAndSaveOddsForMarketsBatch(
         sportKey, 
         this.basicMarkets, 
-        bookmaker
+        null
       );
       
       logger.info(`✓ Fetched ${games.length} games with basic markets for ${sportKey}`);

@@ -54,6 +54,31 @@ const cacheUserBets = (ttl = 60) => {
   };
 };
 
+// Dedicated cache middleware for user bet statistics
+const cacheUserBetStats = (ttl = 300) => {
+  return async (req, res, next) => {
+    const cacheKey = keyFor('user_bet_stats', {
+      userId: req.user.id
+    });
+
+    try {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached);
+      }
+
+      res.set('X-Cache', 'MISS');
+      res.locals.cacheKey = cacheKey;
+      res.locals.cacheTTL = ttl;
+      next();
+    } catch (error) {
+      console.error('Stats cache middleware error:', error);
+      next();
+    }
+  };
+};
+
 // Enhanced match data with real team names
 const enhancedMatchData = {
   'manchester-united-liverpool-2024': {
@@ -551,7 +576,7 @@ router.delete('/:betId', auth, async (req, res) => {
 });
 
 // Get betting statistics for user
-router.get('/stats/summary', auth, cacheUserBets(300), async (req, res) => {
+router.get('/stats/summary', auth, cacheUserBetStats(300), async (req, res) => {
   try {
     const userId = req.user.id;
     console.log(`Fetching bet stats for user: ${userId}`);
@@ -631,6 +656,14 @@ router.get('/stats/summary', auth, cacheUserBets(300), async (req, res) => {
     summary.activeBets = summary.pendingBets;
 
     console.log('Final summary:', summary);
+    // Cache the summary for subsequent requests
+    if (res.locals.cacheKey && res.locals.cacheTTL) {
+      try {
+        cache.set(res.locals.cacheKey, summary, res.locals.cacheTTL);
+      } catch (error) {
+        console.error('Cache set error (stats):', error);
+      }
+    }
     res.json(summary);
   } catch (error) {
     console.error('Get bet stats error:', error);

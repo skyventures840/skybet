@@ -65,19 +65,34 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = process.env.FRONTEND_URL 
-      ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-      : ['http://localhost:3000', 'https://localhost:3000'];
+    // Define allowed origins
+    const allowedOrigins = [];
     
-    // Allow Render preview URLs
+    // Add environment-specific origins
+    if (process.env.FRONTEND_URL) {
+      const frontendUrls = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+      allowedOrigins.push(...frontendUrls);
+    }
+    
+    // Add default development origins
+    allowedOrigins.push('http://localhost:3000', 'https://localhost:3000');
+    
+    // Add production domains
+    allowedOrigins.push('https://skybet-frontend.onrender.com');
+    
+    // Allow any Render preview URLs
     if (origin && origin.includes('.onrender.com')) {
+      console.log('CORS allowing Render origin:', origin);
       return callback(null, true);
     }
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      console.log('CORS allowing origin:', origin);
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
