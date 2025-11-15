@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react';
+import SkeletonLoader from './components/SkeletonLoader';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { loginSuccess } from './store/slices/authSlice';
@@ -39,15 +40,8 @@ import useOddsStore from './store/oddsStore';
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
-  <div className="loading-spinner" style={{
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '200px',
-    fontSize: '16px',
-    color: '#666'
-  }}>
-    <div>Loading...</div>
+  <div style={{ padding: '12px 16px' }}>
+    <SkeletonLoader type="generic" count={3} />
   </div>
 );
 
@@ -226,12 +220,12 @@ function App() {
           )}
         </div>
         
-        {/* Mobile Bottom Navigation */}
-        <MobileBottomNav />
-        
         {/* Mobile Betslip - Only shows on mobile when there are selected matches */}
         <MobileBetslip />
         <Footer />
+
+        {/* Mobile Bottom Navigation (fixed at viewport bottom; rendered after footer) */}
+        <MobileBottomNav />
       </div>
     </div>
   );

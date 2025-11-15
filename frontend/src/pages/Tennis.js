@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SkeletonLoader from '../components/SkeletonLoader';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
@@ -213,9 +214,8 @@ const Tennis = () => {
           <h1 className="sport-title">Tennis</h1>
           <p className="sport-subtitle">Bet on ATP, WTA and Grand Slam tournaments</p>
         </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading tennis matches...</p>
+        <div className="matches-skeleton-grid">
+          <SkeletonLoader type="match-card" count={6} />
         </div>
       </div>
     );

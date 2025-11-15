@@ -17,6 +17,7 @@ import {
   Legend,
 } from 'chart.js';
 import React, { useRef, useState, useEffect } from 'react';
+import SkeletonLoader from '../SkeletonLoader';
 import { useLocation } from 'react-router-dom';
 import ManageMatches from './ManageMatches';
 import ManageUsers from './ManageUsers';
@@ -715,9 +716,8 @@ const AdminDashboard = () => {
       </div>
       
       {betLoading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading bets...</p>
+        <div style={{ padding: '16px 0' }}>
+          <SkeletonLoader type="generic" count={6} />
         </div>
       ) : (
         <>

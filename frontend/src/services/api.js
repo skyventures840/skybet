@@ -61,33 +61,42 @@ const responseCache = {
   }
 };
 
-async function cachedGet(path) {
-  console.log(`[CACHE DEBUG] cachedGet called for path: ${path}`);
-  
-  // Use enhanced cache for 30-minute caching
+async function cachedGet(path, ttl = 30000) {
+  console.log(`[CACHE DEBUG] cachedGet called for path: ${path} (ttl=${ttl}ms)`);
+
+  // 1) Check fast in-memory cache (short TTL) first
+  const memHit = responseCache.get(path);
+  if (memHit) {
+    console.log(`[CACHE DEBUG] Memory cache hit for ${path}`);
+    return memHit;
+  }
+
+  // 2) Fallback to durable enhanced cache (localStorage, 30 min)
   const cachedData = enhancedCache.getCachedData(path);
-  
   if (cachedData) {
-    console.log(`[CACHE DEBUG] Cache hit for ${path}`, cachedData);
-    // Return cached data in axios-like response format
-    return {
+    console.log(`[CACHE DEBUG] Enhanced cache hit for ${path}`);
+    const resp = {
       data: cachedData,
       status: 200,
       headers: {},
       config: { url: path },
       request: null,
     };
+    // Warm in-memory cache for faster subsequent reads within ttl
+    responseCache.set(path, resp, ttl);
+    return resp;
   }
 
-  // Make network request if no valid cache
+  // 3) Make network request if no valid cache
   console.log(`[ENHANCED API] Fetching fresh data for ${path}`);
   try {
     const response = await api.get(path);
     console.log(`[CACHE DEBUG] Network response for ${path}:`, response);
-    
-    // Cache the response data
+
+    // Cache the fresh response
+    responseCache.set(path, response, ttl);
     enhancedCache.setCachedData(path, response.data);
-    
+
     return response;
   } catch (error) {
     console.error(`[CACHE DEBUG] Network error for ${path}:`, error);

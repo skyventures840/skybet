@@ -4092,11 +4092,11 @@ html, body {
 
   /* Add bottom padding to main content to account for bottom nav - MOBILE ONLY */
   .page-content {
-    padding-bottom: 80px;
+    padding-bottom: 0;
   }
 
   .main-content {
-    padding-bottom: 80px;
+    padding-bottom: 0;
   }
 }
 

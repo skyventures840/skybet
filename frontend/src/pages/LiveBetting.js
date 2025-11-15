@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SkeletonLoader from '../components/SkeletonLoader';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
 import io from 'socket.io-client';
@@ -174,19 +175,18 @@ const LiveBetting = () => {
           <h1 className="sport-title">Live Betting</h1>
           <p className="sport-subtitle">Bet on live matches with real-time odds</p>
         </div>
-        
+
         <div className="matches-section">
           <div className="section-header">
             <h2 className="section-title">LIVE MATCHES</h2>
             <div className="live-indicator">
               <span className="live-dot"></span>
-              <span>Loading...</span>
+              <span>Fetching live data...</span>
             </div>
           </div>
-          
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading live matches...</p>
+
+          <div className="matches-skeleton-grid">
+            <SkeletonLoader type="match-card" count={6} />
           </div>
         </div>
       </div>

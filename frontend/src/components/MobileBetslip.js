@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { removeBet, updateStake } from '../store/slices/activeBetSlice';
 import apiService from '../services/api';
@@ -11,6 +11,13 @@ const MobileBetslip = () => {
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+
+  // Allow opening the mobile betslip from bottom nav via global event
+  useEffect(() => {
+    const handleOpen = () => setShowModal(true);
+    window.addEventListener('openMobileBetslip', handleOpen);
+    return () => window.removeEventListener('openMobileBetslip', handleOpen);
+  }, []);
 
   // Don't render anything if no bets
   if (activeBets.length === 0) {
@@ -250,19 +257,6 @@ const MobileBetslip = () => {
 
   return (
     <>
-      {/* Mobile betslip count button - only red badge */}
-      <div 
-        className="mobile-betslip-count"
-        onClick={() => setShowModal(true)}
-        title="View selected matches"
-      >
-        {activeBets.length > 0 && (
-          <div className="mobile-betslip-count-badge">
-            {activeBets.length}
-          </div>
-        )}
-      </div>
-
       {/* Mobile betslip modal */}
       <div className={`mobile-betslip-overlay ${showModal ? 'show' : ''}`}>
         <div className="mobile-betslip-modal">

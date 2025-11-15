@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SkeletonLoader from '../components/SkeletonLoader';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
 
@@ -210,9 +211,8 @@ const Football = () => {
           <h1 className="sport-title">American Football</h1>
           <p className="sport-subtitle">Bet on NFL, College Football and more</p>
         </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading football matches...</p>
+        <div className="matches-skeleton-grid">
+          <SkeletonLoader type="match-card" count={6} />
         </div>
       </div>
     );

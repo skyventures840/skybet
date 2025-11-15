@@ -11,52 +11,67 @@
    }
  }
  
- /* Fixed width for regular match section on small screens */
- @media (max-width: 767px) {
+/* Fixed width for regular match section on small screens */
+@media (max-width: 767px) {
    /* Scope to the regular matches section to avoid affecting popular matches */
-   .matches-section .matches-container,
-   .matches-section .competition-group,
-   .matches-section .matches-list {
-     width: 430px !important;
-     max-width: 430px !important;
-     min-width: 430px !important;
-     margin: 0 auto !important; /* center the fixed-width container */
-     padding-left: 0 !important;
-     padding-right: 0 !important;
-     left: auto !important;
-     right: auto !important;
-   }
- 
-   .matches-section .match-card {
-      width: 300px !important;
-      max-width: 300px !important;
-      min-width: 300px !important;
-      margin: 8px auto !important; /* visible spacing and centering */
-      border-radius: 12px !important; /* small visual cue to notice change */
-      border: 1px solid var(--border-color) !important; /* make edges clear */
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important; /* subtle depth */
-      overflow: visible !important; /* avoid clipping content */
-      left: auto !important;
-      right: auto !important;
-      padding: 16px 12px !important; /* Standardized padding to match other mobile styles */
-      box-sizing: border-box !important; /* include padding in width */
-      background-clip: padding-box !important; /* keep radius visually clean */
-    }
+  .matches-section .matches-container,
+  .matches-section .competition-group,
+  .matches-section .matches-list,
+  .matches-section .matches-grid {
+    width: 360px !important;
+    max-width: 360px !important;
+    min-width: 360px !important;
+    margin: 0 auto !important; /* center the fixed-width container */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    left: auto !important;
+    right: auto !important;
+  }
+
+   /* Align section headers to the same reduced width */
+  .matches-section .section-header {
+    width: 360px !important;
+    max-width: 360px !important;
+    min-width: 360px !important;
+    margin: 0 auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .matches-section .match-card {
+    width: 260px !important;
+    max-width: 260px !important;
+    min-width: 260px !important;
+    min-height: 140px !important; /* increased base height on mobile */
+    height: auto !important; /* allow card to grow with content */
+    margin: 8px auto !important; /* visible spacing and centering */
+    border-radius: 12px !important; /* small visual cue to notice change */
+    border: 1px solid var(--border-color) !important; /* make edges clear */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important; /* subtle depth */
+    overflow: visible !important; /* avoid clipping content */
+    left: auto !important;
+    right: auto !important;
+    padding: 12px 12px !important; /* Further reduced padding to fit content */
+    box-sizing: border-box !important; /* include padding in width */
+    background-clip: padding-box !important; /* keep radius visually clean */
+  }
  
    /* Proportionally reduce odds controls inside narrower card */
-   .matches-section .match-card .odds-buttons-container {
-     gap: 2px !important;
-     padding: 0 8px !important; /* Reduced padding to fit smaller card width */
-   }
-   .matches-section .match-card .odds-button {
-     min-height: 28px !important;
-     padding: 4px 5px !important; /* Slightly reduced padding */
-     font-size: 0.85em !important; /* Slightly smaller font */
-     flex: 1 1 0% !important;
-   }
-   .matches-section .match-card .odds-header {
-     font-size: 0.8em !important; /* Reduced font size for headers */
-   }
+  .matches-section .match-card .odds-buttons-container {
+    gap: 6px !important;
+    padding: 0 10px !important; /* Adjusted padding to fit narrower card */
+    display: flex !important;
+    flex-wrap: wrap !important; /* Allow buttons to wrap to avoid overflow */
+  }
+  .matches-section .match-card .odds-button {
+    min-height: 26px !important;
+    padding: 4px 5px !important; /* Slightly reduced padding */
+    font-size: 0.8em !important; /* Slightly smaller font */
+    flex: 1 1 calc(50% - 6px) !important; /* Wrap into two columns when needed */
+  }
+  .matches-section .match-card .odds-header {
+    font-size: 0.75em !important; /* Further reduced font size for headers */
+  }
  
    .matches-section .match-card .match-row {
      width: 100% !important;
@@ -65,30 +80,83 @@
 
 /* Additional insets for inner content on small screens */
 @media (max-width: 767px) {
+  /* Adjust expand arrow vertical alignment in sport headers inside matches container */
+  .matches-section .matches-container .sport-header .expand-arrow,
+  .matches-section .sport-subcategories .sport-header .expand-arrow,
+  .matches-container .sport-header .expand-arrow,
+  .sport-subcategories .sport-header .expand-arrow {
+    top: 50% !important;
+    transform: translateY(-58%) !important; /* nudge slightly upward to align with sport title */
+    font-size: 26px !important; /* increased arrow size */
+    width: 32px !important;
+    height: 32px !important;
+  }
+  /* Normalize stacking order across scrolling sections on small screens */
+  main > *:not(.modal):not(.dialog):not(.overlay):not(.drawer):not(.toast):not(.tooltip) {
+    position: relative !important;
+    z-index: 0 !important;
+  }
+
+  section,
+  header,
+  footer,
+  .navbar,
+  .page,
+  .page-section,
+  .content,
+  .matches-section,
+  .match-container,
+  .matches-section .match-container .odds-headers-container,
+  .matches-section .match-container .odds-buttons-container {
+    position: relative !important;
+    z-index: 0 !important;
+  }
   .matches-section .match-card .match-row {
     padding: 0 14px !important; /* further inset for rows */
     margin-left: 8px !important; /* move content slightly to the right */
   }
   .matches-section .match-card .odds-headers-container {
-    padding: 0 16px !important; /* Increased padding to reduce effective width */
-    margin-left: 20px !important; /* Increased margin for better uniformity */
-    width: calc(100% - 40px) !important; /* Reduce width to match card uniformity */
-    max-width: 260px !important; /* Set max-width for consistency */
+    padding: 0 10px !important; /* Reduced padding to fit smaller card */
+    margin-left: 10px !important; /* Proportionally reduced margin */
+    width: calc(100% - 20px) !important; /* Reduce width to match card uniformity */
+    max-width: 228px !important; /* Consistent with 260px card */
   }
   .matches-section .match-card .odds-buttons-container {
-    padding: 0 16px !important; /* Increased padding to match headers */
-    margin-left: -2px !important; /* Adjusted margin for better alignment */
-    width: calc(100% - 32px) !important; /* Reduce width to match headers uniformity */
-    max-width: 268px !important; /* Set max-width for consistency */
+    padding: 0 10px !important; /* Reduced padding to match headers */
+    margin-left: -2px !important; /* Keep alignment tweak */
+    width: calc(100% - 20px) !important; /* Reduce width to match headers uniformity */
+    max-width: 232px !important; /* Consistent with 260px card */
+    display: flex !important;
+    flex-wrap: wrap !important; /* Allow buttons to wrap to avoid overflow */
   }
   .matches-section .match-card .match-date-time,
   .matches-section .match-card .match-teams {
     padding-left: 12px !important; /* Standardized padding to match card padding */
   }
+  .matches-section .match-card .match-teams .team {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important; /* Prevent team names from overflowing */
+  }
+  .matches-section .match-card .team-flag {
+    width: 16px !important;
+    height: 16px !important;
+    margin-right: 6px !important;
+  }
   /* Move date to the right within regular match cards on mobile */
   .matches-section .match-card .match-date-time {
     text-align: right !important;
-    padding-right: 8px !important; /* Reduced padding */
+    padding-right: 6px !important; /* Slightly reduced padding */
+    font-size: 0.85em !important; /* Slightly smaller to fit narrower card */
+  }
+  .matches-section .match-card .score-odds-line {
+    display: flex !important;
+    flex-wrap: wrap !important; /* Wrap score and odds to avoid overflow */
+    gap: 6px !important;
+  }
+  /* Compact section header text size to align with reduced width */
+  .matches-section .section-header h2 {
+    font-size: clamp(16px, 4.5vw, 18px) !important;
+    line-height: 1.2 !important;
   }
   /* Move league header content to the right as well */
   .matches-section .match-card .league-header {
@@ -97,4 +165,188 @@
   .matches-section .match-card .league-title {
     margin-left: 12px !important; /* Standardized margin to match padding */
   }
+}
+
+/* Mobile-specific: move odds buttons inward for regular match cards rendered with match-container */
+@media (max-width: 767px) {
+  /* Center the odds rows and reduce their horizontal footprint */
+  .matches-section .match-container .odds-headers-container,
+  .matches-section .match-container .odds-buttons-container {
+    padding: 0 12px !important;
+    width: 100% !important;
+    max-width: 360px !important; /* maximize available row width within matches-section */
+    margin: 0 !important;
+    justify-content: flex-start !important; /* use gap to control spacing */
+    gap: 8px !important; /* increased space between odds buttons */
+  }
+
+  /* Make odds buttons narrower so they sit more inward */
+  .matches-section .match-container .odds-button {
+    min-height: 28px !important;
+    padding: 4px 6px !important;
+    font-size: 0.85em !important;
+    /* Three buttons per row accounting for two gaps (2 * 8px) */
+    flex: 0 0 calc((100% - 16px) / 3) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Ensure the score/odds line wraps nicely on small screens */
+  .matches-section .match-container .score-odds-line {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}
+
+/* Default (desktop/tablet): ensure match cards auto-resize with content */
+.match-card,
+.match-container {
+  height: auto !important;
+  min-height: 120px !important; /* modest base height on larger screens */
+}
+
+/* Navbar: make fixed at top and above other content */
+.navbar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1500 !important; /* bring forward above other UI incl. counters */
+  width: 100% !important;
+  pointer-events: auto !important;
+}
+
+/* Prevent content from hiding beneath fixed navbar */
+.page-content,
+.main-content,
+.middle,
+.under-navbar {
+  padding-top: 72px !important; /* account for ~64px navbar + border/shadow */
+}
+
+/* Mobile: ensure bottom navigation stays fixed above content */
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important; /* ensure it sits above page content */
+    overflow: hidden !important; /* prevent nav itself from scrolling */
+  }
+}
+
+/* Mobile sidebar tweaks: remove grey background and compact sport names */
+@media (max-width: 767px) {
+  /* Remove grey overlay background for mobile sidebar */
+  .sidebar {
+    background: transparent !important;
+  }
+
+  /* Remove card-like backgrounds inside the sidebar for a cleaner look */
+  .sidebar-navigation,
+  .sports-section,
+  .sports-header,
+  .sport-header,
+  .all-events-header,
+  .all-events-content {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Make sports names more compact */
+  .sport-info {
+    gap: 6px !important;
+  }
+  .sport-name {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0 !important;
+  }
+  .sport-header {
+    padding: 4px 12px 0 12px !important;
+  }
+  .sports-list {
+    gap: 2px !important; /* reduce vertical spacing between items */
+  }
+  .sport-item {
+    margin-bottom: 2px !important; /* tighter spacing between sport entries */
+  }
+  .subcategory-item {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* Remove background for nav link in sidebar */
+  .sidebar-nav-link {
+    background: transparent !important;
+  }
+}
+
+/* Ensure sidebar content renders inside wrapper instead of off-screen */
+@media (max-width: 1024px) {
+  .side-bar-wrapper .sidebar {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+    z-index: auto !important;
+  }
+  /* Guarantee readable text over dark background */
+  .side-bar-wrapper .sidebar,
+  .side-bar-wrapper .sidebar * {
+    color: var(--text-primary) !important;
+  }
+}
+
+/* Mobile z-index normalization to avoid overlapping sections while scrolling */
+@media (max-width: 767px) {
+  body .navbar,
+  body .mobile-navbar,
+  body header,
+  body .sidebar,
+  body .sports-section,
+  body .hero-slider,
+  body .popular-matches,
+  body .main-content,
+  body .matches-section,
+  body .match-container,
+  body .match-card,
+  body .bets-cart,
+  body .search-container,
+  body .filters,
+  body .date-filter,
+  body .events-section,
+  body .page-section,
+  body .container,
+  body .content,
+  body .grid,
+  body .card,
+  body footer {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  /* Prevent underlaps due to negative z-index on mobile */
+  body [style*="z-index: -"],
+  body .underlay {
+    z-index: 1 !important;
+  }
+
+  /* Keep true overlays above normalized sections */
+  body .modal,
+  body .overlay,
+  body .dropdown-menu,
+  body .tooltip,
+  body .toast {
+    z-index: 10000 !important;
+  }
+}
+
+/* Bets page: ensure "My Bets" header is white on dark background */
+.bets-page .bets-header h1 {
+  color: #ffffff !important;
 }

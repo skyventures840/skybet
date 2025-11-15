@@ -6,7 +6,8 @@ import { FaHome, FaListAlt, FaUser, FaShoppingCart } from 'react-icons/fa';
 const MobileBottomNav = () => {
   const location = useLocation();
   const isLoggedIn = useSelector(state => state.auth?.loggedIn || false);
-  const activeBets = useSelector(state => state.bet?.activeBets || []);
+  // Use the activeBets slice (array) for selected bets count
+  const activeBets = useSelector(state => state.activeBets || []);
 
   const navItems = [
     {
@@ -19,8 +20,7 @@ const MobileBottomNav = () => {
       path: '/bets',
       icon: FaListAlt,
       label: 'My Bets',
-      isActive: location.pathname === '/bets',
-      badge: activeBets.length > 0 ? activeBets.length : null
+      isActive: location.pathname === '/bets'
     },
     {
       path: isLoggedIn ? '/account' : '/login',
@@ -41,15 +41,23 @@ const MobileBottomNav = () => {
     <nav className="mobile-bottom-nav">
       {navItems.map((item) => {
         const IconComponent = item.icon;
+        const isBetsCart = item.path === '/betslip';
         return (
           <Link
             key={item.path}
-            to={item.path}
+            to={isBetsCart ? '#' : item.path}
             className={`bottom-nav-item ${item.isActive ? 'active' : ''}`}
+            onClick={(e) => {
+              if (isBetsCart) {
+                e.preventDefault();
+                // Dispatch a global event to open the MobileBetslip modal
+                window.dispatchEvent(new CustomEvent('openMobileBetslip'));
+              }
+            }}
           >
             <div className="bottom-nav-icon-container">
               <IconComponent className="bottom-nav-icon" />
-              {item.badge && (
+              {isBetsCart && item.badge && (
                 <span className="bottom-nav-badge">{item.badge}</span>
               )}
             </div>

@@ -30,6 +30,16 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
         match.status === 'live' || match.isLive, 
         [match.status, match.isLive]
     );
+
+    // Determine if the match is upcoming (has not started yet)
+    const isUpcomingMatch = useMemo(() => {
+        try {
+            const start = match?.startTime ? new Date(match.startTime) : null;
+            return !!start && start >= new Date();
+        } catch (e) {
+            return false;
+        }
+    }, [match.startTime]);
     
     // Memoized video display logic
     const canShowVideo = useMemo(() => {
@@ -265,8 +275,8 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
         return Object.values(match.odds).some(odds => odds && odds > 0);
     };
 
-    // If no valid odds, don't render the match card
-    if (!hasValidOdds()) {
+    // If no valid odds, only hide past matches; show current/live and future
+    if (!hasValidOdds() && !isLiveMatch && !isUpcomingMatch) {
         return null;
     }
 

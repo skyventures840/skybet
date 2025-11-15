@@ -386,9 +386,6 @@ const Betslip = () => {
           <button className={`betslip-tab ${activeTab === 'Ordinary' ? 'active' : ''}`} onClick={() => setActiveTab('Ordinary')}>Ordinary</button>
           <button className={`betslip-tab ${activeTab === 'Express' ? 'active' : ''}`} onClick={() => setActiveTab('Express')}>Express</button>
         </div>
-        <div className="betslip-count">
-          {activeBets.length}
-        </div>
       </div>
 
       <div className="betslip-content">

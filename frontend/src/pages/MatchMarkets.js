@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SkeletonLoader from '../components/SkeletonLoader';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import apiService from '../services/api';
@@ -335,9 +336,19 @@ const MatchMarkets = () => {
 
     if (loading) {
         return (
-            <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <p>Loading match markets from database...</p>
+            <div className="match-markets-page">
+                <div className="match-markets-header">
+                    <button 
+                        onClick={() => navigate(-1)}
+                        className="back-button"
+                    >
+                        ← Back
+                    </button>
+                    <h1>Match Markets</h1>
+                </div>
+                <div className="matches-skeleton-grid">
+                    <SkeletonLoader type="match-card" count={6} />
+                </div>
             </div>
         );
     }

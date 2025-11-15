@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SkeletonLoader from '../components/SkeletonLoader';
 import apiService from '../services/api';
 
 const Bets = () => {
@@ -264,9 +265,8 @@ const Bets = () => {
 
       <div className="bets-content">
         {loading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading bet history...</p>
+          <div style={{ padding: '12px 0' }}>
+            <SkeletonLoader type="generic" count={5} />
           </div>
         ) : error ? (
           <div className="error-container">
