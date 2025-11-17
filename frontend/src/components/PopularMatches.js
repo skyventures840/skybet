@@ -1,12 +1,15 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import LockedOdds from './LockedOdds';
+import SkeletonLoader from './SkeletonLoader';
 import { assessOddsRisk } from '../utils/riskManagement';
 import { computeLeagueTitleWithFlag } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
 
 const PopularMatches = ({ matches }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const scrollRef = useRef(null);
   const [displayedMatches, setDisplayedMatches] = useState([]);
 
@@ -36,6 +39,8 @@ const PopularMatches = ({ matches }) => {
       league: match.league,
       startTime: match.startTime,
       type: betType,
+      marketType: 'winner',
+      marketTypeDisplay: 'Winner',
       odds: odds,
       stake: 0,
       sport: match.sport
@@ -66,8 +71,7 @@ const PopularMatches = ({ matches }) => {
             <h2 className="popular-matches-title">Popular Matches</h2>
           </div>
           <div className="popular-matches-empty">
-            <p>No popular matches available at the moment.</p>
-            <p>Check back later for trending matches!</p>
+            <SkeletonLoader type="popular-matches" count={3} title="Popular Matches" />
           </div>
         </div>
       </div>
@@ -110,9 +114,27 @@ const PopularMatches = ({ matches }) => {
                 })()}
               </div>
               <div className="match-teams-container">
-                <span className="team-name">{match.homeTeam}</span>
+                <span
+                  className="team-name"
+                  role="button"
+                  tabIndex={0}
+                  title="View additional markets"
+                  onClick={() => navigate(`/match/${match.id || match._id}/markets`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/match/${match.id || match._id}/markets`); }}
+                >
+                  {match.homeTeam}
+                </span>
                 <span className="vs">vs</span>
-                <span className="team-name">{match.awayTeam}</span>
+                <span
+                  className="team-name"
+                  role="button"
+                  tabIndex={0}
+                  title="View additional markets"
+                  onClick={() => navigate(`/match/${match.id || match._id}/markets`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/match/${match.id || match._id}/markets`); }}
+                >
+                  {match.awayTeam}
+                </span>
               </div>
               <div className="match-odds">
                 {['1', 'X', '2'].map((betType) => {

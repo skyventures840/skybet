@@ -54,7 +54,7 @@
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0 calc(5% + 20px) 6px calc(5% + 20px) !important; /* Extra padding to center between arrows, reduced bottom margin */
+    padding: 0 12px 6px !important; /* Consistent horizontal padding on small screens */
     overflow-x: auto !important;
     overflow-y: hidden !important;
     display: flex !important;
@@ -360,13 +360,7 @@
     margin: 1px 0 !important;
   }
 
-  .match-card .team-flag {
-    width: 14px !important;
-    height: 10px !important;
-    object-fit: cover !important;
-    border-radius: 2px !important;
-    flex-shrink: 0 !important;
-  }
+  
 
   .match-card .vs {
     font-size: clamp(8px, 2vw, 9px) !important;

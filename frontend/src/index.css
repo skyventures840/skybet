@@ -4287,11 +4287,7 @@ body {
   padding-left: 0 !important;
 }
 
-.team-flag {
-  width: 20px;
-  height: 15px;
-  object-fit: cover;
-}
+
 
 .odds-button {
   width: 60px;
@@ -5346,6 +5342,16 @@ body {
   margin-bottom: 0;
 }
 
+.withdraw-status {
+  margin-top: 12px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+  padding: 12px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
 .deposit-btn,
 .withdraw-btn {
   background: var(--primary-green);
@@ -5382,6 +5388,66 @@ body {
   font-size: 14px;
   color: var(--text-muted);
 }
+
+/* Transaction History */
+.transaction-filters {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.filter-btn {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.filter-btn.active {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.transaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.transaction-list-header,
+.transaction-item {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 0.8fr;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.transaction-list-header {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.transaction-item {
+  background: var(--dark-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.amount-col,
+.txn-amount { text-align: right; }
+.drcr-col,
+.txn-drcr { text-align: center; }
+
+.txn-status { font-weight: 600; }
+.txn-status.status-pending { color: var(--warning); }
+.txn-status.status-completed { color: var(--primary-green); }
+.txn-status.status-failed { color: var(--error, #ef4e4e); }
+
+.txn-amount.credit { color: var(--primary-green); }
+.txn-amount.debit { color: var(--error, #ef4e4e); }
 
 /* Auth Pages */
 .auth-container {
@@ -6315,7 +6381,7 @@ body {
   overflow-y: hidden;
   white-space: nowrap;
   gap: 12px;
-  padding-bottom: 4px;
+  padding: 0 12px 4px;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
 }
@@ -7339,9 +7405,7 @@ body {
   font-weight: bold;
 }
 
-.team-flag {
-  font-size: 24px;
-}
+
 
 .vs {
   font-size: 16px;

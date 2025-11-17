@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import SkeletonLoader from './SkeletonLoader';
 
 const HeroSlider = () => {
   const [slides, setSlides] = useState([]);
@@ -58,7 +59,13 @@ const HeroSlider = () => {
     return <div className="hero-slider"><div className="slider-container"><p>{error}</p></div></div>;
   }
   if (slides.length === 0) {
-    return <div className="hero-slider"><div className="slider-container"><p>No hero slides available.</p></div></div>;
+    return (
+      <div className="hero-slider">
+        <div className="slider-container">
+          <SkeletonLoader type="generic" count={1} />
+        </div>
+      </div>
+    );
   }
 
   return (

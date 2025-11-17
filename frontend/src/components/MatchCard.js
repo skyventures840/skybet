@@ -144,6 +144,8 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
             league: matchInfo.league || league,
             startTime: matchInfo.startTime,
             type: betType,
+            marketType: 'winner',
+            marketTypeDisplay: 'Winner',
             odds: odds,
             stake: 0,
             sport: matchInfo.sport || sport
@@ -152,24 +154,82 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
         dispatch(addBet(bet));
     }, [dispatch, league, sport]);
 
+    // Resolve actual odds key for a normalized type ('1', 'X', '2')
+    const resolveOddsKeyForType = useCallback((normalizedType) => {
+        const staticCandidatesByType = {
+            '1': ['1', 'home', 'home_win', 'homeWin', 'winner_home', 'h2h_home', 'moneyline_home'],
+            'X': ['X', 'draw', 'draw_result', 'tie', 'h2h_draw', 'moneyline_draw'],
+            '2': ['2', 'away', 'away_win', 'awayWin', 'winner_away', 'h2h_away', 'moneyline_away']
+        };
+
+        // Include dynamic team-name keys often used by some feeds (e.g., hockey)
+        const dynamicCandidatesByType = {
+            '1': [
+                match.homeTeam,
+                match.home_team,
+                match.home,
+                match?.teams?.home
+            ].filter(Boolean),
+            'X': ['Draw', 'Tie'],
+            '2': [
+                match.awayTeam,
+                match.away_team,
+                match.away,
+                match?.teams?.away
+            ].filter(Boolean)
+        };
+
+        const candidates = [
+            ...(staticCandidatesByType[normalizedType] || [normalizedType]),
+            ...(dynamicCandidatesByType[normalizedType] || [])
+        ];
+
+        // Helper to test a single key against current odds structure
+        const getByKey = (key) => {
+            if (!match.odds) return null;
+            if (match.odds instanceof Map || (match.odds && typeof match.odds.get === 'function')) {
+                return match.odds.get ? match.odds.get(key) : match.odds[key];
+            }
+            if (match.odds.default && match.odds.default.odds) {
+                return match.odds.default.odds[key];
+            }
+            return match.odds[key];
+        };
+
+        for (const key of candidates) {
+            const val = getByKey(key);
+            if (val && typeof val === 'number' && val > 0) {
+                return key;
+            }
+        }
+        return null;
+    }, [match.odds, match.homeTeam, match.awayTeam]);
+
     const getBestOdds = useCallback((oddsType) => {
         if (!match.odds) return null;
-        
+
+        // If using normalized basic type, resolve the actual key
+        const normalizedBasic = ['1', 'X', '2'];
+        const keyToUse = normalizedBasic.includes(oddsType)
+            ? resolveOddsKeyForType(oddsType) || oddsType
+            : oddsType;
+
         // Handle Map-based odds structure (new structure)
         if (match.odds instanceof Map || (match.odds && typeof match.odds.get === 'function')) {
-            return match.odds.get ? match.odds.get(oddsType) : match.odds[oddsType];
+            const val = match.odds.get ? match.odds.get(keyToUse) : match.odds[keyToUse];
+            return val && typeof val === 'number' && val > 0 ? val : null;
         }
         
         // Handle nested odds structure (from matchesSeed.js)
         if (match.odds.default && match.odds.default.odds) {
-            const odds = match.odds.default.odds[oddsType];
-            return odds && typeof odds === 'number' && odds > 0 ? odds : null;
+            const val = match.odds.default.odds[keyToUse];
+            return val && typeof val === 'number' && val > 0 ? val : null;
         }
         
         // Handle flat odds structure (from transformed API data)
-        const odds = match.odds[oddsType];
-        return odds && typeof odds === 'number' && odds > 0 ? odds : null;
-    }, [match.odds]);
+        const val = match.odds[keyToUse];
+        return val && typeof val === 'number' && val > 0 ? val : null;
+    }, [match.odds, resolveOddsKeyForType]);
 
     // Memoized basic odds types calculation
     const basicOddsTypes = useMemo(() => {
@@ -184,52 +244,32 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
             return [];
         }
         
-        const basicTypes = ['1', 'X', '2'];
+        // Strictly restrict to winner/h2h/1x2 only
+        const normalizedCandidates = ['1', 'X', '2'];
         const availableBasicTypes = [];
-        
-        // Handle Map-based odds structure (new structure)
-        if (match.odds instanceof Map || (match.odds && typeof match.odds.get === 'function')) {
-            console.log('🎯 Using Map-based odds structure');
-            basicTypes.forEach(type => {
-                const odds = match.odds.get ? match.odds.get(type) : match.odds[type];
-                console.log(`🎯 Map odds for ${type}:`, odds);
-                if (odds && typeof odds === 'number' && odds > 0) {
+
+        normalizedCandidates.forEach(type => {
+            const resolvedKey = resolveOddsKeyForType(type);
+            console.log(`🎯 Resolved key for ${type}:`, resolvedKey);
+            if (resolvedKey) {
+                const val = getBestOdds(type);
+                console.log(`🎯 Odds value for ${type} via ${resolvedKey}:`, val);
+                if (val && typeof val === 'number' && val > 0) {
                     availableBasicTypes.push(type);
                 }
-            });
-        }
-        // Handle nested odds structure (from matchesSeed.js)
-        else if (match.odds.default && match.odds.default.odds) {
-            console.log('🎯 Using nested odds structure');
-            basicTypes.forEach(type => {
-                const odds = match.odds.default.odds[type];
-                console.log(`🎯 Nested odds for ${type}:`, odds);
-                if (odds && typeof odds === 'number' && odds > 0) {
-                    availableBasicTypes.push(type);
-                }
-            });
-        } else {
-            // Handle flat odds structure (from transformed API data)
-            console.log('🎯 Using flat odds structure');
-            basicTypes.forEach(type => {
-                const odds = match.odds[type];
-                console.log(`🎯 Flat odds for ${type}:`, odds, typeof odds);
-                if (odds && typeof odds === 'number' && odds > 0) {
-                    availableBasicTypes.push(type);
-                }
-            });
-        }
+            }
+        });
         
         console.log('🎯 Available basic types:', availableBasicTypes);
         
-        // Return maximum of 3 basic odds types
+        // Do not fallback to other markets; strictly show only 1/X/2
         const result = availableBasicTypes.slice(0, 3);
         console.log('🎯 Final basic odds types:', result);
         return result;
-    }, [match.odds]);
+    }, [match.odds, resolveOddsKeyForType]);
 
-    // Get all available odds types for additional markets
-    const getAllAvailableOddsTypes = () => {
+    // Get all available odds types for additional markets (function declaration for hoisting)
+    function getAllAvailableOddsTypes() {
         if (!match.odds) return [];
         
         // Handle Map-based odds structure (new structure)
@@ -255,7 +295,7 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
             );
             return allTypes;
         }
-    };
+    }
 
     // Check if we have any valid odds to display
     const hasValidOdds = () => {
@@ -432,11 +472,9 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                             {isLiveMatch ? getLiveTimeDisplay() : <span>{formatMatchDateTime(match.startTime)}</span>}
                         </div>
                         <div className="team">
-                            <img className="team-flag" src={match.homeTeamFlag} alt="" />
                             {match.homeTeam}
                         </div>
                         <div className="team">
-                            <img className="team-flag" src={match.awayTeamFlag} alt="" />
                             {match.awayTeam}
                         </div>
                         {/* Show market type only for non-live matches */}
@@ -490,7 +528,9 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                                         className={`odds-button ${isLiveMatch ? 'live-highlight' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            addToBetslip(match, oddsType, odds);
+                                            // Store normalized type for 1x2; otherwise keep raw type
+                                            const normalized = ['1', 'X', '2'].includes(oddsType) ? oddsType : oddsType;
+                                            addToBetslip(match, normalized, odds);
                                         }}
                                     >
                                         <div className="odds-value">
@@ -500,6 +540,7 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                                 );
                             })}
                         </div>
+                        {/* Removed: Additional markets indicator */}
                     </div>
                     {/* Removed additional markets button and container */}
                 </div>

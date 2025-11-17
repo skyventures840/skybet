@@ -276,6 +276,17 @@ const MatchMarkets = () => {
             return;
         }
         
+        const normalizedKey = normalizeMarketKey(marketKey);
+        // Derive top-level market type display
+        const marketTypeDisplay = (() => {
+            if (!normalizedKey) return 'Market';
+            if (normalizedKey === 'winner') return 'Winner';
+            if (normalizedKey.startsWith('totals') || normalizedKey.startsWith('alternate_totals') || normalizedKey.startsWith('team_totals') || normalizedKey.startsWith('alternate_team_totals')) return 'Totals';
+            if (normalizedKey.startsWith('spreads') || normalizedKey.startsWith('alternate_spreads')) return 'Handicap';
+            if (normalizedKey === 'outrights') return 'Outrights';
+            return getMarketTitle(normalizedKey);
+        })();
+
         // Create bet object with all necessary information
         const bet = {
             matchId: match._id || match.id,
@@ -286,6 +297,8 @@ const MatchMarkets = () => {
             startTime: match.startTime || match.commence_time,
             market: marketKey,
             marketDisplay: getMarketTitle(marketKey),
+            marketType: normalizedKey,
+            marketTypeDisplay,
             selection: outcome.name,
             odds: outcome.price,
             stake: 0,

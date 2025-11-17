@@ -19,6 +19,8 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
             league: match.league,
             startTime: match.startTime,
             type: betType,
+            marketType: 'winner',
+            marketTypeDisplay: 'Winner',
             odds: odds,
             stake: 0,
             sport: sport

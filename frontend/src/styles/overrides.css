@@ -137,11 +137,7 @@
     white-space: normal !important;
     overflow-wrap: anywhere !important; /* Prevent team names from overflowing */
   }
-  .matches-section .match-card .team-flag {
-    width: 16px !important;
-    height: 16px !important;
-    margin-right: 6px !important;
-  }
+  
   /* Move date to the right within regular match cards on mobile */
   .matches-section .match-card .match-date-time {
     text-align: right !important;
@@ -349,4 +345,21 @@
 /* Bets page: ensure "My Bets" header is white on dark background */
 .bets-page .bets-header h1 {
   color: #ffffff !important;
+}
+
+/* Mobile: ensure match/popular cards expand to fit content without clipping */
+@media (max-width: 767px) {
+  .popular-matches-scroll {
+    max-height: none !important;
+    height: auto !important;
+  }
+  .popular-match-card {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .match-card {
+    height: auto !important;
+    overflow: visible !important;
+  }
 }

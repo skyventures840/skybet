@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { removeBet, updateStake } from '../store/slices/activeBetSlice';
 import apiService from '../services/api';
 import WheelOfFortune from './WheelOfFortune';
+import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 
 const Betslip = () => {
   const activeBets = useSelector(state => state.activeBets || []);
@@ -216,6 +217,22 @@ const Betslip = () => {
     
     // Final fallback
     return 'Selection';
+  };
+
+  // Derive market type display from bet info
+  const getMarketTypeDisplay = (bet) => {
+    if (bet.marketTypeDisplay) return bet.marketTypeDisplay;
+    const key = bet.market ? normalizeMarketKey(bet.market) : '';
+    if (key) {
+      if (key === 'winner') return 'Winner';
+      if (key.startsWith('totals') || key.startsWith('alternate_totals') || key.startsWith('team_totals') || key.startsWith('alternate_team_totals')) return 'Totals';
+      if (key.startsWith('spreads') || key.startsWith('alternate_spreads')) return 'Handicap';
+      if (key === 'outrights') return 'Outrights';
+      return getMarketTitle(key);
+    }
+    // If we only have type 1/X/2, treat as Winner
+    if (bet.type && ['1','X','2','home','away','draw'].includes(bet.type)) return 'Winner';
+    return 'Market';
   };
 
   const placeBet = async () => {
@@ -444,7 +461,7 @@ const Betslip = () => {
                   {activeTab === 'Ordinary' && isExpanded && (
                     <div className="bet-details-expanded">
                       <div className="bet-line-sub">
-                        <span className="bet-line-market">Type: {bet.market || 'Match Result'}</span>
+                        <span className="bet-line-market">Type: {getMarketTypeDisplay(bet)}</span>
                         <span className="bet-line-bullet">•</span>
                         <span className="bet-line-selection">Pick: {selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
                       </div>
@@ -469,7 +486,7 @@ const Betslip = () => {
                   {activeTab === 'Express' && (
                     <>
                       <div className="bet-line-sub">
-                        <span className="bet-line-market">Type: {bet.market || 'Match Result'}</span>
+                        <span className="bet-line-market">Type: {getMarketTypeDisplay(bet)}</span>
                         <span className="bet-line-bullet">•</span>
                         <span className="bet-line-selection">Pick: {selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
                       </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { removeBet, updateStake } from '../store/slices/activeBetSlice';
 import apiService from '../services/api';
+import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 
 const MobileBetslip = () => {
   const activeBets = useSelector(state => state.activeBets || []);
@@ -88,6 +89,20 @@ const MobileBetslip = () => {
     }
     
     return 'Selection';
+  };
+
+  const getMarketTypeDisplay = (bet) => {
+    if (bet.marketTypeDisplay) return bet.marketTypeDisplay;
+    const key = bet.market ? normalizeMarketKey(bet.market) : '';
+    if (key) {
+      if (key === 'winner') return 'Winner';
+      if (key.startsWith('totals') || key.startsWith('alternate_totals') || key.startsWith('team_totals') || key.startsWith('alternate_team_totals')) return 'Totals';
+      if (key.startsWith('spreads') || key.startsWith('alternate_spreads')) return 'Handicap';
+      if (key === 'outrights') return 'Outrights';
+      return getMarketTitle(key);
+    }
+    if (bet.type && ['1','X','2','home','away','draw'].includes(bet.type)) return 'Winner';
+    return 'Market';
   };
 
   const validateBets = () => {
@@ -313,7 +328,7 @@ const MobileBetslip = () => {
                     
                     <div className="mobile-bet-details">
                       <div className="mobile-bet-selection">
-                        <span className="mobile-bet-market">Type: {bet.market || 'Match Result'}</span>
+                        <span className="mobile-bet-market">Type: {getMarketTypeDisplay(bet)}</span>
                         <span className="mobile-bet-pick">Pick: {selectionDisplay} ({parseFloat(bet.odds).toFixed(2)})</span>
                       </div>
                       

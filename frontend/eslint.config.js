@@ -33,6 +33,13 @@ module.exports = [
         AbortController: "readonly",
         MessageChannel: "readonly",
         WebSocket: "readonly",
+        fetch: "readonly",
+        CustomEvent: "readonly",
+        FormData: "readonly",
+        Blob: "readonly",
+        caches: "readonly",
+        PerformanceObserver: "readonly",
+        IntersectionObserver: "readonly",
         queueMicrotask: "readonly",
         alert: "readonly",
         // React globals

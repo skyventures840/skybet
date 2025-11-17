@@ -2190,13 +2190,7 @@ html, body {
   }
 
   /* Match card team flags */
-  .match-card .team-flag {
-    width: 12px !important;
-    height: 8px !important;
-    object-fit: cover !important;
-    border-radius: 1px !important;
-    flex-shrink: 0 !important;
-  }
+  
 
   /* Match card VS text */
   .match-card .vs {
@@ -2569,13 +2563,7 @@ html, body {
     padding: 2px 0; /* Small padding for better spacing */
   }
 
-  .team-flag {
-    width: 14px;
-    height: 10px;
-    object-fit: cover;
-    border-radius: 1px;
-    flex-shrink: 0;
-  }
+  
 
   .vs {
     font-size: clamp(8px, 1.8vw, 10px) !important;
@@ -2852,13 +2840,7 @@ html, body {
     margin-bottom: 2px; /* Small margin between teams */
   }
 
-  .team-flag {
-    width: 12px;
-    height: 8px;
-    object-fit: cover;
-    border-radius: 1px;
-    flex-shrink: 0;
-  }
+  
 
   .vs {
     font-size: clamp(7px, 1.6vw, 9px) !important;
@@ -5293,9 +5275,11 @@ html, body {
     min-height: 220px !important;
   }
   .popular-matches-scroll {
-    max-height: 280px !important;
+    max-height: none !important; /* Allow full vertical growth */
+    height: auto !important; /* Match content height */
     position: relative !important; /* Ensure positioning context for z-index */
     z-index: 5 !important; /* Medium z-index for scroll container */
+    padding: 0 12px 6px !important; /* Add horizontal space on small screens */
   }
   .popular-match-card {
     min-height: 280px !important;
@@ -5452,14 +5436,15 @@ html, body {
   
   /* Fixed width card with ultra-compact design */
   .match-card { 
-    width: 320px !important; /* Fixed width for consistent layout */
-    max-width: 320px !important; /* Enforce fixed width */
-    min-width: 320px !important; /* Prevent shrinking */
+    width: 100% !important; /* Use full available width */
+    max-width: 100% !important; /* Prevent horizontal clipping */
+    min-width: 0 !important; /* Allow shrinking when needed */
     margin-left: auto !important; 
     margin-right: auto !important; 
-    padding: 6px !important; /* Reduced padding for fixed width */
+    padding: 6px !important; /* Compact padding on small screens */
     border-radius: 10px !important; 
-    overflow: hidden !important;
+    overflow: visible !important; /* Show full content, no clipping */
+    height: auto !important; /* Let card expand to fit content */
     transform-origin: center !important;
   }
   

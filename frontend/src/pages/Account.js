@@ -24,12 +24,16 @@ const Account = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+  const [historyFilter, setHistoryFilter] = useState('all'); // all | deposit | withdrawal
 
 
 
 
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [selectedCrypto, setSelectedCrypto] = useState('bitcoin');
+  const [selectedCrypto, setSelectedCrypto] = useState('BTC');
   const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
@@ -89,16 +93,59 @@ const Account = () => {
   }, []); // Remove user and dispatch from dependencies to prevent multiple calls
 
 
+  // Reusable transaction fetcher
+  const fetchTransactions = async () => {
+    try {
+      setHistoryLoading(true);
+      setHistoryError(null);
+      const response = await apiService.getTransactions();
+      const txns = response?.data?.transactions || response?.data || [];
+      setTransactions(Array.isArray(txns) ? txns : []);
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
+      setHistoryError(err.response?.data?.error || err.message || 'Failed to load transactions');
+      setTransactions([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
+  // Fetch transaction history when History tab becomes active
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchTransactions();
+    }
+  }, [activeTab]);
+
+  const filteredTransactions = transactions.filter(txn => {
+    if (historyFilter === 'deposit') return txn.type === 'deposit';
+    if (historyFilter === 'withdrawal') return txn.type === 'withdrawal';
+    return txn.type === 'deposit' || txn.type === 'withdrawal';
+  });
+
+  const formatAmount = (amount) => {
+    if (typeof amount !== 'number') {
+      const num = parseFloat(amount);
+      return isNaN(num) ? amount : num.toFixed(2);
+    }
+    return amount.toFixed(2);
+  };
+
+  const isCredit = (txn) => txn.type === 'deposit';
+  const isDebit = (txn) => txn.type === 'withdrawal';
+
+
+  // Supported currencies must match backend validation list
   const cryptoOptions = [
-    { value: 'bitcoin', label: 'Bitcoin (BTC)', icon: '₿' },
-    { value: 'ethereum', label: 'Ethereum (ETH)', icon: 'Ξ' },
-    { value: 'litecoin', label: 'Litecoin (LTC)', icon: 'Ł' },
-    { value: 'usdt', label: 'Tether (USDT)', icon: '₮' },
-    { value: 'bnb', label: 'Binance Coin (BNB)', icon: 'BNB' }
+    { value: 'BTC', label: 'Bitcoin (BTC)', icon: '₿' },
+    { value: 'ETH', label: 'Ethereum (ETH)', icon: 'Ξ' },
+    { value: 'USDT', label: 'Tether (USDT)', icon: '₮' },
+    { value: 'USDC', label: 'USD Coin (USDC)', icon: '$' }
   ];
 
 
+
+  const [withdrawStatusMessage, setWithdrawStatusMessage] = useState('');
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
@@ -106,20 +153,30 @@ const Account = () => {
     
     if (amount && walletAddress && amount <= (user.balance || 0)) {
       try {
-        const response = await apiService.withdraw({
-          userId: user.id,
+        await apiService.withdraw({
           amount,
-          currency: selectedCrypto,
+          method: 'crypto',
+          currency: selectedCrypto, // Must be one of: USD, EUR, BTC, ETH, USDT, USDC
           walletAddress
         });
         const updatedUser = { ...user, balance: (user.balance || 0) - amount };
         dispatch(setUser(updatedUser));
         localStorage.setItem('user', JSON.stringify({ ...JSON.parse(localStorage.getItem('user')), user: updatedUser }));
-        alert(response.data.message);
+        // Show clear status message, per accounting concept
+        setWithdrawStatusMessage('Withdrawal initiated');
+        // Optionally still alert if needed using backend message
+        // e.g., toast or alert with a standard copy
         setWithdrawAmount('');
         setWalletAddress('');
+        // Refresh transactions so the new withdrawal shows up immediately
+        fetchTransactions();
       } catch (error) {
-        setError(error.response?.data?.message || 'Withdrawal failed');
+        const backendMsg = error.response?.data?.message;
+        const validationErrors = error.response?.data?.errors;
+        const combined = validationErrors
+          ? validationErrors.map(e => e.msg || e.message).join('; ')
+          : backendMsg;
+        setError(combined || 'Withdrawal failed');
       }
     } else {
       alert('Insufficient balance or invalid amount');
@@ -274,6 +331,11 @@ const Account = () => {
                   Request Withdrawal
                 </button>
               </form>
+              {withdrawStatusMessage && (
+                <div className="withdraw-status" role="status" aria-live="polite">
+                  {withdrawStatusMessage}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -283,12 +345,62 @@ const Account = () => {
         {activeTab === 'history' && (
           <div className="history-section">
             <h2>Transaction History</h2>
-            <div className="transaction-list">
-              <div className="no-transactions">
-                <p>No transactions yet</p>
-                <p>Your deposit and withdrawal history will appear here</p>
-              </div>
+            <div className="transaction-filters">
+              <button
+                className={`filter-btn ${historyFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setHistoryFilter('all')}
+              >
+                All
+              </button>
+              <button
+                className={`filter-btn ${historyFilter === 'deposit' ? 'active' : ''}`}
+                onClick={() => setHistoryFilter('deposit')}
+              >
+                Deposits
+              </button>
+              <button
+                className={`filter-btn ${historyFilter === 'withdrawal' ? 'active' : ''}`}
+                onClick={() => setHistoryFilter('withdrawal')}
+              >
+                Withdrawals
+              </button>
             </div>
+
+            {historyLoading ? (
+              <p>Loading transactions...</p>
+            ) : historyError ? (
+              <p className="error-message">{historyError}</p>
+            ) : filteredTransactions.length === 0 ? (
+              <div className="transaction-list">
+                <div className="no-transactions">
+                  <p>No transactions yet</p>
+                  <p>Your deposit and withdrawal history will appear here</p>
+                </div>
+              </div>
+            ) : (
+              <div className="transaction-list">
+                <div className="transaction-list-header">
+                  <div>Date</div>
+                  <div>Type</div>
+                  <div>Method</div>
+                  <div>Status</div>
+                  <div className="amount-col">Amount</div>
+                  <div className="drcr-col">Dr/Cr</div>
+                </div>
+                {filteredTransactions.map(txn => (
+                  <div key={txn._id || `${txn.type}-${txn.createdAt}-${txn.amount}`} className="transaction-item">
+                    <div className="txn-date">{txn.createdAt ? new Date(txn.createdAt).toLocaleString() : '-'}</div>
+                    <div className="txn-type">{txn.type?.charAt(0).toUpperCase() + txn.type?.slice(1)}</div>
+                    <div className="txn-method">{(txn.method || txn.metadata?.method || 'Crypto').toString().toUpperCase()}</div>
+                    <div className={`txn-status status-${(txn.status || 'pending').toLowerCase()}`}>{(txn.status || 'pending').toString().toUpperCase()}</div>
+                    <div className={`txn-amount ${isCredit(txn) ? 'credit' : isDebit(txn) ? 'debit' : ''}`}>
+                      {txn.currency ? txn.currency.toUpperCase() : 'USD'} {formatAmount(txn.amount)}
+                    </div>
+                    <div className="txn-drcr">{isCredit(txn) ? 'Credit' : isDebit(txn) ? 'Debit' : '-'}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

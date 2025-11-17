@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import HeroSlider from '../components/HeroSlider';
 import MatchCard from '../components/MatchCard';
 import PopularMatches from '../components/PopularMatches';
@@ -374,6 +374,39 @@ const Home = () => {
         return formattedParts.join('.');
       };
       
+      // Extract basic winner/h2h/1x2 odds from raw bookmakers if present
+      const buildFlatOdds = () => {
+        // If odds is already a Map or flat object, return as-is
+        if (match.odds instanceof Map) {
+          return Object.fromEntries(match.odds);
+        }
+        if (match.odds && typeof match.odds === 'object' && !Array.isArray(match.odds)) {
+          return match.odds;
+        }
+        // If odds is a bookmakers array, flatten h2h / h2h_3_way to 1/X/2
+        if (Array.isArray(match.odds)) {
+          const bm = match.odds.find(b => Array.isArray(b.markets) && b.markets.length > 0);
+          if (!bm) return {};
+          const markets = bm.markets || [];
+          const h2h = markets.find(m => m.key === 'h2h') || markets.find(m => m.key === 'h2h_3_way');
+          if (!h2h || !Array.isArray(h2h.outcomes)) return {};
+
+          const homeName = match.homeTeam || match.home_team;
+          const awayName = match.awayTeam || match.away_team;
+
+          const homeOutcome = h2h.outcomes.find(o => o.name === homeName) || h2h.outcomes[0];
+          const awayOutcome = h2h.outcomes.find(o => o.name === awayName) || h2h.outcomes[1];
+          const drawOutcome = h2h.outcomes.find(o => /^(draw|tie)$/i.test(o.name));
+
+          const flat = {};
+          if (homeOutcome?.price) flat['1'] = homeOutcome.price;
+          if (awayOutcome?.price) flat['2'] = awayOutcome.price;
+          if (drawOutcome?.price) flat['X'] = drawOutcome.price;
+          return flat;
+        }
+        return match.odds || {};
+      };
+
       // Handle backend database format
       return {
         id: match._id || match.id,
@@ -384,7 +417,7 @@ const Home = () => {
         awayTeam: match.awayTeam,
         homeTeamFlag: '🏳️',
         awayTeamFlag: '🏳️',
-        odds: match.odds instanceof Map ? Object.fromEntries(match.odds) : match.odds || {},
+        odds: buildFlatOdds(),
         additionalMarkets: (match.markets || []).length,
         sport: match.sport ? match.sport.split('_')[0] : '',
         allMarkets: match.markets || []
@@ -953,7 +986,8 @@ const Home = () => {
     return groupedBySport;
   };
 
-  const groupedMatches = groupMatchesBySportAndSubcategory();
+  // Memoize grouped matches to avoid regenerating object each render
+  const groupedMatches = useMemo(() => groupMatchesBySportAndSubcategory(), [filteredMatches]);
   
   // State for managing expanded/collapsed sports
   const [expandedSports, setExpandedSports] = useState({});
