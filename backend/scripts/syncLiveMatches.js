@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const Match = require('./models/Match');
-const Odds = require('./models/Odds');
-const League = require('./models/League');
+const Match = require('../models/Match');
+const Odds = require('../models/Odds');
+const League = require('../models/League');
 
 // Map odds API sport keys to Match model enum values
 const sportMapping = {

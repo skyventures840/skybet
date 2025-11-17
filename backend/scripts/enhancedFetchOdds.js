@@ -1,15 +1,117 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const mongoose = require('mongoose');
+const config = require('../config/config');
 const { OddsApiService } = require('../services/oddsApiService');
 const Odds = require('../models/Odds');
 const Match = require('../models/Match');
 const logger = require('../utils/logger');
-
  
+const PREFERRED_BOOKMAKERS = {
+  'soccer_epl': 'pinnacle',
+  'soccer_spain_la_liga': 'pinnacle',
+  'soccer_italy_serie_a': 'pinnacle',
+  'soccer_germany_bundesliga': 'pinnacle',
+  'soccer_france_ligue_one': 'pinnacle',
+  'soccer_uefa_champs_league': 'pinnacle',
+  'soccer_uefa_europa_league': 'pinnacle',
+  'soccer_uefa_nations_league': 'pinnacle',
+  'soccer_fifa_world_cup': 'pinnacle',
+  'soccer_efl_champ': 'pinnacle',
+  'soccer_england_league1': 'pinnacle',
+  'soccer_england_league2': 'pinnacle',
+  'soccer_fa_cup': 'pinnacle',
+  'soccer_league_cup': 'pinnacle',
+  'soccer_netherlands_eredivisie': 'pinnacle',
+  'soccer_belgium_first_div': 'pinnacle',
+  'soccer_portugal_primeira_liga': 'pinnacle',
+  'soccer_turkey_super_league': 'pinnacle',
+  'soccer_greece_super_league': 'pinnacle',
+  'soccer_denmark_superliga': 'pinnacle',
+  'soccer_sweden_allsvenskan': 'pinnacle',
+  'soccer_sweden_superettan': 'pinnacle',
+  'soccer_norway_eliteserien': 'pinnacle',
+  'soccer_finland_veikkausliiga': 'pinnacle',
+  'soccer_poland_ekstraklasa': 'pinnacle',
+  'soccer_austria_bundesliga': 'pinnacle',
+  'soccer_switzerland_superleague': 'pinnacle',
+  'soccer_czech_republic_fnl': 'pinnacle',
+  'soccer_russia_premier_league': 'pinnacle',
+  'soccer_ukraine_premier_league': 'pinnacle',
+  'soccer_croatia_hnl': 'pinnacle',
+  'soccer_serbia_super_liga': 'pinnacle',
+  'soccer_usa_mls': 'pinnacle',
+  'soccer_brazil_campeonato': 'pinnacle',
+  'soccer_argentina_primera_division': 'pinnacle',
+  'soccer_mexico_ligamx': 'pinnacle',
+  'soccer_australia_aleague': 'pinnacle',
+  'soccer_japan_j_league': 'pinnacle',
+  'soccer_south_korea_k_league_1': 'pinnacle',
+  'soccer_china_super_league': 'pinnacle',
+  'soccer_conmebol_copa_america': 'pinnacle',
+  'americanfootball_nfl': 'draftkings',
+  'americanfootball_ncaaf': 'draftkings',
+  'americanfootball_cfl': 'draftkings',
+  'americanfootball_ufl': 'draftkings',
+  'americanfootball_nfl_preseason': 'draftkings',
+  'aussierules_afl': 'sportsbet',
+  'baseball_mlb': 'draftkings',
+  'baseball_mlb_preseason': 'draftkings',
+  'baseball_milb': 'draftkings',
+  'baseball_npb': 'draftkings',
+  'baseball_kbo': 'draftkings',
+  'baseball_ncaa': 'draftkings',
+  'basketball_nba': 'fanduel',
+  'basketball_nba_preseason': 'fanduel',
+  'basketball_nba_summer_league': 'fanduel',
+  'basketball_wnba': 'fanduel',
+  'basketball_ncaab': 'fanduel',
+  'basketball_wncaab': 'fanduel',
+  'basketball_euroleague': 'fanduel',
+  'basketball_nbl': 'fanduel',
+  'boxing_boxing': 'bet365_au',
+  'cricket_icc_world_cup': 'sportsbet',
+  'cricket_international_t20': 'sportsbet',
+  'cricket_ipl': 'sportsbet',
+  'cricket_big_bash': 'sportsbet',
+  'cricket_caribbean_premier_league': 'sportsbet',
+  'cricket_odi': 'sportsbet',
+  'cricket_test_match': 'sportsbet',
+  'golf_pga_championship': 'bet365_au',
+  'golf_masters_tournament': 'bet365_au',
+  'golf_us_open': 'bet365_au',
+  'golf_the_open_championship': 'bet365_au',
+  'icehockey_nhl': 'draftkings',
+  'icehockey_nhl_preseason': 'draftkings',
+  'icehockey_ahl': 'draftkings',
+  'icehockey_liiga': 'draftkings',
+  'icehockey_mestis': 'draftkings',
+  'icehockey_sweden_hockey_league': 'draftkings',
+  'icehockey_sweden_allsvenskan': 'draftkings',
+  'mma_mixed_martial_arts': 'bet365_au',
+  'rugbyleague_nrl': 'sportsbet',
+  'rugbyunion_world_cup': 'williamhill',
+  'rugbyunion_six_nations': 'williamhill',
+  'rugbyunion_premiership': 'williamhill',
+  'rugbyunion_super_rugby': 'williamhill',
+  'tennis_atp_aus_open_singles': 'bet365_au',
+  'tennis_atp_french_open': 'bet365_au',
+  'tennis_atp_wimbledon': 'bet365_au',
+  'tennis_atp_us_open': 'bet365_au',
+  'tennis_wta_aus_open_singles': 'bet365_au',
+  'tennis_wta_french_open': 'bet365_au',
+  'tennis_wta_wimbledon': 'bet365_au',
+  'tennis_wta_us_open': 'bet365_au',
+  // Add more as needed, default to 'pinnacle' for unlisted
+};
+
 class EnhancedOddsFetcher {
   constructor() {
     this.oddsService = new OddsApiService();
+    const apiEnabled = this.oddsService.isEnabled;
+    const hasApiKey = Boolean(config.oddsApi.apiKey);
+    const baseUrl = config.oddsApi.baseUrl;
+    logger.info(`Odds API enabled: ${apiEnabled} | Base URL: ${baseUrl} | API key present: ${hasApiKey}`);
     this.basicMarkets = ['h2h', 'spreads', 'totals'];
     
     // Define comprehensive additional markets by sport category based on Odds API documentation
@@ -311,7 +413,7 @@ class EnhancedOddsFetcher {
         'btts', 'draw_no_bet', 'double_chance'
       ],
       
-      // Tennis - Major Tours
+      // Tennis - Grand Slams
       'tennis_atp_aus_open_singles': [
         'alternate_spreads', 'alternate_totals', 'team_totals'
       ],
@@ -434,6 +536,16 @@ class EnhancedOddsFetcher {
   }
 
   /**
+   * Get markets for sport-level fetch (featured markets only)
+   */
+  getComprehensiveMarkets(sportKey) {
+    // Per The Odds API docs, the /sports/{sport}/odds endpoint
+    // should only be used with featured markets (h2h, spreads, totals, outrights).
+    // Additional markets must be requested per-event.
+    return this.getBasicMarkets(sportKey);
+  }
+
+  /**
    * Get additional markets for a specific sport
    */
   getAdditionalMarkets(sportKey) {
@@ -441,19 +553,34 @@ class EnhancedOddsFetcher {
   }
 
   /**
+   * Get preferred bookmaker for a sport
+   */
+  getPreferredBookmaker(sportKey) {
+    if (!sportKey || typeof sportKey !== 'string') return 'pinnacle';
+    return PREFERRED_BOOKMAKERS[sportKey] || 'pinnacle';
+  }
+
+  /**
    * Check if additional markets are supported for a sport
    */
-  async checkAdditionalMarketSupport(sportKey, additionalMarkets) {
+  async checkAdditionalMarketSupport(sportKey, additionalMarkets, sampleEventId = null) {
     try {
       logger.info(`Checking additional market support for ${sportKey}...`);
-      
-      // Try to fetch a small sample to test market support
-      const response = await this.oddsService.client.get(`/sports/${sportKey}/odds`, {
+
+      if (!sampleEventId) {
+        logger.warn(`No sample event available for ${sportKey}; skipping additional market support check`);
+        return { supported: false, reason: 'No sample event to test markets' };
+      }
+
+      // Per docs, additional markets must be accessed per-event
+      const response = await this.oddsService.client.get(`/sports/${sportKey}/events/${sampleEventId}/odds`, {
         params: {
-          regions: 'us,us2,uk,au,eu', // All major regions for comprehensive coverage
-          markets: additionalMarkets.slice(0, 2).join(','), // Test with first 2 markets
+          apiKey: config.oddsApi.apiKey,
+          regions: 'us,us2,uk,au',
+          markets: additionalMarkets.slice(0, 2).join(','),
           oddsFormat: 'decimal',
-          dateFormat: 'iso'
+          dateFormat: 'iso',
+          includeLinks: false
         }
       });
 
@@ -475,22 +602,57 @@ class EnhancedOddsFetcher {
   }
 
   /**
-   * Fetch basic odds for a sport using sport-specific bookmaker
+   * Determine basic markets to fetch per sport, prioritizing winner (h2h, h2h_3_way)
    */
-  async fetchBasicOdds(sportKey, sportTitle) {
+  getBasicMarkets(sportKey) {
+    if (typeof sportKey !== 'string') return this.basicMarkets;
+
+    // Use only officially supported featured markets per API docs
+    if (sportKey.startsWith('soccer_')) {
+      return ['h2h', 'spreads', 'totals'];
+    }
+
+    if (sportKey.startsWith('icehockey_')) {
+      return ['h2h', 'spreads', 'totals'];
+    }
+
+    // Tennis typically only has match winner
+    if (sportKey.startsWith('tennis_')) {
+      return ['h2h'];
+    }
+
+    // Default basic markets
+    return this.basicMarkets;
+  }
+
+  /**
+   * Fetch comprehensive odds for a sport using sport-specific bookmaker
+   */
+  async fetchComprehensiveOdds(sportKey, sportTitle) {
     try {
-      logger.info(`\n=== Fetching Basic Odds for ${sportTitle} (${sportKey}) ===`);
+      logger.info(`\n=== Fetching Comprehensive Odds for ${sportTitle} (${sportKey}) ===`);
       
-      // Use all bookmakers for comprehensive coverage
-      logger.info(`Using all bookmakers for ${sportKey}`);
+      const bookmaker = this.getPreferredBookmaker(sportKey);
+      logger.info(`Using preferred bookmaker ${bookmaker} for ${sportKey}`);
       
-      const games = await this.oddsService._fetchAndSaveOddsForMarketsBatch(
-        sportKey, 
-        this.basicMarkets, 
-        null
-      );
+      const featuredMarkets = this.getComprehensiveMarkets(sportKey);
+      logger.info(`Featured markets for ${sportKey}: ${featuredMarkets.join(', ')}`);
+
+      let games = [];
+      try {
+        games = await this.oddsService._fetchAndSaveOddsForMarketsBatch(
+          sportKey,
+          featuredMarkets,
+          bookmaker
+        );
+      } catch (apiErr) {
+        const status = apiErr.response?.status;
+        const data = apiErr.response?.data;
+        logger.error(`API error during odds fetch for ${sportKey}: status=${status} message=${apiErr.message} data=${JSON.stringify(data)}`);
+        return [];
+      }
       
-      logger.info(`✓ Fetched ${games.length} games with basic markets for ${sportKey}`);
+      logger.info(`✓ Fetched ${games.length} games with comprehensive markets for ${sportKey}`);
       
       // Save to Match collection for frontend
       if (games.length > 0) {
@@ -520,8 +682,13 @@ class EnhancedOddsFetcher {
       return games;
       
     } catch (error) {
-      logger.error(`Error fetching basic odds for ${sportKey}:`, error.message);
-      throw error;
+      const status = error.response?.status;
+      const data = error.response?.data;
+      logger.error(`Error fetching basic odds for ${sportKey}: status=${status} message=${error.message}`);
+      if (data) {
+        try { logger.error(`Error data: ${JSON.stringify(data)}`); } catch (_) {}
+      }
+      return [];
     }
   }
 
@@ -571,8 +738,8 @@ class EnhancedOddsFetcher {
         errors: []
       };
 
-      // Step 1: Fetch basic odds
-      const games = await this.fetchBasicOdds(sportKey, sportTitle);
+      // Step 1: Fetch comprehensive odds (basic + additional markets)
+      const games = await this.fetchComprehensiveOdds(sportKey, sportTitle);
       result.basicOdds = games.length;
       result.totalGames = games.length;
 
@@ -581,14 +748,14 @@ class EnhancedOddsFetcher {
         return result;
       }
 
-      // Step 2: Check additional market support
+      // Step 2: Check additional market support using a sample event id
       const additionalMarkets = this.getAdditionalMarkets(sportKey);
-      const supportCheck = await this.checkAdditionalMarketSupport(sportKey, additionalMarkets);
+      const sampleEventId = games[0]?.id || null;
+      const supportCheck = await this.checkAdditionalMarketSupport(sportKey, additionalMarkets, sampleEventId);
       result.marketSupport = supportCheck;
 
       if (!supportCheck.supported) {
-        logger.info(`Skipping additional markets for ${sportKey}: ${supportCheck.reason}`);
-        return result;
+        logger.warn(`Additional market support check failed for ${sportKey}: ${supportCheck.reason}. Proceeding to attempt per-event upsert.`);
       }
 
       // Step 3: Fetch additional markets using event-specific endpoints
@@ -632,16 +799,16 @@ class EnhancedOddsFetcher {
     const summary = {
       totalSports: sports.length,
       totalGames: results.reduce((sum, r) => sum + r.totalGames, 0),
-      totalBasicOdds: results.reduce((sum, r) => sum + r.basicOdds, 0),
+      totalComprehensiveOdds: results.reduce((sum, r) => sum + r.basicOdds, 0),
       totalAdditionalMarkets: results.reduce((sum, r) => sum + r.additionalMarkets, 0),
       sportsWithAdditionalMarkets: results.filter(r => r.additionalMarkets > 0).length,
       errors: results.filter(r => r.errors.length > 0).length
     };
 
-    logger.info(`\n📊 Enhanced Fetch Summary:`);
+    logger.info(`\n📊 Comprehensive Odds Fetch Summary:`);
     logger.info(`  - Sports processed: ${summary.totalSports}`);
     logger.info(`  - Total games: ${summary.totalGames}`);
-    logger.info(`  - Basic odds fetched: ${summary.totalBasicOdds}`);
+    logger.info(`  - Comprehensive odds fetched: ${summary.totalComprehensiveOdds}`);
     logger.info(`  - Additional markets added: ${summary.totalAdditionalMarkets}`);
     logger.info(`  - Sports with additional markets: ${summary.sportsWithAdditionalMarkets}`);
     logger.info(`  - Sports with errors: ${summary.errors}`);
@@ -662,7 +829,7 @@ async function main() {
     const fetcher = new EnhancedOddsFetcher();
 
     // Define sports to process - comprehensive list from Odds API
-    const sports = [
+    let sports = [
       // American Football
       { key: 'americanfootball_nfl', title: 'NFL' },
       { key: 'americanfootball_ncaaf', title: 'NCAAF' },
@@ -792,6 +959,31 @@ async function main() {
       { key: 'esports_csgo_blast_premier', title: 'CS:GO BLAST Premier' },
       { key: 'esports_call_of_duty', title: 'Call of Duty League' }
     ];
+
+    // Basic CLI arg parsing for filtering and limiting
+    const argv = process.argv.slice(2);
+    const getArg = (name) => {
+      const idx = argv.findIndex(a => a === `--${name}`);
+      if (idx !== -1 && argv[idx + 1]) return argv[idx + 1];
+      const inline = argv.find(a => a.startsWith(`--${name}=`));
+      return inline ? inline.split('=')[1] : null;
+    };
+
+    const sportsArg = getArg('sports');
+    if (sportsArg) {
+      const keys = sportsArg.split(',').map(s => s.trim());
+      sports = sports.filter(s => keys.includes(s.key));
+      logger.info(`CLI filter applied. Processing ${sports.length} sport(s): ${keys.join(', ')}`);
+    }
+
+    const limitArg = getArg('limit');
+    if (limitArg) {
+      const n = parseInt(limitArg, 10);
+      if (!Number.isNaN(n) && n > 0) {
+        sports = sports.slice(0, n);
+        logger.info(`CLI limit applied. Processing first ${n} sport(s).`);
+      }
+    }
 
     // Process all sports with enhanced workflow
     const { results, summary } = await fetcher.processMultipleSports(sports);

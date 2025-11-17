@@ -108,3 +108,8 @@
 {"level":"error","message":"Failed to create payment:","timestamp":"2025-11-15T06:59:31.277Z"}
 {"level":"info","message":"Creating mock payment due to NOWPayments unavailability or rate limiting","timestamp":"2025-11-15T06:59:31.278Z"}
 {"level":"info","message":"Payment created successfully:","orderId":"order_1763189970435_6894c2d561230e4a29a0cc82_ikwp54m35","paymentId":"mock_1763189971279_a2cpnskp3","status":"waiting","timestamp":"2025-11-15T06:59:31.323Z","userId":"6894c2d561230e4a29a0cc82"}
+{"amount":567,"currency":"BTC","level":"info","message":"Attempting to create payment:","orderId":"order_1763400801283_6894c2d561230e4a29a0cc82_vza4xawhv","timestamp":"2025-11-17T17:33:21.285Z","userId":"6894c2d561230e4a29a0cc82"}
+{"level":"error","message":"API request failed at /v1/payment:","timestamp":"2025-11-17T17:33:21.557Z"}
+{"level":"error","message":"Failed to create payment:","timestamp":"2025-11-17T17:33:21.558Z"}
+{"level":"info","message":"Creating mock payment due to NOWPayments unavailability or rate limiting","timestamp":"2025-11-17T17:33:21.559Z"}
+{"level":"info","message":"Payment created successfully:","orderId":"order_1763400801283_6894c2d561230e4a29a0cc82_vza4xawhv","paymentId":"mock_1763400801559_v433132ne","status":"waiting","timestamp":"2025-11-17T17:33:21.639Z","userId":"6894c2d561230e4a29a0cc82"}

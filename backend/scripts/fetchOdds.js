@@ -152,7 +152,7 @@ function getSportSpecificMarkets(sportKey) {
     // NHL - Comprehensive markets including all player props and periods
     'icehockey_nhl': [
       // Featured markets
-      'h2h', 'spreads', 'totals', 'alternate_spreads', 'alternate_totals', 'team_totals', 'alternate_team_totals',
+      'h2h', 'h2h_3_way', 'spreads', 'totals', 'alternate_spreads', 'alternate_totals', 'team_totals', 'alternate_team_totals',
       
       // Period markets - Periods
       'h2h_p1', 'h2h_p2', 'h2h_p3', 'h2h_3_way_p1', 'h2h_3_way_p2', 'h2h_3_way_p3',
@@ -284,7 +284,7 @@ function getSportSpecificMarkets(sportKey) {
   
   // For hockey sports, use enhanced hockey markets
   if (sportKey.startsWith('icehockey_')) {
-    return ['h2h', 'spreads', 'totals', 'alternate_spreads', 'alternate_totals'];
+    return ['h2h', 'h2h_3_way', 'spreads', 'totals', 'alternate_spreads', 'alternate_totals'];
   }
   
   // For tennis sports, use h2h only

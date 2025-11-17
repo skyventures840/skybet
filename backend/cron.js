@@ -204,6 +204,7 @@ const startCronJobs = async () => {
   let isBroadcasting = false;
   let isCleaningUp = false;
   let isBetSettling = false;
+  let isLiveMatchSyncing = false;
 
   // Immediate fetch on startup to populate data
   logger.info('🚀 Starting immediate data fetch on startup...');
@@ -400,6 +401,56 @@ const startCronJobs = async () => {
       logger.error('Error in live matches broadcast cron job:', error);
     } finally {
       isBroadcasting = false;
+    }
+  });
+
+  // Sync live matches every 5 minutes using consolidated script
+  cron.schedule('*/5 * * * *', async () => {
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      logger.warn('MongoDB not connected; skipping live match sync');
+      return;
+    }
+    
+    if (isLiveMatchSyncing) {
+      logger.warn('Live match sync already in progress, skipping...');
+      return;
+    }
+    
+    isLiveMatchSyncing = true;
+    updateCronStatus(true, 'live-match-sync');
+    
+    try {
+      logger.info('Starting cron job: Syncing live matches with consolidated script...');
+
+      // Execute the consolidated syncLiveMatches.js script
+      const syncProcess = spawn('node', ['scripts/syncLiveMatches.js'], {
+        cwd: __dirname,
+        stdio: 'pipe'
+      });
+
+      syncProcess.stdout.on('data', (data) => {
+        logger.info(`syncLiveMatches.js: ${data.toString().trim()}`);
+      });
+
+      syncProcess.stderr.on('data', (data) => {
+        logger.error(`syncLiveMatches.js error: ${data.toString().trim()}`);
+      });
+
+      syncProcess.on('close', (code) => {
+        if (code === 0) {
+          logger.info('✅ Live match sync completed successfully');
+        } else {
+          logger.error(`❌ syncLiveMatches.js exited with code ${code}`);
+        }
+        isLiveMatchSyncing = false;
+        updateCronStatus(false, 'live-match-sync');
+      });
+
+      logger.info('Cron job finished: Successfully started live match sync script.');
+    } catch (error) {
+      logger.error('Error in live match sync cron job:', error);
+      isLiveMatchSyncing = false;
+      updateCronStatus(false, 'live-match-sync');
     }
   });
 

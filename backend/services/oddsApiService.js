@@ -224,13 +224,13 @@ class OddsApiService {
       timeout: parseInt(process.env.ODDS_API_TIMEOUT, 10) || 15000,
       params: {
         apiKey: config.oddsApi.apiKey,
-        regions: 'us,us2,uk,au,eu',  // All major regions for comprehensive coverage
+        regions: 'us,us2,uk,au',  // Valid regions per The Odds API docs
         oddsFormat: 'decimal',
         dateFormat: 'iso',
         // Enhanced default parameters from Odds API documentation
-        includeLinks: 'true',        // Include bookmaker links to events, markets, and betslips
-        includeSids: 'true',         // Include source ids for events, markets and outcomes
-        includeBetLimits: 'true'     // Include bet limits for betting exchanges
+        includeLinks: true,          // Include bookmaker links to events, markets, and betslips
+        includeSids: true,           // Include source ids for events, markets and outcomes
+        includeBetLimits: true       // Include bet limits for betting exchanges
       }
     });
 
@@ -258,8 +258,8 @@ class OddsApiService {
 
 
   getSportBookmaker(sportKey) {
-
-    return null;
+    if (!sportKey) return null;
+    return SPORT_BOOKMAKERS[sportKey] || 'pinnacle';
   }
 
   
@@ -352,7 +352,8 @@ class OddsApiService {
     }
 
     // Check cache first
-    const cacheKey = `odds_${sportKey}_${market || 'all'}_all_bookmakers`;
+    const preferredBookmaker = this.getSportBookmaker(sportKey);
+    const cacheKey = `odds_${sportKey}_${market || 'all'}_${preferredBookmaker || 'all_bookmakers'}`;
     const cached = oddsCache.get(cacheKey);
     if (cached) {
       console.log(`Returning cached odds for ${sportKey}`);
@@ -361,11 +362,11 @@ class OddsApiService {
 
     // If a specific market is provided, fetch it
     if (market) {
-      return this._fetchAndSaveOddsForMarket(sportKey, market);
+      return this._fetchAndSaveOddsForMarket(sportKey, market, preferredBookmaker);
     }
 
     // Fetch comprehensive markets with optimized approach
-    const PRIORITY_MARKETS = ['h2h','spreads','totals','outrights','h2h_lay','outrights_lay','alternate_spreads','alternate_totals','btts','draw_no_bet','h2h_3_way','team_totals','alternate_team_totals','h2h_q1','h2h_q2','h2h_q3','h2h_q4','h2h_h1','h2h_h2','h2h_p1','h2h_p2','h2h_p3','h2h_3_way_q1','h2h_3_way_q2','h2h_3_way_q3','h2h_3_way_q4','h2h_3_way_h1','h2h_3_way_h2','h2h_3_way_p1','h2h_3_way_p2','h2h_3_way_p3','h2h_1st_1_innings','h2h_1st_3_innings','h2h_1st_5_innings','h2h_1st_7_innings','h2h_3_way_1st_1_innings','h2h_3_way_1st_3_innings','h2h_3_way_1st_5_innings','h2h_3_way_1st_7_innings','spreads_q1','spreads_q2','spreads_q3','spreads_q4','spreads_h1','spreads_h2','spreads_p1','spreads_p2','spreads_p3','spreads_1st_1_innings','spreads_1st_3_innings','spreads_1st_5_innings','spreads_1st_7_innings','alternate_spreads_1st_1_innings','alternate_spreads_1st_3_innings','alternate_spreads_1st_5_innings','alternate_spreads_1st_7_innings','alternate_spreads_q1','alternate_spreads_q2','alternate_spreads_q3','alternate_spreads_q4','alternate_spreads_h1','alternate_spreads_h2','alternate_spreads_p1','alternate_spreads_p2','alternate_spreads_p3','totals_q1','totals_q2','totals_q3','totals_q4','totals_h1','totals_h2','totals_p1','totals_p2','totals_p3','totals_1st_1_innings','totals_1st_3_innings','totals_1st_5_innings','totals_1st_7_innings','alternate_totals_1st_1_innings','alternate_totals_1st_3_innings','alternate_totals_1st_5_innings','alternate_totals_1st_7_innings','alternate_totals_q1','alternate_totals_q2','alternate_totals_q3','alternate_totals_q4','alternate_totals_h1','alternate_totals_h2','alternate_totals_p1','alternate_totals_p2','alternate_totals_p3','team_totals_h1','team_totals_h2','team_totals_q1','team_totals_q2','team_totals_q3','team_totals_q4','team_totals_p1','team_totals_p2','team_totals_p3','alternate_team_totals_h1','alternate_team_totals_h2','alternate_team_totals_q1','alternate_team_totals_q2','alternate_team_totals_q3','alternate_team_totals_q4','alternate_team_totals_p1','alternate_team_totals_p2','alternate_team_totals_p3','player_assists','player_defensive_interceptions','player_field_goals','player_kicking_points','player_pass_attempts','player_pass_completions','player_pass_interceptions','player_pass_longest_completion','player_pass_rush_yds','player_pass_rush_reception_tds','player_pass_rush_reception_yds','player_pass_tds','player_pass_yds','player_pass_yds_q1','player_pats','player_receptions','player_reception_longest','player_reception_tds','player_reception_yds','player_rush_attempts','player_rush_longest','player_rush_reception_tds','player_rush_reception_yds','player_rush_tds','player_rush_yds','player_sacks','player_solo_tackles','player_tackles_assists','player_tds_over','player_1st_td','player_anytime_td','player_last_td','player_assists_alternate','player_field_goals_alternate','player_kicking_points_alternate','player_pass_attempts_alternate','player_pass_completions_alternate','player_pass_interceptions_alternate','player_pass_longest_completion_alternate','player_pass_rush_yds_alternate','player_pass_rush_reception_tds_alternate','player_pass_rush_reception_yds_alternate','player_pass_tds_alternate','player_pass_yds_alternate','player_pats_alternate'];
+    const PRIORITY_MARKETS = ['h2h','h2h_3_way','spreads','totals','outrights','h2h_lay','outrights_lay','alternate_spreads','alternate_totals','btts','draw_no_bet','team_totals','alternate_team_totals','h2h_q1','h2h_q2','h2h_q3','h2h_q4','h2h_h1','h2h_h2','h2h_p1','h2h_p2','h2h_p3','h2h_3_way_q1','h2h_3_way_q2','h2h_3_way_q3','h2h_3_way_q4','h2h_3_way_h1','h2h_3_way_h2','h2h_3_way_p1','h2h_3_way_p2','h2h_3_way_p3','h2h_1st_1_innings','h2h_1st_3_innings','h2h_1st_5_innings','h2h_1st_7_innings','h2h_3_way_1st_1_innings','h2h_3_way_1st_3_innings','h2h_3_way_1st_5_innings','h2h_3_way_1st_7_innings','spreads_q1','spreads_q2','spreads_q3','spreads_q4','spreads_h1','spreads_h2','spreads_p1','spreads_p2','spreads_p3','spreads_1st_1_innings','spreads_1st_3_innings','spreads_1st_5_innings','spreads_1st_7_innings','alternate_spreads_1st_1_innings','alternate_spreads_1st_3_innings','alternate_spreads_1st_5_innings','alternate_spreads_1st_7_innings','alternate_spreads_q1','alternate_spreads_q2','alternate_spreads_q3','alternate_spreads_q4','alternate_spreads_h1','alternate_spreads_h2','alternate_spreads_p1','alternate_spreads_p2','alternate_spreads_p3','totals_q1','totals_q2','totals_q3','totals_q4','totals_h1','totals_h2','totals_p1','totals_p2','totals_p3','totals_1st_1_innings','totals_1st_3_innings','totals_1st_5_innings','totals_1st_7_innings','alternate_totals_1st_1_innings','alternate_totals_1st_3_innings','alternate_totals_1st_5_innings','alternate_totals_1st_7_innings','alternate_totals_q1','alternate_totals_q2','alternate_totals_q3','alternate_totals_q4','alternate_totals_h1','alternate_totals_h2','alternate_totals_p1','alternate_totals_p2','alternate_totals_p3','team_totals_h1','team_totals_h2','team_totals_q1','team_totals_q2','team_totals_q3','team_totals_q4','team_totals_p1','team_totals_p2','team_totals_p3','alternate_team_totals_h1','alternate_team_totals_h2','alternate_team_totals_q1','alternate_team_totals_q2','alternate_team_totals_q3','alternate_team_totals_q4','alternate_team_totals_p1','alternate_team_totals_p2','alternate_team_totals_p3','player_assists','player_defensive_interceptions','player_field_goals','player_kicking_points','player_pass_attempts','player_pass_completions','player_pass_interceptions','player_pass_longest_completion','player_pass_rush_yds','player_pass_rush_reception_tds','player_pass_rush_reception_yds','player_pass_tds','player_pass_yds','player_pass_yds_q1','player_pats','player_receptions','player_reception_longest','player_reception_tds','player_reception_yds','player_rush_attempts','player_rush_longest','player_rush_reception_tds','player_rush_reception_yds','player_rush_tds','player_rush_yds','player_sacks','player_solo_tackles','player_tackles_assists','player_tds_over','player_1st_td','player_anytime_td','player_last_td','player_assists_alternate','player_field_goals_alternate','player_kicking_points_alternate','player_pass_attempts_alternate','player_pass_completions_alternate','player_pass_interceptions_alternate','player_pass_longest_completion_alternate','player_pass_rush_yds_alternate','player_pass_rush_reception_tds_alternate','player_pass_rush_reception_yds_alternate','player_pass_tds_alternate','player_pass_yds_alternate','player_pats_alternate'];
     let supportedMarkets = [];
     try {
       const availableMarkets = await this.getMarketsForSport(sportKey);
@@ -389,7 +390,8 @@ class OddsApiService {
       try {
         const oddsForChunk = await this._fetchAndSaveOddsForMarketsBatch(
           sportKey, 
-          marketsChunk
+          marketsChunk,
+          preferredBookmaker
         );
         
         for (const match of oddsForChunk) {
@@ -454,9 +456,9 @@ class OddsApiService {
     const params = { 
       markets: safeMarketsCsv,
       // Enhanced parameters from Odds API documentation
-      includeLinks: 'true',        // Include bookmaker links to events, markets, and betslips
-      includeSids: 'true',         // Include source ids for events, markets and outcomes
-      includeBetLimits: 'true'     // Include bet limits for betting exchanges
+      includeLinks: true,          // Include bookmaker links to events, markets, and betslips
+      includeSids: true,           // Include source ids for events, markets and outcomes
+      includeBetLimits: true       // Include bet limits for betting exchanges
     };
 
     // Add bookmaker parameter if specified
@@ -496,9 +498,9 @@ class OddsApiService {
             console.log(`Attempting fallback with basic markets for ${sportKey}`);
             const basicParams = {
               markets: 'h2h,spreads,totals',
-              includeLinks: 'true',
-              includeSids: 'true',
-              includeBetLimits: 'true'
+              includeLinks: true,
+              includeSids: true,
+              includeBetLimits: true
             };
             
             try {
@@ -948,8 +950,9 @@ class OddsApiService {
     const bulkOps = games.map(game => {
       const existing = existingMap.get(game.id);
 
-      // Build incoming bookmakers with normalized market keys
-      const incomingBookmakers = (game.bookmakers || []).map(bm => ({
+      // Restrict to preferred bookmaker per sport
+      const preferredKey = this.getSportBookmaker(game.sport_key);
+      const incomingBookmakersAll = (game.bookmakers || []).map(bm => ({
         key: bm.key,
         title: bm.title,
         last_update: new Date(bm.last_update),
@@ -963,12 +966,18 @@ class OddsApiService {
           }))
         }))
       }));
+      const incomingBookmakers = preferredKey
+        ? incomingBookmakersAll.filter(b => b.key === preferredKey)
+        : incomingBookmakersAll.slice(0, 1);
 
       let mergedBookmakers = incomingBookmakers;
 
       if (existing && Array.isArray(existing.bookmakers)) {
         // Merge with existing bookmakers/markets
-        const existingBmMap = new Map(existing.bookmakers.map(b => [b.key, b]));
+        const existingPreferred = preferredKey
+          ? existing.bookmakers.filter(b => b.key === preferredKey)
+          : (existing.bookmakers.slice(0, 1));
+        const existingBmMap = new Map(existingPreferred.map(b => [b.key, b]));
 
         mergedBookmakers = incomingBookmakers.map(inBm => {
           const exBm = existingBmMap.get(inBm.key);
@@ -1003,10 +1012,9 @@ class OddsApiService {
           };
         });
 
-        // Include any existing bookmakers not present in incoming
-        for (const [bmKey, exBm] of existingBmMap.entries()) {
-          const hasIncoming = mergedBookmakers.some(b => b.key === bmKey);
-          if (!hasIncoming) mergedBookmakers.push(exBm);
+        // Do NOT include other bookmakers; enforce single bookmaker per sport
+        if (mergedBookmakers.length === 0 && existingPreferred.length > 0) {
+          mergedBookmakers = existingPreferred;
         }
       }
 
@@ -1056,7 +1064,7 @@ class OddsApiService {
   /**
    * Helper to fetch odds for a single market and save to DB
    */
-  async _fetchAndSaveOddsForMarket(sportKey, market) {
+  async _fetchAndSaveOddsForMarket(sportKey, market, bookmaker = null) {
     if (!this.isEnabled) {
       console.warn('OddsApiService is disabled due to missing configuration');
       return [];
@@ -1065,8 +1073,12 @@ class OddsApiService {
     const params = { 
       markets: market
     };
+    if (bookmaker) {
+      params.bookmakers = bookmaker;
+    }
     
-    console.log(`Fetching odds for ${sportKey} market ${market} with all bookmakers`);
+    const bmMsg = bookmaker ? `with bookmaker ${bookmaker}` : 'with all bookmakers';
+    console.log(`Fetching odds for ${sportKey} market ${market} ${bmMsg}`);
 
     let games = [];
     try {
@@ -1187,7 +1199,7 @@ class OddsApiService {
     }
 
     const {
-      regions = ['us', 'us2', 'uk', 'au', 'eu'],
+      regions = ['us', 'us2', 'uk', 'au'],
       oddsFormat = 'decimal',
       dateFormat = 'iso',
       includeLinks = false,
@@ -1217,7 +1229,7 @@ class OddsApiService {
       };
 
       if (includeLinks) {
-        params.includeLinks = 'true';
+        params.includeLinks = true;
       }
 
       if (bookmakers && Array.isArray(bookmakers)) {
@@ -1428,7 +1440,7 @@ class OddsApiService {
     }
 
     const {
-      regions = ['us', 'us2', 'uk', 'au', 'eu'],
+      regions = ['us', 'us2', 'uk', 'au'],
       oddsFormat = 'decimal',
       dateFormat = 'iso',
       includeLinks = false
@@ -1454,6 +1466,7 @@ class OddsApiService {
           
           const response = await this.client.get(`/sports/${sportKey}/events/${eventId}/odds`, {
             params: {
+              apiKey: config.oddsApi.apiKey,
               regions: regions.join(','),
               markets: additionalMarkets.join(','),
               oddsFormat,
