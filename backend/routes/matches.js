@@ -80,7 +80,17 @@ function computeFullLeagueTitle({ sportKeyOrName, country, leagueName, fallbackS
   return parts.join('.');
 }
 
-// Enhanced caching middleware with query-specific keys
+const crypto = require('crypto');
+function computeEtag(obj) {
+  try {
+    const json = JSON.stringify(obj);
+    return 'W/"' + crypto.createHash('sha1').update(json).digest('hex') + '"';
+  } catch (e) {
+    return null;
+  }
+}
+
+// Enhanced caching middleware with query-specific keys and ETag support
 function cacheResponse(ttlSeconds = 300) {
   return (req, res, next) => {
     // Create cache key based on query parameters
@@ -99,7 +109,14 @@ function cacheResponse(ttlSeconds = 300) {
     
     const cached = cacheGet('/api/matches', queryParams);
     if (cached) {
+      const etag = computeEtag(cached);
       res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
+      if (etag) res.set('ETag', etag);
+      // Conditional GET handling
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
       return res.json(cached);
     }
     
@@ -108,6 +125,9 @@ function cacheResponse(ttlSeconds = 300) {
       try { 
         cacheSet('/api/matches', queryParams, data, ttlSeconds);
         res.set('X-Cache', 'MISS');
+        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
+        const etag = computeEtag(data);
+        if (etag) res.set('ETag', etag);
       } catch (e) {
         console.warn('Cache set failed:', e.message);
       }

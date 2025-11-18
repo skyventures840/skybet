@@ -13,6 +13,16 @@ const Odds = require('../models/Odds');
 const Transaction = require('../models/Transaction'); // Added Transaction import
 const betSettlementService = require('../services/betSettlementService');
 // Removed unused matchDataEnricher import
+const { get: cacheGet, set: cacheSet } = require('../utils/cache');
+const crypto = require('crypto');
+function computeEtag(obj) {
+  try {
+    const json = JSON.stringify(obj);
+    return 'W/"' + crypto.createHash('sha1').update(json).digest('hex') + '"';
+  } catch (e) {
+    return null;
+  }
+}
 
 // Set up Multer for image uploads with production-ready configuration
 const storage = multer.diskStorage({
@@ -368,7 +378,25 @@ router.put('/matches/:matchId/odds', adminAuth, [
 // List all hero slides
 router.get('/hero', async (req, res) => {
   try {
+    // Cache key is simple since no query params
+    const cached = cacheGet('/api/admin/hero', {});
+    if (cached) {
+      const etag = computeEtag(cached);
+      res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+      if (etag) res.set('ETag', etag);
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+      return res.json(cached);
+    }
+
     const slides = await Hero.find().sort({ createdAt: -1 });
+    const etag = computeEtag(slides);
+    cacheSet('/api/admin/hero', {}, slides, 300);
+    res.set('X-Cache', 'MISS');
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    if (etag) res.set('ETag', etag);
     res.json(slides);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch hero slides' });
