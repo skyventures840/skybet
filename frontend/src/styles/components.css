@@ -172,6 +172,17 @@
   font-weight: 500;
 }
 
+.success {
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
 .auth-footer {
   text-align: center;
   margin-top: var(--spacing-xl);
@@ -1268,6 +1279,78 @@
 
 .betslip-header-value.won-lost {
   color: var(--primary-green);
+}
+
+/* Betslip modern details cards */
+.betslip-details-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.detail-card {
+  flex: 1 1 180px;
+  min-width: 160px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.detail-card-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.detail-card-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.detail-card.status-ready .detail-card-value {
+  color: var(--primary-green);
+}
+
+.detail-card.status-incomplete .detail-card-value {
+  color: var(--error);
+}
+
+@media (max-width: 767px) {
+  .betslip-details-cards {
+    gap: 10px;
+  }
+  .detail-card {
+    flex: 1 1 140px;
+    min-width: 140px;
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  .detail-card-title {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .detail-card-value {
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 480px) {
+  .betslip-details-cards {
+    gap: 8px;
+  }
+  .detail-card {
+    flex: 1 1 120px;
+    min-width: 120px;
+    padding: 8px 10px;
+  }
+  .detail-card-value {
+    font-size: 13px;
+  }
 }
 
 /* ==========================================================================

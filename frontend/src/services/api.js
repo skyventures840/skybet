@@ -61,6 +61,9 @@ const responseCache = {
   }
 };
 
+// Track in-flight network requests to avoid duplicate revalidations
+const inflightRequests = new Map();
+
 async function cachedGet(path, ttl = 30000) {
   console.log(`[CACHE DEBUG] cachedGet called for path: ${path} (ttl=${ttl}ms)`);
 
@@ -102,6 +105,75 @@ async function cachedGet(path, ttl = 30000) {
     console.error(`[CACHE DEBUG] Network error for ${path}:`, error);
     throw error;
   }
+}
+
+/**
+ * Instant stale-while-revalidate fetch:
+ * - Returns cached data immediately if available
+ * - Schedules background revalidation using If-None-Match
+ * - Dedupes in-flight revalidation per path
+ */
+async function instantGet(path, ttl = 30000) {
+  // 1) Check fast in-memory cache first
+  const memHit = responseCache.get(path);
+  if (memHit) {
+    return memHit;
+  }
+
+  // 2) Check durable cache (with etag/timestamp)
+  const entry = enhancedCache.getEntry(path);
+  if (entry && entry.data) {
+    const synthetic = {
+      data: entry.data,
+      status: 200,
+      headers: {},
+      config: { url: path },
+      request: null,
+    };
+    // Warm in-memory cache
+    responseCache.set(path, synthetic, ttl);
+
+    // Background revalidation (deduped)
+    if (!inflightRequests.has(path)) {
+      const controller = new AbortController();
+      inflightRequests.set(path, controller);
+      const etag = entry.etag || null;
+      const headers = etag ? { 'If-None-Match': etag } : {};
+      api.get(path, { headers, signal: controller.signal })
+        .then(resp => {
+          // 304 Not Modified: only bump timestamp
+          if (resp && resp.status === 304) {
+            enhancedCache.touch(path);
+            return;
+          }
+          // 200 OK: update caches with new data and etag
+          const newEtag = resp.headers && (resp.headers.etag || resp.headers.ETag);
+          responseCache.set(path, resp, ttl);
+          enhancedCache.setEntry(path, resp.data, newEtag || null);
+        })
+        .catch(err => {
+          // 304 Not Modified: bump timestamp to keep cache fresh
+          if (err && err.response && err.response.status === 304) {
+            enhancedCache.touch(path);
+          } else {
+            // Network errors: ignore to keep UI responsive
+            console.warn('[INSTANT GET] Revalidate error:', err?.message || err);
+          }
+        })
+        .finally(() => {
+          inflightRequests.delete(path);
+        });
+    }
+
+    return synthetic;
+  }
+
+  // 3) No cache: fetch and store
+  const resp = await api.get(path);
+  const etag = resp.headers && (resp.headers.etag || resp.headers.ETag);
+  responseCache.set(path, resp, ttl);
+  enhancedCache.setEntry(path, resp.data, etag || null);
+  return resp;
 }
 
 // Request interceptor to add the auth token to headers
@@ -206,12 +278,12 @@ const apiService = {
   withdraw: (withdrawData) => api.post('/users/withdraw', withdrawData),
 
   // Matches - Updated to use correct endpoints
-  getAllMatches: () => cachedGet('/matches/all', 60000),
+  getAllMatches: () => instantGet('/matches/all', 60000),
   // Cache main matches list briefly to avoid spinner and reflows
   getMatches: async () => {
     console.log('[API DEBUG] getMatches called');
     try {
-      const result = await cachedGet('/matches', 30000);
+      const result = await instantGet('/matches', 30000);
       console.log('[API DEBUG] getMatches response:', result);
       return result;
     } catch (error) {

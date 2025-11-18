@@ -20,6 +20,13 @@ class EnhancedCacheService {
   }
 
   /**
+   * Get ETag key for localStorage
+   */
+  getEtagKey(endpoint) {
+    return `enhanced_cache_etag:${endpoint}`;
+  }
+
+  /**
    * Check if cache is valid (within 30 minutes)
    */
   isCacheValid(timestamp) {
@@ -28,35 +35,38 @@ class EnhancedCacheService {
   }
 
   /**
-   * Get cached data from memory or localStorage
+   * Get full cached entry { data, etag, timestamp } from memory or localStorage
    */
-  getCachedData(endpoint) {
+  getEntry(endpoint) {
     // Check memory cache first (fastest)
     const memoryData = this.memoryCache.get(endpoint);
     if (memoryData && this.isCacheValid(memoryData.timestamp)) {
       console.log(`[ENHANCED CACHE] Memory hit for ${endpoint}`);
-      return memoryData.data;
+      return { data: memoryData.data, etag: memoryData.etag || null, timestamp: memoryData.timestamp };
     }
 
     // Check localStorage cache
     try {
       const cacheKey = this.getCacheKey(endpoint);
       const timestampKey = this.getTimestampKey(endpoint);
-      
+      const etagKey = this.getEtagKey(endpoint);
+
       const cachedData = localStorage.getItem(cacheKey);
       const timestamp = parseInt(localStorage.getItem(timestampKey));
-      
+      const etag = localStorage.getItem(etagKey);
+
       if (cachedData && this.isCacheValid(timestamp)) {
         const parsedData = JSON.parse(cachedData);
-        
+
         // Warm memory cache for next access
         this.memoryCache.set(endpoint, {
           data: parsedData,
+          etag: etag || null,
           timestamp: timestamp
         });
-        
+
         console.log(`[ENHANCED CACHE] LocalStorage hit for ${endpoint}`);
-        return parsedData;
+        return { data: parsedData, etag: etag || null, timestamp };
       }
     } catch (error) {
       console.warn(`[ENHANCED CACHE] Error reading cache for ${endpoint}:`, error);
@@ -66,14 +76,23 @@ class EnhancedCacheService {
   }
 
   /**
-   * Store data in both memory and localStorage
+   * Backward-compatible getter that returns only data
    */
-  setCachedData(endpoint, data) {
+  getCachedData(endpoint) {
+    const entry = this.getEntry(endpoint);
+    return entry ? entry.data : null;
+  }
+
+  /**
+   * Store data (and optional etag) in both memory and localStorage
+   */
+  setEntry(endpoint, data, etag = null) {
     const timestamp = Date.now();
-    
+
     // Store in memory cache
     this.memoryCache.set(endpoint, {
       data: data,
+      etag: etag,
       timestamp: timestamp
     });
 
@@ -81,14 +100,33 @@ class EnhancedCacheService {
     try {
       const cacheKey = this.getCacheKey(endpoint);
       const timestampKey = this.getTimestampKey(endpoint);
-      
+      const etagKey = this.getEtagKey(endpoint);
+
       localStorage.setItem(cacheKey, JSON.stringify(data));
       localStorage.setItem(timestampKey, timestamp.toString());
-      
+      if (etag) localStorage.setItem(etagKey, etag);
+
       console.log(`[ENHANCED CACHE] Cached data for ${endpoint}`);
     } catch (error) {
       console.warn(`[ENHANCED CACHE] Error storing cache for ${endpoint}:`, error);
     }
+  }
+
+  /**
+   * Backward-compatible setter that stores only data
+   */
+  setCachedData(endpoint, data) {
+    this.setEntry(endpoint, data, null);
+  }
+
+  /**
+   * Update timestamp (e.g., after 304 Not Modified)
+   */
+  touch(endpoint) {
+    const entry = this.getEntry(endpoint);
+    if (!entry) return;
+    const { data, etag } = entry;
+    this.setEntry(endpoint, data, etag);
   }
 
   /**
@@ -100,6 +138,7 @@ class EnhancedCacheService {
     try {
       localStorage.removeItem(this.getCacheKey(endpoint));
       localStorage.removeItem(this.getTimestampKey(endpoint));
+      localStorage.removeItem(this.getEtagKey(endpoint));
       console.log(`[ENHANCED CACHE] Cleared cache for ${endpoint}`);
     } catch (error) {
       console.warn(`[ENHANCED CACHE] Error clearing cache for ${endpoint}:`, error);
@@ -203,6 +242,7 @@ class EnhancedCacheService {
         if (key && key.startsWith(`enhanced_cache:${prefix}`)) {
           keysToRemove.push(key);
           keysToRemove.push(key.replace('enhanced_cache:', 'enhanced_cache_timestamp:'));
+          keysToRemove.push(key.replace('enhanced_cache:', 'enhanced_cache_etag:'));
         }
       }
       

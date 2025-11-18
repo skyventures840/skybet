@@ -14,6 +14,7 @@ const Sidebar = ({ closeSidebar }) => {
   const [allEventsExpanded, setAllEventsExpanded] = useState(false);
   const navigate = useNavigate();
   const [showDateInput, setShowDateInput] = useState(false);
+  const [showDatePopover, setShowDatePopover] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [showWheelModal, setShowWheelModal] = useState(false);
 
@@ -137,10 +138,10 @@ const Sidebar = ({ closeSidebar }) => {
   };
 
   // Global date filter functionality
-  const handleDateChange = (e) => {
-    const dateValue = e.target.value;
+  const handleDateChangeDirect = (dateValue) => {
     setSelectedDate(dateValue);
     setShowDateInput(false);
+    setShowDatePopover(false);
     
     // Store selected date in localStorage for global access
     if (dateValue) {
@@ -160,6 +161,12 @@ const Sidebar = ({ closeSidebar }) => {
         closeSidebar();
       }, 300); // Small delay to let user see the date selection
     }
+  };
+
+  // Keep original handler for inline input, delegating to direct handler
+  const handleDateChange = (e) => {
+    const dateValue = e.target.value;
+    handleDateChangeDirect(dateValue);
   };
 
   // Clear date filter when component unmounts or date is cleared
@@ -514,6 +521,29 @@ const Sidebar = ({ closeSidebar }) => {
 
       {/* All Events Slider */}
       <div className="all-events-section">
+        {/* Mobile popover anchored above the All Events header */}
+        {showDatePopover && (
+          <div className="date-popover">
+            <div className="date-popover-header">
+              <span>Select Date</span>
+              <button className="date-popover-close" onClick={() => setShowDatePopover(false)}>×</button>
+            </div>
+            <div className="date-popover-body">
+              <input
+                type="date"
+                className="date-popover-input"
+                autoFocus
+                value={selectedDate}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val) {
+                    handleDateChangeDirect(val);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
         <div className="all-events-header" onClick={toggleAllEvents}>
           <span>All Events</span>
           <span className={`arrow ${allEventsExpanded ? 'expanded' : ''}`}>▼</span>
@@ -536,7 +566,14 @@ const Sidebar = ({ closeSidebar }) => {
                 <button
                   className="datepicker-icon-btn"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white', fontSize: 20 }}
-                  onClick={() => setShowDateInput(true)}
+                  onClick={() => {
+                    const isMobile = window.innerWidth <= 1024;
+                    if (isMobile) {
+                      setShowDatePopover(true);
+                    } else {
+                      setShowDateInput(true);
+                    }
+                  }}
                   title="Pick a date"
                 >
                   <FaRegCalendarAlt />
@@ -641,6 +678,8 @@ const Sidebar = ({ closeSidebar }) => {
           </div>
         )}
       </div>
+
+      {/* Mobile Date Picker Modal removed in favor of anchored popover */}
 
       {/* Wheel of Fortune Section - Only visible on small screens */}
       <div className="wheel-section" style={{ display: window.innerWidth <= 1024 ? 'block' : 'none' }}>

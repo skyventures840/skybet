@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { loginSuccess } from '../store/slices/authSlice';
 
 import apiService from '../services/api';
 
@@ -9,8 +11,10 @@ const SignUp = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
 
   const handleSubmit = async (e) => {
@@ -31,8 +35,20 @@ const SignUp = () => {
         });
         
         const { token, user } = response.data;
+        // Persist user and token for consistency across services
         localStorage.setItem('user', JSON.stringify({ token, user }));
-        navigate('/login');
+        localStorage.setItem('token', token);
+
+        // Dispatch login to Redux store (auto-login)
+        dispatch(loginSuccess({ token, user }));
+
+        // Show success text before navigating automatically
+        setSuccess('Account creation successful. You will be automatically logged in.');
+
+        // Navigate after short delay to home (or account)
+        setTimeout(() => {
+          navigate('/');
+        }, 1500);
     } catch (error) {
         console.error('Signup error:', error);
         if (error.response) {
@@ -64,6 +80,7 @@ const SignUp = () => {
         </div>
 
         {error && <div className="error">{error}</div>}
+        {success && <div className="success">{success}</div>}
 {/* End of error message display */}
 
         <form onSubmit={handleSubmit}>

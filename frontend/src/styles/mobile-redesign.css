@@ -58,7 +58,7 @@
     overflow-x: auto !important;
     overflow-y: hidden !important;
     display: flex !important;
-    gap: 0 !important;
+    gap: 12px !important; /* Increase space between cards on small screens */
     scroll-snap-type: x mandatory !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
@@ -572,7 +572,7 @@
     overflow-x: auto !important; /* Enable horizontal scrolling */
     overflow-y: hidden !important;
     scroll-snap-type: x mandatory !important; /* Enable snap scrolling */
-    gap: 0 !important; /* No gap between match cards */
+    gap: 10px !important; /* Increase space between cards on very small screens */
     -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
     scrollbar-width: none !important; /* Hide scrollbar */
     -ms-overflow-style: none !important; /* Hide scrollbar on IE */

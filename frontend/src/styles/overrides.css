@@ -220,6 +220,196 @@
   padding-top: 72px !important; /* account for ~64px navbar + border/shadow */
 }
 
+/* Desktop: remove extra gap below navbar for compact layout */
+@media (min-width: 1024px) {
+  /* Reduce desktop top padding slightly to tighten spacing */
+  .page-content,
+  .main-content,
+  .middle,
+  .under-navbar {
+    padding-top: 64px !important;
+  }
+  .navbar {
+    margin-bottom: 0 !important;
+  }
+
+  /* Primary containers directly under navbar */
+  .under-navbar,
+  .page-content,
+  .content-wrapper,
+  .main-content,
+  .middle {
+    margin-top: 0 !important;
+    gap: 0 !important; /* ensure no flex gap adds spacing */
+  }
+
+  /* Sidebar area */
+  .side-bar-wrapper,
+  .sidebar {
+    margin-top: -12px !important; /* pull closer to navbar */
+  }
+
+  /* Hero section */
+  .hero-slider,
+  .hero-slider .slider-container {
+    margin-top: -12px !important; /* pull closer to navbar */
+  }
+
+  /* Betslip area */
+  .betslip,
+  .bet-slip-wrapper {
+    margin-top: -12px !important; /* pull closer to navbar */
+  }
+}
+
+/* Mobile: Date Picker Modal styles for sidebar events filter */
+@media (max-width: 1024px) {
+  /* Anchored date popover above "All Events" header */
+  .all-events-section {
+    position: relative !important;
+  }
+
+  .date-popover {
+    position: absolute !important;
+    bottom: calc(100% + 8px) !important; /* sit just above the header */
+    left: 12px !important;
+    right: 12px !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35) !important;
+    padding: 8px 10px !important;
+    z-index: 1006 !important; /* above sidebar contents but below true overlays */
+  }
+
+  .date-popover-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 8px !important;
+  }
+
+  .date-popover-close {
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-primary) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+  }
+
+  .date-popover-body {
+    padding: 4px 0 !important;
+  }
+
+  .date-popover-input {
+    width: 100% !important;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--primary-green) !important; /* brighter border on dark */
+    background: var(--dark-bg) !important; /* dark input bg */
+    color: var(--text-primary) !important; /* bright text */
+    font-size: 14px !important;
+    accent-color: var(--primary-green) !important;
+  }
+
+  .date-popover-input:focus {
+    outline: none !important;
+    border-color: var(--primary-green) !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.25) !important; /* slightly stronger */
+  }
+
+  /* Ensure the calendar icon is visible on dark backgrounds (Chrome/Edge) */
+  .date-popover-input::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.2) contrast(1.1) !important;
+    opacity: 0.95 !important;
+    cursor: pointer !important;
+  }
+  /* Brighten the date segment text inside the control */
+  .date-popover-input::-webkit-datetime-edit-text,
+  .date-popover-input::-webkit-datetime-edit-month-field,
+  .date-popover-input::-webkit-datetime-edit-day-field,
+  .date-popover-input::-webkit-datetime-edit-year-field {
+    color: var(--text-primary) !important;
+  }
+
+  .date-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1005;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .date-modal {
+    width: 100%;
+    max-width: 520px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+
+  .date-modal-header {
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .date-modal-body {
+    padding: 16px;
+  }
+
+  .date-modal-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  .date-modal-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.15);
+  }
+
+  .date-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-color);
+    gap: 8px;
+  }
+
+  .date-cancel-btn {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .date-cancel-btn:hover {
+    background: var(--primary-green);
+    color: var(--dark-bg);
+    border-color: var(--primary-green);
+  }
+}
+
 /* Mobile: ensure bottom navigation stays fixed above content */
 @media (max-width: 767px) {
   .mobile-bottom-nav {
@@ -362,4 +552,27 @@
     height: auto !important;
     overflow: visible !important;
   }
+}
+
+/* Desktop/Tablet: ensure inline datepicker input is visible on dark */
+.datepicker-input {
+  background: var(--dark-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--primary-green) !important;
+}
+.datepicker-input:focus {
+  outline: none !important;
+  border-color: var(--primary-green) !important;
+  box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2) !important;
+}
+.datepicker-input::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2) contrast(1.1) !important;
+  opacity: 0.95 !important;
+  cursor: pointer !important;
+}
+.datepicker-input::-webkit-datetime-edit-text,
+.datepicker-input::-webkit-datetime-edit-month-field,
+.datepicker-input::-webkit-datetime-edit-day-field,
+.datepicker-input::-webkit-datetime-edit-year-field {
+  color: var(--text-primary) !important;
 }

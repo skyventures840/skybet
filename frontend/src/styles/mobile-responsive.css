@@ -57,10 +57,27 @@ html, body {
 
   /* Smaller hero pagination dots on mobile */
   .hero-slider .slider-dots {
-    bottom: 3px !important;
-    gap: 2px !important;
+    bottom: 4px !important;
+    gap: 3px !important; /* add a little spacing for smaller dots */
   }
-  .hero-slider .dot {
+  .hero-slider .slider-dots .dot {
+    width: 3px !important; /* reduced size on small screens */
+    height: 3px !important;
+  }
+}
+
+/* Extra-small phones: make hero dots even smaller */
+@media (max-width: 480px) {
+  .hero-slider .slider-dots .dot {
+    width: 1px !important;
+    height: 1px !important;
+  }
+}
+
+/* Final override: ensure tiny dots across all small screens (≤767px) */
+@media (max-width: 767px) {
+  .hero-slider .slider-dots { gap: 2px !important; bottom: 4px !important; }
+  .hero-slider .slider-dots .dot {
     width: 2px !important;
     height: 2px !important;
   }
@@ -5133,6 +5150,9 @@ html, body {
   }
 
   .navbar-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
     padding: var(--spacing-sm) var(--spacing-lg) !important;
     max-width: 1400px !important;
     margin: 0 auto !important;
@@ -5151,6 +5171,8 @@ html, body {
 
   .navbar-right {
     gap: var(--spacing-lg) !important;
+    margin-left: auto !important;
+    justify-content: flex-end !important;
   }
 
   .login-btn, .signup-btn {
@@ -5633,6 +5655,66 @@ html, body {
   .mobile-betslip-modal,
   .mobile-betslip-count {
     display: none !important;
+  }
+}
+
+/* ==================================================================
+   Small-Screen Scroll Behavior: Maintain match card scroll and add
+   page-level vertical scrolling across hero, sports strip, popular
+   matches, match cards, and footer containers.
+   ================================================================== */
+@media (max-width: 767px) {
+  /* Enable vertical scrolling on the main page content */
+  .page-content {
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh !important;
+  }
+
+  /* Allow content within under-navbar to overflow so page scroll works */
+  .under-navbar {
+    overflow: visible !important;
+    min-height: auto !important;
+  }
+
+  /* Ensure middle content flows naturally and does not trap scroll */
+  .middle {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Maintain horizontal scroll for the sports strip */
+  .sports-strip {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Maintain horizontal scroll for popular matches; avoid making the
+     section itself a vertical scroll container */
+  .popular-matches-section {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  .popular-matches-scroll {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Keep match cards list independently scrollable (vertical) so large
+     lists remain usable without blocking page-level scrolling */
+  .matches-section {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-height: calc(100vh - 240px) !important; /* leave room for hero/strip */
+  }
+
+  /* Footer should remain part of the page flow and be reachable via
+     page-level vertical scrolling */
+  .footer {
+    position: relative !important;
   }
 }
 
