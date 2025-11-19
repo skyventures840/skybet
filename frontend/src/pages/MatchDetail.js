@@ -272,7 +272,7 @@ const MatchDetail = () => {
         return matchData;
     };
 
-    const addToBetslip = (marketName, optionName, odds) => {
+    const addToBetslip = (marketName, option) => {
         const normalizedKey = normalizeMarketKey(marketName);
         const marketTypeDisplay = (() => {
             if (!normalizedKey) return 'Market';
@@ -287,10 +287,11 @@ const MatchDetail = () => {
             matchId: match._id || match.id,
             match: `${match.homeTeam} vs ${match.awayTeam}`,
             market: marketName,
-            selection: optionName,
+            selection: option?.name,
+            point: option?.point,
             marketType: normalizedKey,
             marketTypeDisplay,
-            odds: odds,
+            odds: option?.odds,
             stake: 0,
             sport: match.sport
         };
@@ -602,7 +603,7 @@ const MatchDetail = () => {
                                                         <button
                                                             key={index}
                                                             className="market-option-btn"
-                                                            onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                            onClick={() => addToBetslip(market.name, option)}
                                                         >
                                                             <span className="option-name">{option.name}</span>
                                                             <span className="option-odds">{option.odds.toFixed(2)}</span>
@@ -651,7 +652,7 @@ const MatchDetail = () => {
                                                         <button
                                                             key={index}
                                                             className="market-option-btn"
-                                                            onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                            onClick={() => addToBetslip(market.name, option)}
                                                         >
                                                             <span className="option-name">{option.name}</span>
                                                             <span className="option-odds">{option.odds.toFixed(2)}</span>
@@ -719,7 +720,7 @@ const MatchDetail = () => {
                                                                 <button
                                                                     key={index}
                                                                     className="market-option-btn"
-                                                                    onClick={() => addToBetslip(market.name, option.name, option.odds)}
+                                                                    onClick={() => addToBetslip(market.name, option)}
                                                                 >
                                                                     <span className="option-name">{option.name}</span>
                                                                     <span className="option-odds">{option.odds.toFixed(2)}</span>

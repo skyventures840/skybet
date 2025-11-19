@@ -201,16 +201,28 @@ const Betslip = () => {
         return selectionMap[bet.selection];
       }
       
-      // Check if selection contains any of the mapped values
-      const selectionLower = bet.selection.toLowerCase();
-      if (selectionLower.includes('home') || selectionLower.includes('1')) {
-        return '1';
-      } else if (selectionLower.includes('away') || selectionLower.includes('2')) {
-        return '2';
-      } else if (selectionLower.includes('draw') || selectionLower.includes('x')) {
-        return 'X';
+      // Hardened mapping: exact tokens only; avoid misreading points like "2.5"
+      const selectionLower = bet.selection.toLowerCase().trim();
+      if (selectionLower === '1') return '1';
+      if (selectionLower === '2') return '2';
+      if (selectionLower === 'x') return 'X';
+
+      // Preserve existing bracketed or numeric labels (e.g., "Over (2.5)" or "+1.5")
+      const hasParens = /\(.*\)/.test(bet.selection);
+      const hasNumber = /[0-9]/.test(selectionLower);
+      if (hasParens || (hasNumber && !selectionLower.match(/^([12x])$/))) {
+        return bet.selection;
       }
-      
+
+      // Common synonyms for match result
+      if (selectionLower.includes('home')) return '1';
+      if (selectionLower.includes('away')) return '2';
+      if (selectionLower.includes('draw')) return 'X';
+
+      // Normalize totals selections when no explicit point is present
+      if (selectionLower.startsWith('over') || selectionLower === 'ov' || selectionLower === 'o') return 'Over';
+      if (selectionLower.startsWith('under') || selectionLower === 'un' || selectionLower === 'u') return 'Under';
+
       // Fallback to original selection
       return bet.selection;
     }
@@ -230,6 +242,27 @@ const Betslip = () => {
     
     // Final fallback
     return 'Selection';
+  };
+
+  // Unified selection label for betslip: include point for Totals/Spreads
+  const getSelectionLabel = (bet) => {
+    let base = getSelectionDisplay(bet);
+    const key = bet.market ? normalizeMarketKey(bet.market) : '';
+    const isPointMarket = key && (
+      key.startsWith('totals') ||
+      key.startsWith('alternate_totals') ||
+      key.startsWith('team_totals') ||
+      key.startsWith('alternate_team_totals') ||
+      key.startsWith('spreads') ||
+      key.startsWith('alternate_spreads')
+    );
+    if (isPointMarket) {
+      const alreadyHasParens = /\([^)]*\)/.test(base);
+      if ((bet.point || bet.point === 0) && !alreadyHasParens) {
+        return `${base} (${bet.point})`;
+      }
+    }
+    return base;
   };
 
   // Derive market type display from bet info
@@ -271,7 +304,7 @@ const Betslip = () => {
         const parlayMatchId = `parlay:${activeBets.map(b => b.matchId).join('|')}`;
         const selectionSummary = activeBets
           .map(b => {
-            const selection = getSelectionDisplay(b);
+            const selection = getSelectionLabel(b);
             const matchName = `${b.homeTeam} vs ${b.awayTeam}`;
             const odds = parseFloat(b.odds).toFixed(2);
             return `${matchName}: ${selection} (${odds})`;
@@ -289,7 +322,7 @@ const Betslip = () => {
             matchId: bet.matchId,
             homeTeam: bet.homeTeam,
             awayTeam: bet.awayTeam,
-            selection: getSelectionDisplay(bet),
+            selection: getSelectionLabel(bet),
             odds: parseFloat(bet.odds),
             startTime: bet.startTime
           }))
@@ -324,7 +357,7 @@ const Betslip = () => {
             const betData = {
               matchId: bet.matchId,
               market: 'Match Result',
-              selection: getSelectionDisplay(bet),
+              selection: getSelectionLabel(bet),
               stake: parseFloat(bet.stake),
               odds: parseFloat(bet.odds)
             };
@@ -447,7 +480,7 @@ const Betslip = () => {
                 ? `${bet.homeTeam} vs ${bet.awayTeam}`
                 : (bet.match || 'Match');
               
-              const selectionDisplay = getSelectionDisplay(bet);
+              const selectionDisplay = getSelectionLabel(bet);
               const when = bet.startTime ? new Date(bet.startTime).toLocaleString() : '';
               const isStarted = bet.startTime ? new Date(bet.startTime) <= new Date() : false;
               const isExpanded = expandedMatches[index] && !isCollapsed;

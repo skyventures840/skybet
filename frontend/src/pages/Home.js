@@ -7,6 +7,7 @@ import apiService from '../services/api';
 import SportsStrip from '../components/SportsStrip';
 import enhancedCache from '../services/enhancedCache';
 import oddsWebSocket from '../services/oddsWebSocket';
+import { getSportIcon } from '../utils/sportIcons';
 
 const Home = () => {
   console.log('🏠 Home component is rendering!');
@@ -1033,8 +1034,8 @@ const Home = () => {
   if (shouldShowErrorPage) {
     return (
       <div className="home-page">
-        <HeroSlider />
         <div className="main-content">
+          <HeroSlider />
           <div className="error-container">
             <p className="error-message">{error}</p>
             <button onClick={fetchMatches} className="retry-btn">Retry</button>
@@ -1046,11 +1047,10 @@ const Home = () => {
 
   return (
     <div className="home-page">
-      <HeroSlider />
-      
-      
-      {/* Popular Matches section - keep unchanged */}
       <div className="main-content">
+        <HeroSlider />
+        
+        {/* Popular Matches section - keep unchanged */}
         {/* Sports strip between hero and popular matches */}
         <SportsStrip onSelectSport={handleSelectSport} activeSport={sportsStripFilter} />
         {(() => {
@@ -1117,6 +1117,7 @@ const Home = () => {
                       style={{ cursor: 'pointer' }}
                     >
                       <h3 className="sport-title">
+                        <span className="sport-icon" aria-hidden="true">{getSportIcon(sportKey)}</span>
                         {sportData.displayName}
                       </h3>
                       <span className={`expand-arrow ${expandedSports[sportKey] ? 'expanded' : 'collapsed'}`}>

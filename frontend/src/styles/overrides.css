@@ -80,14 +80,24 @@
 
 /* Additional insets for inner content on small screens */
 @media (max-width: 767px) {
+  /* Align sport icon before sport title in main sport headers */
+  .matches-section .sport-header .sport-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  .matches-section .sport-header .sport-icon svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
   /* Adjust expand arrow vertical alignment in sport headers inside matches container */
   .matches-section .matches-container .sport-header .expand-arrow,
   .matches-section .sport-subcategories .sport-header .expand-arrow,
   .matches-container .sport-header .expand-arrow,
   .sport-subcategories .sport-header .expand-arrow {
     top: 50% !important;
-    transform: translateY(-58%) !important; /* nudge slightly upward to align with sport title */
-    font-size: 26px !important; /* increased arrow size */
+    transform: translateY(-50%) !important; /* exact vertical centering with title */
+    font-size: 26px !important;
     width: 32px !important;
     height: 32px !important;
   }
@@ -160,6 +170,19 @@
   }
   .matches-section .match-card .league-title {
     margin-left: 12px !important; /* Standardized margin to match padding */
+  }
+}
+
+/* Desktop/tablet alignment for sport icon with title */
+@media (min-width: 768px) {
+  .matches-section .sport-header .sport-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .matches-section .sport-header .sport-icon svg {
+    width: 32px !important;
+    height: 32px !important;
   }
 }
 
@@ -260,6 +283,26 @@
   .bet-slip-wrapper {
     margin-top: -12px !important; /* pull closer to navbar */
   }
+
+/* Mobile: enforce brand size and navbar spacing with highest specificity */
+@media (max-width: 767px) {
+  header.navbar .navbar-left .nav-brand,
+  .navbar .navbar-left .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand,
+  .nav-brand {
+    font-size: clamp(42px, 12vw, 68px) !important;
+    line-height: 1 !important;
+    letter-spacing: -0.5px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+  }
+
+  .navbar { min-height: 68px !important; }
+  .navbar-container { padding: 12px 12px !important; }
+}
 }
 
 /* Mobile: Date Picker Modal styles for sidebar events filter */

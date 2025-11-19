@@ -300,6 +300,7 @@ const MatchMarkets = () => {
             marketType: normalizedKey,
             marketTypeDisplay,
             selection: outcome.name,
+            point: outcome.point,
             odds: outcome.price,
             stake: 0,
             potentialWin: 0

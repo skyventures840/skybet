@@ -2627,6 +2627,14 @@ body {
   display: none; /* Chrome, Safari, Opera */
 }
 
+/* Mobile: unify scroll under the document, not inside main-content */
+@media (max-width: 767px) {
+  .main-content {
+    height: auto !important;
+    overflow-y: visible !important;
+  }
+}
+
 .prematch-live-switch {
   display: flex;
   background: var(--card-bg);
@@ -6179,7 +6187,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  z-index: 100;
+  z-index: 2000;
   overflow: hidden;
 }
 
@@ -6537,7 +6545,7 @@ body {
 .matches-container .sport-header,
 .sport-subcategories .sport-header {
   margin-bottom: 0;
-  padding: 14px 16px;
+  padding: 16px 16px;
   background: var(--card-bg);
   border-radius: 8px 8px 0 0;
   display: flex;
@@ -6545,7 +6553,7 @@ body {
   justify-content: space-between;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-height: auto;
+  min-height: 48px;
   position: relative;
 }
 
