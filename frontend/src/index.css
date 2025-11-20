@@ -10214,4 +10214,31 @@ body {
 .bets-page .betslip-match-table th:nth-child(3),
 .bets-page .betslip-match-table td:nth-child(3) { width: 20%; }
 .bets-page .betslip-match-table th:nth-child(4),
-.bets-page .betslip-match-table td:nth-child(4) { width: 20%; }
+.bets-page .betslip-match-table td:nth-child(4) { width: 15%; }
+.bets-page .betslip-match-table th:nth-child(5),
+.bets-page .betslip-match-table td:nth-child(5) { width: 5%; }
+
+/* Compact, modern typography for betslip tables to avoid overflow */
+.bets-page .betslip-match-table th,
+.bets-page .betslip-match-table td,
+.bets-page .full-page-match-table th,
+.bets-page .full-page-match-table td {
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.bets-page .derived-outcome {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.bets-page .bet-status {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.08); /* improves contrast on dark backgrounds */
+}
+.bets-page .bet-status.status-won { color: #16a34a; }
+.bets-page .bet-status.status-lost { color: #dc2626; }
+.bets-page .bet-status.status-pending { color: #f59e0b; }

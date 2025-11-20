@@ -155,6 +155,155 @@ const Bets = () => {
 
   // Removed legacy status helpers (color/icon) since redesigned UI no longer uses them
 
+  // Parse a pick to identify standardized market type and point
+  const parsePick = (selection, point) => {
+    const raw = selection ? String(selection).trim() : '';
+    const low = raw.toLowerCase();
+    let kind = null; // 'totals' | 'winner' | 'handicap' | 'btts'
+    let type = null; // 'over' | 'under' | '1' | 'x' | '2' | 'yes' | 'no'
+    let side = null; // 'home' | 'away' | 'draw'
+    let refPoint = null;
+
+    const parenMatch = raw.match(/\(([-+]?\d+(?:\.\d+)?)\)/);
+    const numberMatch = raw.match(/(-?\d+(?:\.\d+)?)/);
+    if (point != null && !Number.isNaN(Number(point))) {
+      refPoint = Number(point);
+    } else if (parenMatch) {
+      refPoint = Number(parenMatch[1]);
+    } else if (numberMatch && /over|under|ov|und|o\b|u\b/i.test(raw)) {
+      refPoint = Number(numberMatch[1]);
+    }
+
+    // BTTS (Both Teams To Score)
+    if (/btts|both\s*teams\s*to\s*score|gg|ng/i.test(low)) {
+      kind = 'btts';
+      if (/yes|gg/i.test(low)) type = 'yes';
+      else if (/no|ng/i.test(low)) type = 'no';
+    }
+
+    // Totals (Over/Under) with flexible labels
+    if (/\b(over|ov|o)\b/i.test(low)) { kind = 'totals'; type = 'over'; }
+    if (/\b(under|und|u)\b/i.test(low)) { kind = 'totals'; type = 'under'; }
+
+    // Winner (1X2) or named moneyline
+    if (['1', 'x', '2'].includes(low)) { kind = 'winner'; type = low; }
+    if (/^home\b|home\s*win/i.test(low)) { kind = 'winner'; type = '1'; side = 'home'; }
+    if (/^away\b|away\s*win/i.test(low)) { kind = 'winner'; type = '2'; side = 'away'; }
+    if (/^draw\b|tie\b/i.test(low)) { kind = 'winner'; type = 'x'; side = 'draw'; }
+
+    // Handicap/Spread: detect side and signed point
+    if (/handicap|spread|\b\d\s*\(|home\s*\(|away\s*\(/i.test(low)) {
+      const sideHome = /(^|\b)(1|home)\b/i.test(low);
+      const sideAway = /(^|\b)(2|away)\b/i.test(low);
+      if (sideHome || sideAway) {
+        kind = 'handicap';
+        side = sideHome ? 'home' : 'away';
+        if (refPoint == null && numberMatch) refPoint = Number(numberMatch[1]);
+      }
+    }
+
+    return { kind, type, side, point: refPoint, raw };
+  };
+
+  // Derive outcome text from match result, aligned to the pick context
+  const deriveOutcome = (match) => {
+    const hs = match?.result?.homeScore;
+    const as = match?.result?.awayScore;
+    const hasScores = typeof hs === 'number' && typeof as === 'number';
+
+    const pick = parsePick(match?.selection, match?.point);
+
+    if (!hasScores) {
+      // If no final scores, we cannot determine outcome yet
+      return null;
+    }
+
+    // Totals (Over/Under)
+    if (pick.kind === 'totals' && (pick.type === 'over' || pick.type === 'under')) {
+      const total = hs + as;
+      const p = pick.point != null ? pick.point : null;
+      if (p == null) {
+        // If no point is available, infer closest half-point around total
+        const inferred = Math.floor(total) + 0.5;
+        return total > inferred ? `Over(${inferred})` : `Under(${inferred})`;
+      }
+      return total > p ? `Over(${p})` : `Under(${p})`;
+    }
+
+    // Winner (1/X/2)
+    if (pick.kind === 'winner' && (pick.type === '1' || pick.type === 'x' || pick.type === '2')) {
+      if (hs > as) return 'Home Win';
+      if (hs < as) return 'Away Win';
+      return 'Draw';
+    }
+
+    // Handicap: adjusted scores
+    if (pick.kind === 'handicap' && pick.point != null && (pick.side === 'home' || pick.side === 'away')) {
+      const adjHome = hs + (pick.side === 'home' ? pick.point : 0);
+      const adjAway = as + (pick.side === 'away' ? pick.point : 0);
+      const labelPoint = pick.point >= 0 ? `+${pick.point}` : `${pick.point}`;
+      if (adjHome > adjAway) return `Home(${labelPoint})`;
+      if (adjHome < adjAway) return `Away(${labelPoint})`;
+      return `Draw(${labelPoint})`;
+    }
+
+    // BTTS
+    if (pick.kind === 'btts') {
+      const bothScored = hs > 0 && as > 0;
+      return bothScored ? 'Yes' : 'No';
+    }
+
+    // Fallback: general outcome from scores
+    if (hs > as) return 'Home Win';
+    if (hs < as) return 'Away Win';
+    return 'Draw';
+  };
+
+  // Derive status from pick vs derived outcome
+  const deriveStatus = (match) => {
+    const hs = match?.result?.homeScore;
+    const as = match?.result?.awayScore;
+    const hasScores = typeof hs === 'number' && typeof as === 'number';
+    if (!hasScores) return 'pending';
+
+    const pick = parsePick(match?.selection, match?.point);
+    const outcomeText = deriveOutcome(match);
+    const lowOutcome = (outcomeText || '').toLowerCase().replace(/\s+/g, '');
+
+    // Compare against pick
+    if (pick.kind === 'totals' && (pick.type === 'over' || pick.type === 'under')) {
+      const p = pick.point != null ? pick.point : null;
+      const target = p != null ? `${pick.type}(${p})` : pick.type;
+      const lowTarget = target.toLowerCase().replace(/\s+/g, '');
+      return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+    if (pick.kind === 'winner' && pick.type === '1') {
+      return lowOutcome === 'homewin' ? 'won' : 'lost';
+    }
+    if (pick.kind === 'winner' && pick.type === '2') {
+      return lowOutcome === 'awaywin' ? 'won' : 'lost';
+    }
+    if (pick.kind === 'winner' && pick.type === 'x') {
+      return lowOutcome === 'draw' ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'handicap' && pick.point != null && (pick.side === 'home' || pick.side === 'away')) {
+      const labelPoint = pick.point >= 0 ? `+${pick.point}` : `${pick.point}`;
+      const target = `${pick.side === 'home' ? 'home' : 'away'}(${labelPoint})`;
+      const lowTarget = target.toLowerCase().replace(/\s+/g, '');
+      return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'btts' && (pick.type === 'yes' || pick.type === 'no')) {
+      const lowTarget = (pick.type).toLowerCase();
+      return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    // Unknown pick type: conservatively compare generic outcome to selection text
+    const lowPick = (pick.raw || '').toLowerCase().replace(/\s+/g, '');
+    return lowOutcome && lowPick && lowOutcome.includes(lowPick) ? 'won' : 'lost';
+  };
+
   const toggleBetExpansion = (betId) => {
     // Enforce single-open accordion behavior
     if (expandedBets.has(betId)) {
@@ -381,15 +530,19 @@ const Bets = () => {
                   }];
                 }
                 
-                // Normalize statuses for counting
-                displayMatches = displayMatches.map(m => ({
-                  ...m,
-                  status: normalizeStatus(m.status),
-                  outcome: m.outcome || m.result?.finalOutcome || null
-                }));
+                // Compute derived outcome and status per match
+                displayMatches = displayMatches.map(m => {
+                  const derivedOutcome = deriveOutcome(m);
+                  const derivedStatus = deriveStatus(m);
+                  return {
+                    ...m,
+                    derivedOutcome,
+                    derivedStatus
+                  };
+                });
 
-                const wonCount = displayMatches.filter(m => normalizeStatus(m.status) === 'won').length;
-                const lostCount = displayMatches.filter(m => normalizeStatus(m.status) === 'lost').length;
+                const wonCount = displayMatches.filter(m => (m.derivedStatus) === 'won').length;
+                const lostCount = displayMatches.filter(m => (m.derivedStatus) === 'lost').length;
                 const totalCount = displayMatches.length || 1;
 
                 // getMatchType removed since Type column is no longer used
@@ -474,7 +627,7 @@ const Bets = () => {
                           </button>
                         </div>
 
-                        {/* Match table redesigned to mirror attachment */}
+                        {/* Match table with derived outcomes and status */}
                         <table className="betslip-match-table">
                           <thead>
                             <tr>
@@ -482,6 +635,7 @@ const Bets = () => {
                               <th>Pick</th>
                               <th>FT Results</th>
                               <th>Outcome</th>
+                              <th>Status</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -502,8 +656,11 @@ const Bets = () => {
                                   ) : (match.selection)}
                                 </td>
                                 <td className="odds">{getFtResult(match)}</td>
-                                <td className={`result ${normalizeStatus(match.status) === 'lost' ? 'lost' : ''}`}>
-                                  {normalizeStatus(match.status) === 'won' ? 'Won' : normalizeStatus(match.status) === 'lost' ? 'Lost' : normalizeStatus(match.status) === 'void' ? 'Void' : 'Pending'}
+                                <td className="derived-outcome">{match.derivedOutcome || '—'}</td>
+                                <td>
+                                  <span className={`bet-status status-${(match.derivedStatus || 'pending')}`}>
+                                    {match.derivedStatus === 'won' ? 'Won' : match.derivedStatus === 'lost' ? 'Lost' : 'Pending'}
+                                  </span>
                                 </td>
                               </tr>
                             ))}
@@ -588,14 +745,18 @@ const Bets = () => {
                   }];
                 }
                 
-                displayMatches = displayMatches.map(m => ({
-                  ...m,
-                  status: normalizeStatus(m.status),
-                  outcome: m.outcome || m.result?.finalOutcome || null
-                }));
+                displayMatches = displayMatches.map(m => {
+                  const derivedOutcome = deriveOutcome(m);
+                  const derivedStatus = deriveStatus(m);
+                  return {
+                    ...m,
+                    derivedOutcome,
+                    derivedStatus
+                  };
+                });
 
-                const wonCount = displayMatches.filter(m => normalizeStatus(m.status) === 'won').length;
-                const lostCount = displayMatches.filter(m => normalizeStatus(m.status) === 'lost').length;
+                const wonCount = displayMatches.filter(m => (m.derivedStatus) === 'won').length;
+                const lostCount = displayMatches.filter(m => (m.derivedStatus) === 'lost').length;
                 const totalCount = displayMatches.length || 1;
 
                 const getFtResult = (match) => {
@@ -654,6 +815,7 @@ const Bets = () => {
                             <th>Pick</th>
                             <th>FT Results</th>
                             <th>Outcome</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -674,8 +836,11 @@ const Bets = () => {
                                 ) : (match.selection)}
                               </td>
                               <td className="odds">{getFtResult(match)}</td>
-                              <td className={`result ${normalizeStatus(match.status) === 'lost' ? 'lost' : ''}`}>
-                                {normalizeStatus(match.status) === 'won' ? 'Won' : normalizeStatus(match.status) === 'lost' ? 'Lost' : normalizeStatus(match.status) === 'void' ? 'Void' : 'Pending'}
+                              <td className="derived-outcome">{match.derivedOutcome || '—'}</td>
+                              <td>
+                                <span className={`bet-status status-${(match.derivedStatus || 'pending')}`}>
+                                  {match.derivedStatus === 'won' ? 'Won' : match.derivedStatus === 'lost' ? 'Lost' : 'Pending'}
+                                </span>
                               </td>
                             </tr>
                           ))}

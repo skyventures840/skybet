@@ -27,8 +27,70 @@ const LiveBetting = () => {
         console.log(`[LIVE BETTING] Received ${matches.length} live matches from API`);
         
         if (matches.length === 0) {
-          console.log('[LIVE BETTING] No live matches found');
-          setLiveMatches([]);
+          console.log('[LIVE BETTING] No live matches found in DB. Falling back to odds feed...');
+
+          // Fallback: derive live matches from odds feed when DB has none
+          try {
+            const oddsResp = await apiService.getOddsMatches();
+            const oddsMatches = (oddsResp?.data?.matches || []).filter(m => {
+              const ct = m.commence_time ? new Date(m.commence_time) : null;
+              return ct && ct <= new Date();
+            });
+
+            const transformOddsToLiveMatches = (oddsData) => {
+              return oddsData.map(m => {
+                const bookmakers = Array.isArray(m.bookmakers) ? m.bookmakers : [];
+                const firstBm = bookmakers[0] || null;
+                const markets = firstBm?.markets || [];
+                const h2h = markets.find(x => x.key === 'h2h') || markets.find(x => x.key === 'h2h_3_way');
+                const odds = {};
+                if (h2h && Array.isArray(h2h.outcomes)) {
+                  const homeOutcome = h2h.outcomes.find(o => o.name === m.home_team) || h2h.outcomes[0];
+                  const awayOutcome = h2h.outcomes.find(o => o.name === m.away_team) || h2h.outcomes[1];
+                  const drawOutcome = h2h.outcomes.find(o => /^(draw|tie)$/i.test(o.name));
+                  if (homeOutcome?.price) odds['1'] = homeOutcome.price;
+                  if (awayOutcome?.price) odds['2'] = awayOutcome.price;
+                  if (drawOutcome?.price) odds['X'] = drawOutcome.price;
+                }
+
+                const start = m.commence_time ? new Date(m.commence_time) : new Date();
+                const diffMs = Date.now() - start.getTime();
+                const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+
+                return {
+                  id: m.id || m.gameId,
+                  league: m.sport_title || m.sport_key || 'Live',
+                  subcategory: m.sport_key || 'live',
+                  startTime: start,
+                  homeTeam: m.home_team,
+                  awayTeam: m.away_team,
+                  homeTeamFlag: '🏳️',
+                  awayTeamFlag: '🏳️',
+                  odds,
+                  additionalMarkets: Math.max(0, (markets.length || 0) - (h2h ? 1 : 0)),
+                  sport: (m.sport_key || '').split('_')[0] || 'live',
+                  allMarkets: markets,
+                  status: 'live',
+                  isLive: true,
+                  liveTime: `LIVE ${diffMins}'`,
+                  score: null,
+                  homeScore: null,
+                  awayScore: null,
+                  lastUpdate: new Date().toISOString(),
+                  country: '',
+                  fullLeagueTitle: undefined
+                };
+              });
+            };
+
+            const transformed = transformOddsToLiveMatches(oddsMatches);
+            console.log(`[LIVE BETTING] Fallback produced ${transformed.length} live matches from odds feed`);
+            setLiveMatches(transformed);
+            setLastUpdate(new Date().toISOString());
+          } catch (fallbackErr) {
+            console.error('[LIVE BETTING] Fallback odds fetch failed:', fallbackErr);
+            setLiveMatches([]);
+          }
         } else {
           setLiveMatches(matches);
           setLastUpdate(new Date().toISOString());
@@ -268,7 +330,7 @@ const LiveBetting = () => {
                   <div className="league-matches">
                     {matches.map((match) => (
                       <MatchCard
-                        key={match.id}
+                        key={match.id || match._id}
                         match={match}
                         sport={match.sport}
                         league={match.league}

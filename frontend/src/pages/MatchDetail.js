@@ -257,7 +257,7 @@ const MatchDetail = () => {
                 awayTeamFlag: '🏳️',
                 competition: matchData.sport_title || 'Unknown League',
                 startTime: new Date(matchData.commence_time),
-                sport: matchData.sport_key?.split('_')[0] || 'Soccer',
+                sport: (matchData.sport_key || matchData.sport || '').split('_')[0] || 'Unknown',
                 markets: markets,
                 videoUrl: matchData.videoUrl || null,
                 videoPosterUrl: matchData.videoPosterUrl || null

@@ -279,6 +279,11 @@ const apiService = {
 
   // Matches - Updated to use correct endpoints
   getAllMatches: () => instantGet('/matches/all', 60000),
+  searchMatchesAdmin: (params = {}) => api.get('/matches/search', { params }),
+  // Odds-based matches for admin search/fetch
+  getOddsMatches: () => cachedGet('/odds', 60000),
+  updateOddsResult: (eventId, { homeScore, awayScore, completed = true }) =>
+    api.put(`/admin/odds/${eventId}/result`, { homeScore, awayScore, completed }),
   // Cache main matches list briefly to avoid spinner and reflows
   getMatches: async () => {
     console.log('[API DEBUG] getMatches called');
@@ -354,6 +359,11 @@ const apiService = {
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>
     api.put(`/admin/matches/${matchId}/status`, { status, homeScore, awayScore }),
+  // Admin: manual result upsert for settlement
+  updateMatchResult: (matchId, { homeScore, awayScore, completed = true }) =>
+    api.put(`/admin/matches/${matchId}/result`, { homeScore, awayScore, completed }),
+  // Admin: trigger settlement across completed matches
+  manualSettleBets: () => api.post('/admin/settle-bets'),
   
   // Add wheel of fortune endpoints
   spinWheel: (spinData) => api.post('/wheel/spin', spinData),

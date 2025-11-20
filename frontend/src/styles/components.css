@@ -796,36 +796,32 @@
 
 /* Scoped status badge colors for My Bets page */
 .bets-page .bet-status {
-  font-weight: 500;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
   font-size: 13px;
-  padding: 0;
-  border-radius: 0;
   text-transform: none;
   letter-spacing: 0;
   white-space: nowrap;
-  background: none;
+  background-color: rgba(255, 255, 255, 0.08);
   border: none;
-  color: #333;
 }
 
 .bets-page .bet-status.status-pending {
-  color: #333;
-  background: none;
+  color: #f59e0b;
 }
 
 .bets-page .bet-status.status-won {
-  color: #22c55e;
-  background: none;
+  color: #16a34a;
 }
 
 .bets-page .bet-status.status-lost {
-  color: #f90707;
-  background: none;
+  color: #dc2626;
 }
 
 .bets-page .bet-status.status-void {
-  color: #333;
-  background: none;
+  color: #6b7280;
 }
 
 /* Bet Filters Styling */

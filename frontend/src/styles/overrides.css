@@ -275,7 +275,7 @@
   /* Hero section */
   .hero-slider,
   .hero-slider .slider-container {
-    margin-top: -12px !important; /* pull closer to navbar */
+    margin-top: -24px !important; /* very small margin under navbar on desktop */
   }
 
   /* Betslip area */

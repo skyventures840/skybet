@@ -33,17 +33,69 @@ const ManageMatches = () => {
   const [allMatchesSelected, setAllMatchesSelected] = useState(false);
   const [bulkAction, setBulkAction] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [resultHomeScore, setResultHomeScore] = useState(0);
+  const [resultAwayScore, setResultAwayScore] = useState(0);
+  const [resultCompleted, setResultCompleted] = useState(true);
 
   useEffect(() => {
     fetchMatches();
     fetchLeagues();
   }, []);
 
+  // Infer a normalized sport token from odds data
+  // Prefers `sport_key` first token; otherwise derives from `sport_title`
+  const inferSportToken = (odds) => {
+    const rawKey = String(odds?.sport_key || '').toLowerCase();
+    if (rawKey) {
+      const token = rawKey.split('_')[0];
+      if (token) return token;
+    }
+
+    const title = String(odds?.sport_title || '').toLowerCase();
+    if (!title) return 'unknown';
+
+    const mappings = [
+      { re: /(mma|mixed\s*martial\s*arts)/i, token: 'mma' },
+      { re: /boxing/i, token: 'boxing' },
+      { re: /(american\s*football|\bnfl\b|\bncaaf\b|college\s*football|\bcfl\b)/i, token: 'americanfootball' },
+      { re: /basketball|\bnba\b|euroleague/i, token: 'basketball' },
+      { re: /baseball|\bmlb\b/i, token: 'baseball' },
+      { re: /(ice\s*hockey|\bnhl\b|\bkhl\b|\bahl\b|\bshl\b|\bliiga\b|\bdel\b|\bnla\b)/i, token: 'icehockey' },
+      { re: /tennis|\batp\b|\bwta\b|wimbledon|us\s*open|french\s*open|roland\s*garros/i, token: 'tennis' },
+      { re: /volleyball/i, token: 'volleyball' },
+      { re: /cricket/i, token: 'cricket' },
+      { re: /(soccer\b|football(?!.*american))/i, token: 'soccer' }
+    ];
+
+    for (const m of mappings) {
+      if (m.re.test(title)) return m.token;
+    }
+    return 'unknown';
+  };
+
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getAllMatches();
-      setMatches(response.data.matches);
+      // Fetch from odds collection for admin management
+      const response = await apiService.getOddsMatches();
+      const oddsMatches = response.data?.matches || [];
+      // Normalize odds format to the admin UI shape
+      const normalized = oddsMatches.map(odds => ({
+        _id: odds.id || odds.gameId,
+        externalId: odds.id || odds.gameId,
+        sport: inferSportToken(odds),
+        sportTitle: odds.sport_title || '',
+        homeTeam: odds.home_team,
+        awayTeam: odds.away_team,
+        startTime: odds.commence_time,
+        status: 'upcoming',
+        // initialize score fields explicitly to avoid undefined in UI
+        homeScore: null,
+        awayScore: null,
+        odds: odds.bookmakers || {},
+      }));
+      setMatches(normalized);
     } catch (err) {
       setError('Failed to fetch matches.');
       console.error(err);
@@ -198,35 +250,76 @@ const ManageMatches = () => {
     setIsModalOpen(true);
   };
 
+  const openResultModal = (match) => {
+    setCurrentMatch(match);
+    setResultHomeScore(Number(match.homeScore ?? 0));
+    setResultAwayScore(Number(match.awayScore ?? 0));
+    setResultCompleted(true);
+    setIsResultModalOpen(true);
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setCurrentMatch(null);
   };
 
+  const closeResultModal = () => {
+    setIsResultModalOpen(false);
+    setCurrentMatch(null);
+  };
+
+  const handleUpdateResult = async (e) => {
+    e.preventDefault();
+    if (!currentMatch?._id) return;
+    try {
+      // Update results based on odds event id
+      const resp = await apiService.updateOddsResult(currentMatch._id, {
+        homeScore: Number(resultHomeScore),
+        awayScore: Number(resultAwayScore),
+        completed: Boolean(resultCompleted)
+      });
+      const settled = resp?.data?.settlement;
+      const msg = settled ? `Result saved. Settled ${settled.settledBets || 0} bets across ${settled.processedMatches || 0} matches.` : 'Result saved.';
+      setSaveMessage(msg);
+      // Refresh list to reflect any possible status changes elsewhere
+      fetchMatches();
+      setTimeout(() => setSaveMessage(''), 4000);
+      closeResultModal();
+    } catch (err) {
+      console.error('Update result failed:', err);
+      setSaveMessage(err?.response?.data?.error || 'Failed to update result');
+      setTimeout(() => setSaveMessage(''), 4000);
+    }
+  };
+
   // Search/filter logic
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     setSearchPerformed(true);
-    if (!searchQuery.trim() && !statusFilter) {
-      setFilteredMatches([]);
-      return;
-    }
-    const query = searchQuery.toLowerCase();
-    setFilteredMatches(
-      matches.filter((match) => {
-        const league = leagues.find(l => l.leagueId === match.leagueId)?.name || match.leagueName || "";
-        
-        const matchesSearch = !query || (
-          match.homeTeam?.toLowerCase().includes(query) ||
-          match.awayTeam?.toLowerCase().includes(query) ||
-          league.toLowerCase().includes(query)
+    const q = searchQuery.trim();
+    try {
+      if (q) {
+        const lc = q.toLowerCase();
+        const list = matches.filter(m =>
+          (m.homeTeam && m.homeTeam.toLowerCase().includes(lc)) ||
+          (m.awayTeam && m.awayTeam.toLowerCase().includes(lc)) ||
+          (m.sportTitle && m.sportTitle.toLowerCase().includes(lc))
         );
-
-        const matchesStatus = !statusFilter || match.status === statusFilter;
-
-        return matchesSearch && matchesStatus;
-      })
-    );
+        // Optional status filter applied on top
+        const filtered = statusFilter ? list.filter(m => m.status === statusFilter) : list;
+        setFilteredMatches(filtered);
+        return;
+      }
+      // No query: filter locally by status only
+      if (!statusFilter) {
+        setFilteredMatches([]);
+        return;
+      }
+      setFilteredMatches(matches.filter(m => m.status === statusFilter));
+    } catch (err) {
+      console.error('Search matches failed:', err);
+      setFilteredMatches([]);
+    }
   };
 
   // Add clear search function
@@ -238,10 +331,17 @@ const ManageMatches = () => {
   };
 
   // Add show all matches function
-  const handleShowAll = () => {
+  const handleShowAll = async () => {
     setSearchQuery('');
+    setStatusFilter('');
     setSearchPerformed(true);
-    setFilteredMatches(matches);
+    try {
+      // Show normalized odds matches without filters
+      setFilteredMatches(matches);
+    } catch (err) {
+      console.error('Show all matches failed:', err);
+      setFilteredMatches(matches);
+    }
   };
 
   // Bulk operations functions
@@ -324,6 +424,7 @@ const ManageMatches = () => {
             placeholder="Search by team or league..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSearch(e); }}
             className="search-input"
           />
           <select
@@ -444,7 +545,7 @@ const ManageMatches = () => {
                     </span>
                   </td>
                   <td>
-                    {match.homeScore !== null ? `${match.homeScore} - ${match.awayScore}` : 'N/A'}
+                    {match.homeScore != null && match.awayScore != null ? `${match.homeScore} - ${match.awayScore}` : 'N/A'}
                   </td>
                   <td>
                     <div className="odds-preview">
@@ -462,6 +563,12 @@ const ManageMatches = () => {
                         className="btn-edit"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={() => openResultModal(match)}
+                        className="btn-refresh"
+                      >
+                        Update Result
                       </button>
                       <button
                         onClick={() => handleDeleteMatch(match._id)}
@@ -938,6 +1045,69 @@ const ManageMatches = () => {
                 </button>
               </div>
             </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isResultModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Update Match Result</h3>
+              <button
+                className="modal-close"
+                onClick={closeResultModal}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleUpdateResult} className="space-y-4">
+                <div className="text-white text-sm mb-2">
+                  {currentMatch && (
+                    <span>
+                      {currentMatch.homeTeam} vs {currentMatch.awayTeam}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Home Score:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={resultHomeScore}
+                      onChange={(e) => setResultHomeScore(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Away Score:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={resultAwayScore}
+                      onChange={(e) => setResultAwayScore(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Completed:</label>
+                    <select
+                      value={resultCompleted ? 'true' : 'false'}
+                      onChange={(e) => setResultCompleted(e.target.value === 'true')}
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button type="button" className="btn-cancel" onClick={closeResultModal}>Cancel</button>
+                  <button type="submit" className="btn-export">Save Result</button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

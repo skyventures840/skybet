@@ -69,6 +69,7 @@ const AdminDashboard = () => {
   const [betSettleModal, setBetSettleModal] = useState({ open: false, bet: null });
   const [lastRefresh, setLastRefresh] = useState(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [showAllBets, setShowAllBets] = useState(false);
 
   // WebSocket connection for real-time updates
   useEffect(() => {
@@ -464,21 +465,29 @@ const AdminDashboard = () => {
     try {
       setBetLoading(true);
       const params = new URLSearchParams({
-        page: currentBetPage,
-        limit: 50,
+        page: showAllBets ? 1 : currentBetPage,
+        limit: showAllBets ? 10000 : 50,
         ...(betSearchQuery && { search: betSearchQuery }),
         ...(betStatusFilter && { status: betStatusFilter })
       });
 
-      const response = await apiService.get(`/admin/bets?${params}`);
+      const response = await apiService.getAdminBets(params);
       setBets(response.data.bets || []);
-      setTotalBetPages(response.data.pagination?.pages || 1);
+      setTotalBetPages(showAllBets ? 1 : (response.data.pagination?.pages || 1));
     } catch (error) {
       console.error('Failed to fetch bets:', error);
       setBets([]);
     } finally {
       setBetLoading(false);
     }
+  };
+
+  const handleShowAllBets = async () => {
+    setShowAllBets(true);
+    setCurrentBetPage(1);
+    setBetSearchQuery('');
+    setBetStatusFilter('');
+    await fetchBets();
   };
 
   const handleSelectBet = (betId, checked) => {
@@ -504,7 +513,7 @@ const AdminDashboard = () => {
     if (!bulkAction || selectedBets.length === 0) return;
 
     try {
-      const response = await apiService.put('/admin/bets/bulk/status', {
+      const response = await apiService.bulkUpdateBets({
         betIds: selectedBets,
         status: bulkAction
       });
@@ -526,9 +535,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to cancel this bet?')) return;
 
     try {
-      const response = await apiService.put(`/admin/bets/${betId}/status`, {
-        status: 'cancelled'
-      });
+      const response = await apiService.settleBet(betId, { status: 'cancelled' });
 
       if (response.data.success) {
         alert('Bet cancelled successfully');
@@ -669,12 +676,12 @@ const AdminDashboard = () => {
             type="text" 
             placeholder="Search bets..." 
             value={betSearchQuery}
-            onChange={(e) => setBetSearchQuery(e.target.value)}
+            onChange={(e) => { setBetSearchQuery(e.target.value); setShowAllBets(false); }}
           />
           <FontAwesomeIcon icon={faFilter} />
           <select 
             value={betStatusFilter}
-            onChange={(e) => setBetStatusFilter(e.target.value)}
+            onChange={(e) => { setBetStatusFilter(e.target.value); setShowAllBets(false); }}
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>
@@ -689,6 +696,13 @@ const AdminDashboard = () => {
             disabled={betLoading}
           >
             {betLoading ? 'Loading...' : 'Refresh'}
+          </button>
+          <button 
+            className="btn-show-all"
+            onClick={handleShowAllBets}
+            disabled={betLoading}
+          >
+            Show All
           </button>
         </div>
         
@@ -1000,7 +1014,7 @@ const AdminDashboard = () => {
                 const market = formData.get('market');
 
                 try {
-                  const response = await apiService.put(`/admin/bets/${betEditModal.bet._id}`, {
+                  const response = await apiService.updateBet(betEditModal.bet._id, {
                     stake,
                     odds,
                     selection,
@@ -1090,7 +1104,7 @@ const AdminDashboard = () => {
                 const actualWin = parseFloat(formData.get('actualWin')) || 0;
 
                 try {
-                  const response = await apiService.put(`/admin/bets/${betSettleModal.bet._id}/status`, {
+                  const response = await apiService.settleBet(betSettleModal.bet._id, {
                     status,
                     actualWin: status === 'won' ? actualWin : 0
                   });
