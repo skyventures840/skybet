@@ -10,6 +10,8 @@ const { adminAuth } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const League = require('../models/League');
 const Odds = require('../models/Odds');
+const Scores = require('../models/Scores');
+const Results = require('../models/Results');
 const Transaction = require('../models/Transaction'); // Added Transaction import
 const betSettlementService = require('../services/betSettlementService');
 // Removed unused matchDataEnricher import
@@ -707,6 +709,179 @@ router.put('/matches/:matchId', adminAuth, [
   } catch (error) {
     console.error('Edit match error:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin: Upsert match result into Results collection (manual override)
+router.put('/matches/:matchId/result', adminAuth, [
+  body('homeScore').isInt({ min: 0 }).withMessage('homeScore must be a non-negative integer'),
+  body('awayScore').isInt({ min: 0 }).withMessage('awayScore must be a non-negative integer'),
+  body('completed').optional().isBoolean()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { homeScore, awayScore, completed } = req.body;
+    const match = await Match.findById(req.params.matchId).populate('leagueId');
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Preserve canonical identifiers and team details from Match
+    const eventId = match.externalId ? String(match.externalId) : String(match._id);
+    const sport_key = match.sport || 'football';
+    const sport_title = match.leagueId?.name || match.sport || 'Unknown League';
+    const commence_time = match.startTime || new Date();
+    const home_team = match.homeTeam;
+    const away_team = match.awayTeam;
+
+    const now = new Date();
+    const isCompleted = typeof completed === 'boolean' ? completed : true;
+
+    const scores = [
+      { name: home_team, score: String(homeScore) },
+      { name: away_team, score: String(awayScore) }
+    ];
+
+    const updateDoc = {
+      eventId,
+      sport_key,
+      sport_title,
+      commence_time,
+      completed: isCompleted,
+      home_team,
+      away_team,
+      scores,
+      last_update: now,
+      lastFetched: now,
+      fetchCount: 0
+    };
+
+    const resultDoc = await Results.findOneAndUpdate(
+      { eventId },
+      { $set: updateDoc },
+      { upsert: true, new: true }
+    );
+
+    // Also upsert into Scores collection for live/summary tracking
+    const scoresDoc = {
+      ...updateDoc,
+      status: isCompleted ? 'completed' : 'scheduled'
+    };
+    const scoresUpsert = await Scores.findOneAndUpdate(
+      { eventId },
+      { $set: scoresDoc },
+      { upsert: true, new: true }
+    );
+
+    // Optionally emit cache invalidation or socket updates here if needed
+    // Trigger settlement process so bets reflect updated outcomes
+    let settlement = null;
+    try {
+      settlement = await betSettlementService.processSettlements();
+    } catch (settleErr) {
+      // Do not fail the result update if settlement fails; report separately
+      console.warn('[ADMIN RESULT] Settlement process error:', settleErr?.message || settleErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Result upserted successfully',
+      result: resultDoc,
+      scores: scoresUpsert,
+      settlement
+    });
+  } catch (error) {
+    console.error('Upsert match result error:', error);
+    res.status(500).json({ error: 'Failed to upsert match result: ' + error.message });
+  }
+});
+
+// Admin: Upsert result by Odds eventId, writing to Results and Scores
+router.put('/odds/:eventId/result', adminAuth, [
+  body('homeScore').isInt({ min: 0 }).withMessage('homeScore must be a non-negative integer'),
+  body('awayScore').isInt({ min: 0 }).withMessage('awayScore must be a non-negative integer'),
+  body('completed').optional().isBoolean()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { homeScore, awayScore, completed } = req.body;
+    const eventId = String(req.params.eventId);
+
+    // Pull canonical event details from Odds collection
+    const odds = await Odds.findOne({ gameId: eventId });
+    if (!odds) {
+      return res.status(404).json({ error: 'Odds event not found' });
+    }
+
+    const sport_key = odds.sport_key || 'football';
+    const sport_title = odds.sport_title || 'Unknown League';
+    const commence_time = odds.commence_time || new Date();
+    const home_team = odds.home_team;
+    const away_team = odds.away_team;
+
+    const now = new Date();
+    const isCompleted = typeof completed === 'boolean' ? completed : true;
+
+    const scores = [
+      { name: home_team, score: String(homeScore) },
+      { name: away_team, score: String(awayScore) }
+    ];
+
+    const updateDoc = {
+      eventId,
+      sport_key,
+      sport_title,
+      commence_time,
+      completed: isCompleted,
+      home_team,
+      away_team,
+      scores,
+      last_update: now,
+      lastFetched: now,
+      fetchCount: 0
+    };
+
+    const resultDoc = await Results.findOneAndUpdate(
+      { eventId },
+      { $set: updateDoc },
+      { upsert: true, new: true }
+    );
+
+    const scoresDoc = {
+      ...updateDoc,
+      status: isCompleted ? 'completed' : 'scheduled'
+    };
+    const scoresUpsert = await Scores.findOneAndUpdate(
+      { eventId },
+      { $set: scoresDoc },
+      { upsert: true, new: true }
+    );
+
+    let settlement = null;
+    try {
+      settlement = await betSettlementService.processSettlements();
+    } catch (settleErr) {
+      console.warn('[ADMIN ODDS RESULT] Settlement process error:', settleErr?.message || settleErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Odds result upserted successfully',
+      result: resultDoc,
+      scores: scoresUpsert,
+      settlement
+    });
+  } catch (error) {
+    console.error('Upsert odds result error:', error);
+    res.status(500).json({ error: 'Failed to upsert odds result: ' + error.message });
   }
 });
 

@@ -161,6 +161,41 @@ router.get('/all', adminAuth, async (req, res) => {
   }
 });
 
+// Admin instant search across all matches (includes finished/cancelled)
+router.get('/search', adminAuth, async (req, res) => {
+  try {
+    const { q = '', status, leagueId, sport } = req.query;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
+    const skip = (page - 1) * limit;
+
+    const criteria = {
+      ...(sport && { sport }),
+      ...(status && { status }),
+      ...(leagueId && { leagueId })
+    };
+    const query = String(q || '').trim();
+    if (query.length > 0) {
+      const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      criteria.$or = [
+        { homeTeam: regex },
+        { awayTeam: regex },
+        { leagueName: regex }
+      ];
+    }
+
+    const [matches, total] = await Promise.all([
+      Match.find(criteria).sort({ startTime: -1 }).skip(skip).limit(limit),
+      Match.countDocuments(criteria)
+    ]);
+
+    res.json({ matches, page, limit, total });
+  } catch (error) {
+    console.error('Admin matches search error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get all matches with filtering and pagination
 router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TTL
   try {
