@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SkeletonLoader from '../components/SkeletonLoader';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
+import enhancedCache from '../services/enhancedCache';
 
 const Football = () => {
   const [matches, setMatches] = useState([]);
@@ -179,9 +180,10 @@ const Football = () => {
       }).filter(match => match !== null); // Remove null matches
   };
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (opts = {}) => {
     try {
-      setLoading(true);
+      const { allowSkeleton = false } = opts;
+      if (allowSkeleton) setLoading(true);
       setError(null);
       
       // Fetch odds data from API
@@ -201,7 +203,33 @@ const Football = () => {
   };
 
   useEffect(() => {
+    // Instant restore from durable cache for instant display
+    try {
+      const cached = enhancedCache.getCachedData('/matches');
+      if (cached && Array.isArray(cached.data)) {
+        const footballMatches = transformOddsToMatches(cached.data);
+        if (footballMatches.length > 0) {
+          setMatches(footballMatches);
+          setLoading(false);
+        } else {
+          setLoading(enhancedCache.shouldShowSkeleton());
+        }
+      } else {
+        setLoading(enhancedCache.shouldShowSkeleton());
+      }
+    } catch (e) {
+      setLoading(enhancedCache.shouldShowSkeleton());
+    }
+
+    // Initial fetch with background revalidation (do not gate UI)
     fetchMatches();
+
+    // Light polling to keep odds fresh while browsing
+    const intervalId = setInterval(() => {
+      fetchMatches();
+    }, 60000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   if (loading) {

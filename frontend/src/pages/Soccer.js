@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SubcategoryMatchCard from '../components/SubcategoryMatchCard';
 import apiService from '../services/api';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import enhancedCache from '../services/enhancedCache';
 
 const Soccer = () => {
   const [matches, setMatches] = useState([]);
@@ -145,9 +146,10 @@ const Soccer = () => {
       .filter(Boolean);
   };
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (opts = {}) => {
     try {
-      setLoading(true);
+      const { allowSkeleton = false } = opts;
+      if (allowSkeleton) setLoading(true);
       setError(null);
       
       // Fetch matches filtered by sport key from API (server-side filter)
@@ -168,8 +170,26 @@ const Soccer = () => {
   };
 
   useEffect(() => {
+    // Instant restore from durable cache for instant display
+    try {
+      const cached = enhancedCache.getCachedData('/matches/sport/soccer');
+      if (cached && Array.isArray(cached.matches)) {
+        const soccerMatches = transformMatchesResponse(cached.matches);
+        if (soccerMatches.length > 0) {
+          setMatches(soccerMatches);
+          setLoading(false);
+        } else {
+          setLoading(enhancedCache.shouldShowSkeleton());
+        }
+      } else {
+        setLoading(enhancedCache.shouldShowSkeleton());
+      }
+    } catch (e) {
+      setLoading(enhancedCache.shouldShowSkeleton());
+    }
+
     fetchMatches();
-    const interval = setInterval(fetchMatches, 30000); // refresh every 30s
+    const interval = setInterval(() => fetchMatches(), 30000); // refresh every 30s
     return () => clearInterval(interval);
   }, []);
 

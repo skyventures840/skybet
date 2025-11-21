@@ -4,6 +4,7 @@ import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
 import io from 'socket.io-client';
 import { useSelector } from 'react-redux';
+import enhancedCache from '../services/enhancedCache';
 
 const LiveBetting = () => {
   const [liveMatches, setLiveMatches] = useState([]);
@@ -12,10 +13,11 @@ const LiveBetting = () => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const { user } = useSelector(state => state.auth);
 
-  // Fetch live matches from API
-  const fetchLiveMatches = async () => {
+  // Fetch live matches from API (instant-friendly: no loading gate)
+  const fetchLiveMatches = async (opts = {}) => {
     try {
-      setLoading(true);
+      const { allowSkeleton = false } = opts;
+      if (allowSkeleton) setLoading(true);
       setError(null);
       
       console.log('[LIVE BETTING] Fetching live matches from API...');
@@ -38,6 +40,18 @@ const LiveBetting = () => {
             });
 
             const transformOddsToLiveMatches = (oddsData) => {
+              // Define conservative maximum live windows per sport to avoid showing finished games
+              const MAX_WINDOWS_MIN = {
+                soccer: 120,       // up to ET
+                basketball: 150,   // game runtime window
+                icehockey: 150,    // includes intermissions
+                baseball: 240,     // variable length; generous cap
+                tennis: 240,       // varies widely; conservative cap
+                rugby: 120,
+                volleyball: 150,
+                handball: 120
+              };
+
               return oddsData.map(m => {
                 const bookmakers = Array.isArray(m.bookmakers) ? m.bookmakers : [];
                 const firstBm = bookmakers[0] || null;
@@ -56,6 +70,17 @@ const LiveBetting = () => {
                 const start = m.commence_time ? new Date(m.commence_time) : new Date();
                 const diffMs = Date.now() - start.getTime();
                 const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+                const sportKey = (m.sport_key || '').split('_')[0] || '';
+                const maxWindow = MAX_WINDOWS_MIN[sportKey] || 180; // default cap
+
+                // Determine live status within realistic window
+                const withinWindow = diffMins >= 0 && diffMins <= maxWindow;
+                const status = withinWindow ? 'live' : 'finished';
+
+                // Build live time string: show minutes only for soccer; otherwise generic LIVE
+                const liveTime = withinWindow
+                  ? (sportKey === 'soccer' ? `LIVE ${Math.min(diffMins, 120)}'` : 'LIVE')
+                  : undefined;
 
                 return {
                   id: m.id || m.gameId,
@@ -68,11 +93,11 @@ const LiveBetting = () => {
                   awayTeamFlag: '🏳️',
                   odds,
                   additionalMarkets: Math.max(0, (markets.length || 0) - (h2h ? 1 : 0)),
-                  sport: (m.sport_key || '').split('_')[0] || 'live',
+                  sport: sportKey || 'live',
                   allMarkets: markets,
-                  status: 'live',
-                  isLive: true,
-                  liveTime: `LIVE ${diffMins}'`,
+                  status,
+                  isLive: status === 'live',
+                  liveTime,
                   score: null,
                   homeScore: null,
                   awayScore: null,
@@ -83,7 +108,9 @@ const LiveBetting = () => {
               });
             };
 
-            const transformed = transformOddsToLiveMatches(oddsMatches);
+            const transformed = transformOddsToLiveMatches(oddsMatches)
+              // Only keep truly live matches
+              .filter(m => m.status === 'live');
             console.log(`[LIVE BETTING] Fallback produced ${transformed.length} live matches from odds feed`);
             setLiveMatches(transformed);
             setLastUpdate(new Date().toISOString());
@@ -125,10 +152,22 @@ const LiveBetting = () => {
 
       socket.on('matchUpdate', (updatedMatch) => {
         setLiveMatches(prev => {
-          const idx = prev.findIndex(m => (m._id || m.id) === (updatedMatch._id || updatedMatch.id));
+          const idToMatch = updatedMatch._id || updatedMatch.id;
+          const idx = prev.findIndex(m => (m._id || m.id) === idToMatch);
           if (idx === -1) return prev;
+
+          const prevItem = prev[idx];
+          const merged = { ...prevItem, ...updatedMatch };
+          // Ensure isLive follows status strictly
+          merged.isLive = merged.status === 'live';
+
+          // If the match is no longer live, remove it from live list
+          if (merged.status && merged.status !== 'live') {
+            return prev.filter(m => (m._id || m.id) !== idToMatch);
+          }
+
           const next = [...prev];
-          next[idx] = { ...next[idx], ...updatedMatch };
+          next[idx] = merged;
           return next;
         });
         setLastUpdate(new Date().toISOString());
@@ -213,7 +252,28 @@ const LiveBetting = () => {
 
 
   useEffect(() => {
-    // Initial fetch
+    // Instant restore from durable cache for instant display
+    try {
+      const cached = enhancedCache.getCachedData('/matches/live/real-time');
+      if (cached && Array.isArray(cached.matches)) {
+        const matches = cached.matches || [];
+        if (cached.success && matches.length > 0) {
+          console.log('[LIVE BETTING] Instant restore from cache:', matches.length, 'matches');
+          setLiveMatches(matches);
+          setLastUpdate(new Date().toISOString());
+          setLoading(false);
+        } else {
+          // Show skeleton briefly on first load
+          setLoading(enhancedCache.shouldShowSkeleton());
+        }
+      } else {
+        setLoading(enhancedCache.shouldShowSkeleton());
+      }
+    } catch (e) {
+      setLoading(enhancedCache.shouldShowSkeleton());
+    }
+
+    // Initial fetch with background revalidation (do not gate UI)
     fetchLiveMatches();
     
     // Setup WebSocket

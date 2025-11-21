@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
+import enhancedCache from '../services/enhancedCache';
 
 const Hockey = () => {
   const [matches, setMatches] = useState([]);
@@ -10,10 +11,7 @@ const Hockey = () => {
   useEffect(() => {
     const fetchHockeyMatches = async () => {
       try {
-        setLoading(true);
-        // Use icehockey key instead of hockey to match the Odds API format
         const response = await apiService.getMatchesByKey('icehockey');
-        console.log('Hockey matches response:', response.data);
         setMatches(response.data.matches);
       } catch (err) {
         console.error('Error fetching hockey matches:', err);
@@ -22,6 +20,19 @@ const Hockey = () => {
         setLoading(false);
       }
     };
+
+    // Instant restore from durable cache for instant display
+    try {
+      const cached = enhancedCache.getCachedData('/matches/sport/icehockey');
+      if (cached && Array.isArray(cached.matches) && cached.matches.length > 0) {
+        setMatches(cached.matches);
+        setLoading(false);
+      } else {
+        setLoading(enhancedCache.shouldShowSkeleton());
+      }
+    } catch (e) {
+      setLoading(enhancedCache.shouldShowSkeleton());
+    }
 
     fetchHockeyMatches();
   }, []);

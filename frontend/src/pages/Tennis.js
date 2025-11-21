@@ -3,6 +3,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import enhancedCache from '../services/enhancedCache';
 
 const Tennis = () => {
   const [matches, setMatches] = useState([]);
@@ -165,9 +166,10 @@ const Tennis = () => {
       }).filter(match => match !== null); // Remove null matches
   };
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (opts = {}) => {
     try {
-      setLoading(true);
+      const { allowSkeleton = false } = opts;
+      if (allowSkeleton) setLoading(true);
       setError(null);
       
       // Fetch odds data from API
@@ -187,6 +189,24 @@ const Tennis = () => {
   };
 
   useEffect(() => {
+    // Instant restore from durable cache for instant display
+    try {
+      const cached = enhancedCache.getCachedData('/matches');
+      if (cached && Array.isArray(cached.data)) {
+        const tennisMatches = transformOddsToMatches(cached.data);
+        if (tennisMatches.length > 0) {
+          setMatches(tennisMatches);
+          setLoading(false);
+        } else {
+          setLoading(enhancedCache.shouldShowSkeleton());
+        }
+      } else {
+        setLoading(enhancedCache.shouldShowSkeleton());
+      }
+    } catch (e) {
+      setLoading(enhancedCache.shouldShowSkeleton());
+    }
+
     fetchMatches();
   }, []);
 

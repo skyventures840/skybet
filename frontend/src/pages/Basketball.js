@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
+import enhancedCache from '../services/enhancedCache';
 
 const Basketball = () => {
   const [matches, setMatches] = useState([]);
@@ -163,9 +164,10 @@ const Basketball = () => {
       }).filter(match => match !== null); // Remove null matches
   };
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (opts = {}) => {
     try {
-      setLoading(true);
+      const { allowSkeleton = false } = opts;
+      if (allowSkeleton) setLoading(true);
       setError(null);
       
       // Fetch odds data from API
@@ -186,6 +188,24 @@ const Basketball = () => {
   };
 
   useEffect(() => {
+    // Instant restore from durable cache for instant display
+    try {
+      const cached = enhancedCache.getCachedData('/matches');
+      if (cached && Array.isArray(cached.data)) {
+        const basketballMatches = transformOddsToMatches(cached.data);
+        if (basketballMatches.length > 0) {
+          setMatches(basketballMatches);
+          setLoading(false);
+        } else {
+          setLoading(enhancedCache.shouldShowSkeleton());
+        }
+      } else {
+        setLoading(enhancedCache.shouldShowSkeleton());
+      }
+    } catch (e) {
+      setLoading(enhancedCache.shouldShowSkeleton());
+    }
+
     fetchMatches();
   }, []);
 

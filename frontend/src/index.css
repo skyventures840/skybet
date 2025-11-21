@@ -9217,14 +9217,14 @@ body {
 }
 
 .live-score {
-  background: rgba(255, 68, 68, 0.2);
-  color: #ffffff;
+  background: #ffffff; /* white section background */
+  color: #ff4444;      /* red score text */
   font-weight: bold;
   font-size: 18px;
-  padding: 4px 4px;
-  border-radius: 4px;
-   text-align: center;
-  
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid #e0e0e0; /* subtle border for definition */
 }
 
 .live-match .odds-button {
@@ -9360,8 +9360,8 @@ body {
 }
 
 .live-match:hover .live-score {
-  background: rgba(255, 68, 68, 0.3);
-  border-color: rgba(255, 68, 68, 0.7);
+  background: #ffffff; /* keep white background on hover */
+  border-color: #e0e0e0;
 }
 
 /* Live match loading state */

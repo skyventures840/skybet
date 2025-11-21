@@ -82,18 +82,7 @@ const Betslip = () => {
       .toFixed(2);
   }, [activeBets, activeTab]);
 
-  // Derived totals for summary cards
-  const totalStake = useMemo(() => {
-    if (activeTab === 'Ordinary') {
-      return parseFloat(activeBets[0]?.stake || 0).toFixed(2);
-    }
-    const sum = activeBets.reduce((acc, bet) => acc + (parseFloat(bet.stake) || 0), 0);
-    return sum.toFixed(2);
-  }, [activeBets, activeTab]);
-
-  const wonCount = 0; // live slip: results pending
-  const lostCount = 0; // live slip: results pending
-  const totalCount = activeBets.length;
+  // Removed derived totals that are no longer displayed in summary
 
   const validateBets = () => {
     // Check if there are any bets to validate
@@ -598,27 +587,15 @@ const Betslip = () => {
             )}
             
             <div className="betslip-summary">
-              {/* Modern summary cards layout */}
+              {/* Simplified summary: retain only Total Odds and Possible Payout */}
               <div className="betslip-details-cards">
                 <div className="detail-card">
-                  <div className="detail-card-title">Amount</div>
-                  <div className="detail-card-value">${totalStake}</div>
+                  <div className="detail-card-title">Total Odds</div>
+                  <div className="detail-card-value">{totalOdds}</div>
                 </div>
                 <div className="detail-card">
                   <div className="detail-card-title">Possible Payout</div>
                   <div className="detail-card-value">${potentialWin}</div>
-                </div>
-                <div className={`detail-card ${isBetslipValid ? 'status-ready' : 'status-incomplete'}`}>
-                  <div className="detail-card-title">Status</div>
-                  <div className="detail-card-value">{isBetslipValid ? 'Ready' : 'Incomplete'}</div>
-                </div>
-                <div className="detail-card">
-                  <div className="detail-card-title">Won/Lost/Total</div>
-                  <div className="detail-card-value">{wonCount}/{lostCount}/{totalCount}</div>
-                </div>
-                <div className="detail-card">
-                  <div className="detail-card-title">Total Odds</div>
-                  <div className="detail-card-value">{totalOdds}</div>
                 </div>
               </div>
 
