@@ -676,7 +676,7 @@ html, body {
   header .nav-brand,
   .navbar header .nav-brand,
   .navbar-container .navbar-left .nav-brand {
-    font-size: clamp(280px, 65vw, 420px) !important; /* Significantly increased font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     max-width: 1600px !important; /* Increased to accommodate larger text */
     margin-left: -60px !important; /* Moved even further to the left to give hamburger more space */
     transform: scale(1) !important;
@@ -703,7 +703,7 @@ html, body {
   .navbar-container .navbar-left .nav-brand,
   .navbar-left .nav-brand,
   .nav-brand {
-    font-size: clamp(220px, 55vw, 320px) !important; /* Further increased font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     max-width: 1600px !important; /* Increased to accommodate larger text */
     margin-left: -60px !important; /* Moved even further to the left to give hamburger more space */
     transform: scale(1) !important;
@@ -729,7 +729,7 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: 220px !important; /* Significantly increased font size to match */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     max-width: 1200px !important; /* Increased to accommodate larger text */
     margin-left: 10px !important; /* Moved slightly to the right */
     transform: scale(1) !important;
@@ -834,7 +834,7 @@ html, body {
   }
 
   .nav-brand {
-    font-size: clamp(180px, 45vw, 240px) !important; /* Further increased font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     font-weight: 800 !important;
     text-decoration: none !important;
     display: flex !important;
@@ -856,12 +856,13 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(220px, 50vw, 300px) !important; /* Significantly increased font size to match */
-    max-width: none !important; /* Remove max-width constraint to allow full visibility */
-    margin-left: -20px !important; /* Moved to the left to give hamburger space */
-    overflow: visible !important; /* Ensure text is visible */
-    text-overflow: unset !important; /* Remove ellipsis */
-    flex: 1 1 auto !important; /* Allow flexible growth */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
+    margin-left: 0 !important; /* Remove negative offset */
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    flex: 1 1 auto !important;
   }
 
   .brand-w { 
@@ -1206,9 +1207,17 @@ html, body {
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     min-width: 200px;
-    z-index: 1002;
+    z-index: 9999 !important; /* force above hero and all sections on mobile */
     margin-top: 0px;
   }
+
+  /* Ensure navbar and its children overlay hero on small screens */
+  .navbar,
+  .navbar-container {
+    position: relative !important;
+    z-index: 9998 !important; /* ensure header layer outranks hero */
+  }
+  /* End navbar overlay tweaks for mobile */
 
   .profile-header {
     padding: 16px;
@@ -4309,7 +4318,7 @@ html, body {
   }
 
   .nav-brand {
-    font-size: clamp(200px, 47vw, 260px) !important; /* Significantly increased font size to match */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     margin-left: -20px !important; /* Moved to the left to give hamburger space */
     max-width: none !important; /* Remove max-width constraint to allow full visibility */
     transform: scale(1) !important; /* Force rendering */
@@ -4323,7 +4332,7 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(150px, 37vw, 190px) !important; /* Further increased font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     max-width: none !important; /* Remove max-width constraint to allow full visibility */
     margin-left: -20px !important; /* Moved to the left to give hamburger space */
     overflow: visible !important; /* Ensure text is visible */
@@ -4596,7 +4605,7 @@ html, body {
   }
 
   .nav-brand {
-    font-size: clamp(220px, 50vw, 280px) !important; /* Significantly increased font size to match */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     max-width: none !important; /* Remove max-width constraint to allow full visibility */
     transform: scale(1) !important; /* Force rendering */
     line-height: 1 !important; /* Override any line-height */
@@ -4609,7 +4618,7 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(160px, 40vw, 200px) !important; /* Further increased font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     max-width: none !important; /* Remove max-width constraint to allow full visibility */
     margin-left: -20px !important; /* Moved to the left to give hamburger space */
     overflow: visible !important; /* Ensure text is visible */
@@ -4990,7 +4999,7 @@ html, body {
   }
 
   .nav-brand {
-    font-size: clamp(200px, 48vw, 270px) !important; /* Significantly increased font size to match */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     transform: scale(1) !important; /* Force rendering */
     line-height: 1 !important; /* Override any line-height */
   }
@@ -4999,7 +5008,7 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(144px, 34.8vw, 192px) !important; /* Doubled font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     margin-left: 0 !important;
   }
 
@@ -5049,7 +5058,7 @@ html, body {
   }
 
   .nav-brand {
-    font-size: clamp(210px, 50vw, 280px) !important; /* Significantly increased font size to match */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     transform: scale(1) !important; /* Force rendering */
     line-height: 1 !important; /* Override any line-height */
   }
@@ -5058,7 +5067,7 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(150px, 36vw, 198px) !important; /* Doubled font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     margin-left: 0 !important;
   }
 
@@ -5099,7 +5108,7 @@ html, body {
   }
 
   .nav-brand {
-    font-size: clamp(220px, 52vw, 290px) !important; /* Significantly increased font size to match */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     transform: scale(1) !important; /* Force rendering */
     line-height: 1 !important; /* Override any line-height */
   }
@@ -5108,7 +5117,7 @@ html, body {
   .navbar .nav-brand,
   .navbar-container .nav-brand,
   .navbar-left .nav-brand {
-    font-size: clamp(156px, 37.2vw, 204px) !important; /* Doubled font size */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     margin-left: 0 !important;
   }
 
@@ -5201,7 +5210,7 @@ html, body {
   .navbar .navbar-left .nav-brand,
   .navbar .nav-brand,
   .nav-brand {
-    font-size: clamp(36px, 11vw, 56px) !important; /* Significantly larger for better prominence */
+    font-size: clamp(24px, 8.5vw, 34px) !important; /* Reduced to fit within navbar */
     line-height: 1 !important;
     letter-spacing: -0.5px !important;
     white-space: nowrap !important;

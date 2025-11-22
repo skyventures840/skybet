@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SkeletonLoader from '../components/SkeletonLoader';
 import apiService from '../services/api';
+import websocketService from '../services/websocketService';
+import enhancedCache from '../services/enhancedCache';
 
 const Bets = () => {
   const [betHistory, setBetHistory] = useState([]);
@@ -22,10 +24,80 @@ const Bets = () => {
   });
   const [selectedBet, setSelectedBet] = useState(null);
   const [showFullPageBet, setShowFullPageBet] = useState(false);
+  const subscribedMatchIdsRef = useRef(new Set());
 
   useEffect(() => {
-    fetchBetHistory();
-    fetchBetStats();
+    let hasInstantData = false;
+
+    // 1) Try sessionStorage for instant display
+    try {
+      const sessionBets = sessionStorage.getItem('bets_history_data');
+      const sessionStats = sessionStorage.getItem('bets_stats_data');
+      if (sessionBets || sessionStats) {
+        const parsedBets = sessionBets ? JSON.parse(sessionBets) : null;
+        const parsedStats = sessionStats ? JSON.parse(sessionStats) : null;
+        if (parsedBets && Array.isArray(parsedBets)) {
+          setBetHistory(parsedBets);
+        }
+        if (parsedStats && typeof parsedStats === 'object') {
+          setStats(prev => ({ ...prev, ...parsedStats }));
+        }
+        setLoading(false);
+        hasInstantData = true;
+      }
+    } catch (e) {
+      // ignore session errors
+    }
+
+    // 2) Fallback to enhanced cache (ETag-backed) if no session data
+    if (!hasInstantData) {
+      const betsEntry = enhancedCache.getEntry('/bets/my-bets');
+      const statsEntry = enhancedCache.getEntry('/bets/stats/summary');
+      if ((betsEntry && betsEntry.data) || (statsEntry && statsEntry.data)) {
+        if (betsEntry && betsEntry.data) {
+          const bets = betsEntry.data.bets || betsEntry.data || [];
+          setBetHistory(Array.isArray(bets) ? bets : []);
+        }
+        if (statsEntry && statsEntry.data) {
+          const summary = statsEntry.data;
+          const statsFromCache = {
+            activeBets: summary.activeBets ?? summary.pendingBets ?? 0,
+            totalBets: summary.totalBets ?? 0,
+            winRate: summary.winRate != null ? parseFloat(summary.winRate) : 0,
+            wonBets: summary.wonBets ?? 0,
+            lostBets: summary.lostBets ?? 0,
+            voidBets: summary.voidBets ?? 0,
+            cancelledBets: summary.cancelledBets ?? 0,
+            totalStaked: summary.totalStaked ?? 0,
+            totalWon: summary.totalWon ?? 0,
+            profit: summary.profit ?? 0
+          };
+          setStats(prev => ({ ...prev, ...statsFromCache }));
+        }
+        setLoading(false);
+        hasInstantData = true;
+      }
+    }
+
+    // 3) Fetch in background if we had instant data; otherwise show loading during fetch
+    const fetchAll = async () => {
+      if (hasInstantData) {
+        await fetchBetHistory(false);
+        await fetchBetStats();
+      } else {
+        await fetchBetHistory(true);
+        await fetchBetStats();
+      }
+    };
+    fetchAll();
+
+    // 4) Poll lightly to keep cache warm without relying solely on WS
+    const intervalId = setInterval(() => {
+      fetchBetHistory(false);
+      fetchBetStats();
+    }, 180000); // every 3 minutes
+
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -40,6 +112,118 @@ const Bets = () => {
     }
   }, [betHistory]);
 
+  // Connect to authenticated WebSocket and stream live FT score updates
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      websocketService.connect(token);
+      websocketService.startHeartbeat();
+    }
+
+    const onMatchUpdate = (payload) => {
+      const { matchId, result } = payload || {};
+      if (!matchId) return;
+
+      // Update betHistory matches with incoming FT scores
+      setBetHistory(prev => prev.map(bet => {
+        const updatedMatches = (bet.matches || []).map(m => {
+          const idStr = m.matchId ? String(m.matchId) : null;
+          if (idStr && idStr === String(matchId)) {
+            const updated = {
+              ...m,
+              result: {
+                ...(m.result || {}),
+                homeScore: result?.homeScore,
+                awayScore: result?.awayScore
+              }
+            };
+            const derivedOutcome = deriveOutcome(updated);
+            const derivedStatus = deriveStatus(updated);
+            return { ...updated, derivedOutcome, derivedStatus };
+          }
+          return m;
+        });
+        return { ...bet, matches: updatedMatches };
+      }));
+
+      // Also update selectedBet if full-page view is open
+      setSelectedBet(prev => {
+        if (!prev) return prev;
+        const updatedMatches = (prev.matches || []).map(m => {
+          const idStr = m.matchId ? String(m.matchId) : null;
+          if (idStr && idStr === String(matchId)) {
+            const updated = {
+              ...m,
+              result: {
+                ...(m.result || {}),
+                homeScore: result?.homeScore,
+                awayScore: result?.awayScore
+              }
+            };
+            const derivedOutcome = deriveOutcome(updated);
+            const derivedStatus = deriveStatus(updated);
+            return { ...updated, derivedOutcome, derivedStatus };
+          }
+          return m;
+        });
+        return { ...prev, matches: updatedMatches };
+      });
+    };
+
+    websocketService.on('matchResultUpdate', onMatchUpdate);
+
+    return () => {
+      websocketService.off('matchResultUpdate', onMatchUpdate);
+      websocketService.stopHeartbeat();
+      websocketService.disconnect();
+    };
+  }, []);
+
+  // Subscribe to match streams for expanded bets and full-page bet view
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Ensure connection is active
+    const status = websocketService.getConnectionStatus?.();
+    if (!status || !status.isConnected) {
+      websocketService.connect(token);
+    }
+
+    const nextSubscribed = new Set();
+
+    // Subscribe to matches in any expanded bet cards
+    getFilteredBets().forEach(bet => {
+      if (expandedBets.has(bet.id)) {
+        (bet.matches || []).forEach(m => {
+          if (m.matchId) nextSubscribed.add(String(m.matchId));
+        });
+      }
+    });
+
+    // Subscribe to matches visible in full-page bet view
+    if (showFullPageBet && selectedBet) {
+      (selectedBet.matches || []).forEach(m => {
+        if (m.matchId) nextSubscribed.add(String(m.matchId));
+      });
+    }
+
+    // Subscribe new IDs and unsubscribe removed ones
+    const prevSubscribed = subscribedMatchIdsRef.current;
+    nextSubscribed.forEach(id => {
+      if (!prevSubscribed.has(id)) {
+        websocketService.subscribeToMatch(id);
+      }
+    });
+    prevSubscribed.forEach(id => {
+      if (!nextSubscribed.has(id)) {
+        websocketService.unsubscribeFromMatch(id);
+      }
+    });
+
+    subscribedMatchIdsRef.current = nextSubscribed;
+  }, [expandedBets, selectedBet, showFullPageBet, betHistory, filters]);
+
   // Listen for real-time bet updates and refresh lists
   useEffect(() => {
     const onBetUpdate = () => {
@@ -52,9 +236,9 @@ const Bets = () => {
 
 
 
-  const fetchBetHistory = async () => {
+  const fetchBetHistory = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       setError(null);
       
       console.log('Fetching bet history...');
@@ -65,6 +249,9 @@ const Bets = () => {
         console.log('Bet history data:', response.data);
         const bets = response.data.bets || [];
         setBetHistory(bets);
+        try {
+          sessionStorage.setItem('bets_history_data', JSON.stringify(bets));
+        } catch (e) { /* ignore */ }
       } else {
         console.log('No response data received');
         setBetHistory([]);
@@ -79,7 +266,7 @@ const Bets = () => {
       setError('Failed to load bet history.');
       setBetHistory([]);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -132,6 +319,9 @@ const Bets = () => {
         
         console.log('Setting stats from database:', statsFromDB);
         setStats(statsFromDB);
+        try {
+          sessionStorage.setItem('bets_stats_data', JSON.stringify(statsFromDB));
+        } catch (e) { /* ignore */ }
       } else {
         console.warn('No data received from bet stats API, using local calculation');
         // Fallback to local calculation if API fails
@@ -152,6 +342,24 @@ const Bets = () => {
       setStats(localStats);
     }
   };
+
+  // Preserve data on navigation hide to enable instant restoration
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        try {
+          if (betHistory.length > 0) {
+            sessionStorage.setItem('bets_history_data', JSON.stringify(betHistory));
+          }
+          if (stats && typeof stats === 'object') {
+            sessionStorage.setItem('bets_stats_data', JSON.stringify(stats));
+          }
+        } catch (e) { /* ignore */ }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [betHistory, stats]);
 
   // Removed legacy status helpers (color/icon) since redesigned UI no longer uses them
 
@@ -601,20 +809,46 @@ const Bets = () => {
                         onClick={() => openFullPageBet(bet)}
                         style={{ cursor: 'pointer' }}
                       >
-                        {/* Header summary like the screenshot */}
-                        <div className="betslip-header-expanded">
-                          <div className="betslip-header-item">
-                            <span className="betslip-header-label">Amount</span>
-                            <span className="betslip-header-value">${formatAmount(bet.stake)}</span>
+                        {/* Compact header summary: three small cards in a row */}
+                        <div className="full-page-bet-summary">
+                          <div className="summary-cards">
+                            <div className="summary-card stat">
+                              <div className="summary-item">
+                                <span className="label">Amount</span>
+                                <span className="value">KES{formatAmount(bet.stake)}
+                                  <span className="info-icon" title="Stake amount">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+                                      <path d="M12 17v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                      <circle cx="12" cy="8" r="1.5" fill="currentColor" />
+                                    </svg>
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="summary-card stat">
+                              <div className="summary-item">
+                                <span className="label">Possible Payout</span>
+                                <span className="value">KES{formatAmount(bet.potentialWin)}
+                                  <span className="info-icon" title="Max payout based on odds">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+                                      <path d="M12 17v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                      <circle cx="12" cy="8" r="1.5" fill="currentColor" />
+                                    </svg>
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="summary-card stat">
+                              <div className="summary-item">
+                                <span className="label">Won/Lost/Total</span>
+                                <span className="value">{wonCount}/{lostCount}/{totalCount}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="betslip-header-item">
-                            <span className="betslip-header-label">Possible Payout</span>
-                            <span className="betslip-header-value">${formatAmount(bet.potentialWin)}</span>
-                          </div>
-                          <div className="betslip-header-item">
-                            <span className="betslip-header-label">Won/Lost/Total</span>
-                            <span className="betslip-header-value won-lost">{wonCount}/{lostCount}/{totalCount}</span>
-                          </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                           <button 
                             className="collapse-btn"
                             onClick={(e) => {
@@ -774,78 +1008,106 @@ const Bets = () => {
                   <div className="full-page-bet-details">
                     {/* Bet Summary */}
                     <div className="full-page-bet-summary">
-                      <div className="bet-summary-item">
-                        <span className="label">Bet ID:</span>
-                        <span className="value">#{bet.id?.slice(-6) || 'N/A'}</span>
-                      </div>
-                      <div className="bet-summary-item">
-                        <span className="label">Date:</span>
-                        <span className="value">{formatDate(bet.createdAt)}</span>
-                      </div>
-                      <div className="bet-summary-item">
-                        <span className="label">Amount:</span>
-                        <span className="value">${formatAmount(bet.stake)}</span>
-                      </div>
-                      <div className="bet-summary-item">
-                        <span className="label">Possible Payout:</span>
-                        <span className="value">${formatAmount(bet.potentialWin)}</span>
-                      </div>
-                      <div className="bet-summary-item">
-                        <span className="label">Status:</span>
-                        <span className={`value status-${(bet.status || 'pending').toLowerCase()}`}>
-                          {(() => {
-                            const s = (bet.status || 'pending').toLowerCase();
-                            return s === 'won' ? 'Won' : s === 'lost' ? 'Lost' : s === 'void' ? 'Void' : 'Pending';
-                          })()}
-                        </span>
-                      </div>
-                      <div className="bet-summary-item">
-                        <span className="label">Won/Lost/Total:</span>
-                        <span className="value">{wonCount}/{lostCount}/{totalCount}</span>
+                      <div className="summary-cards">
+                        <div className="summary-card stat">
+                          <div className="summary-item">
+                            <span className="label">Amount</span>
+                            <span className="value">KES{formatAmount(bet.stake)}
+                              <span className="info-icon" title="Stake amount">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+                                  <path d="M12 17v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                  <circle cx="12" cy="8" r="1.5" fill="currentColor" />
+                                </svg>
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="summary-card stat">
+                          <div className="summary-item">
+                            <span className="label">Possible Payout</span>
+                            <span className="value">KES{formatAmount(bet.potentialWin)}
+                              <span className="info-icon" title="Max payout based on odds">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+                                  <path d="M12 17v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                  <circle cx="12" cy="8" r="1.5" fill="currentColor" />
+                                </svg>
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="summary-card stat">
+                          <div className="summary-item">
+                            <span className="label">Won/Lost/Total</span>
+                            <span className="value">{wonCount}/{lostCount}/{totalCount}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Match Details */}
+                    {/* Match Details - Card layout */}
                     <div className="full-page-matches">
                       <h3>Match Details</h3>
-                      <table className="full-page-match-table">
-                        <thead>
-                          <tr>
-                            <th>Match</th>
-                            <th>Pick</th>
-                            <th>FT Results</th>
-                            <th>Outcome</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {displayMatches.map((match, index) => (
-                            <tr key={index}>
-                              <td className="match-name">
-                                <div className="match-name-stack">
-                                  <span className="home-team">{match.homeTeam}</span>
-                                  <span className="vs">vs</span>
-                                  <span className="away-team">{match.awayTeam}</span>
+                      <div className="matches-card-list">
+                        {displayMatches.map((match, index) => {
+                          const ft = getFtResult(match);
+                          const pick = parsePick(match?.selection, match?.point);
+                          const typeLabel = (() => {
+                            if (!pick || !pick.kind) return 'Type';
+                            if (pick.kind === 'winner') return '1×2';
+                            if (pick.kind === 'totals') return 'Over/Under';
+                            if (pick.kind === 'handicap') return 'Handicap';
+                            return 'Type';
+                          })();
+
+                          return (
+                            <div className="match-card-row" key={index}>
+                              <div className="match-row-header">
+                                <span className="team home-team">{match.homeTeam}</span>
+                                <span className="vs-separator">vs</span>
+                                <span className="team away-team">{match.awayTeam}</span>
+                                {match.derivedStatus === 'won' ? (
+                                  <span className="status-icon won" aria-label="Won">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <path d="M20 6L9 17L4 12" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </span>
+                                ) : match.derivedStatus === 'lost' ? (
+                                  <span className="status-icon lost" aria-label="Lost">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <path d="M6 6L18 18M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                                    </svg>
+                                  </span>
+                                ) : match.derivedStatus === 'void' ? (
+                                  <span className="status-icon void" aria-label="Void">–</span>
+                                ) : (
+                                  <span className="status-icon pending" aria-label="Pending">•</span>
+                                )}
+                              </div>
+                              <div className="match-row-body">
+                                <div className="body-item">
+                                  <span className="label">Type</span>
+                                  <span className="value">{typeLabel}</span>
                                 </div>
-                              </td>
-                              <td className="selection">
-                                {match.homeTeam && match.awayTeam ? (
-                                  <>
-                                    {match.selection} ({formatOdds(match.odds)})
-                                  </>
-                                ) : (match.selection)}
-                              </td>
-                              <td className="odds">{getFtResult(match)}</td>
-                              <td className="derived-outcome">{match.derivedOutcome || '—'}</td>
-                              <td>
-                                <span className={`bet-status status-${(match.derivedStatus || 'pending')}`}>
-                                  {match.derivedStatus === 'won' ? 'Won' : match.derivedStatus === 'lost' ? 'Lost' : 'Pending'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                <div className="body-item">
+                                  <span className="label">FT Results</span>
+                                  <span className="value">{ft}</span>
+                                </div>
+                                <div className="body-item">
+                                  <span className="label">Pick</span>
+                                  <span className="value">{match.selection}{match.odds ? ` (${formatOdds(match.odds)})` : ''}</span>
+                                </div>
+                                <div className="body-item">
+                                  <span className="label">Outcome</span>
+                                  <span className="value">{match.derivedOutcome || '—'}</span>
+                                </div>
+                                {/* Status text removed per request; icon shown in header */}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );

@@ -5457,6 +5457,41 @@ body {
 .txn-amount.credit { color: var(--primary-green); }
 .txn-amount.debit { color: var(--error, #ef4e4e); }
 
+/* Small screens: compact Transaction History and remove Dr/Cr column */
+@media (max-width: 767px) {
+  /* Reduce header size slightly within Transaction History */
+  .history-section h2 {
+    font-size: 18px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Uniform, smaller text across list items */
+  .transaction-list-header,
+  .transaction-item {
+    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr !important; /* remove Dr/Cr column */
+    gap: 6px !important;
+    padding: 8px 10px !important;
+  }
+
+  .transaction-list-header div,
+  .transaction-item div {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Hide Dr/Cr column content on small screens */
+  .drcr-col,
+  .txn-drcr {
+    display: none !important;
+  }
+
+  /* Ensure amount remains right-aligned */
+  .amount-col,
+  .txn-amount {
+    text-align: right !important;
+  }
+}
+
 /* Auth Pages */
 .auth-container {
   display: flex;
@@ -5753,9 +5788,17 @@ body {
     flex-wrap: wrap;
   }
   
-  .nav-brand {
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
     margin-left: 0;
-    font-size: 22px;
+    font-size: clamp(36px, 11vw, 56px) !important;
+    line-height: 1 !important;
+    letter-spacing: -0.5px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
   }
   
   .nav-links {
@@ -5836,8 +5879,12 @@ body {
   }
   
   /* Improve navbar for small screens */
-  .nav-brand {
-    font-size: 18px !important;
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(28px, 10.5vw, 40px) !important;
+    line-height: 1 !important;
   }
   
   .navbar-container {
@@ -5931,9 +5978,13 @@ body {
     padding-right: max(15px, env(safe-area-inset-right));
   }
   
-  .nav-brand {
-    font-size: 20px !important;
+  .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand {
+    font-size: clamp(32px, 11vw, 52px) !important;
     margin-left: 0 !important;
+    line-height: 1 !important;
   }
   
   /* Improve form elements for touch */
@@ -6157,6 +6208,7 @@ body {
   align-items: center;
   gap: 8px;
   position: relative;
+  z-index: 9998; /* keep profile container above hero when dropdown opens */
 }
 
 .profile-avatar {
@@ -6187,7 +6239,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  z-index: 2000;
+  z-index: 9999; /* ensure dropdown overlays hero and main content */
   overflow: hidden;
 }
 

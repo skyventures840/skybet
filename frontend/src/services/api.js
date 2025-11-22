@@ -197,7 +197,7 @@ api.interceptors.response.use(
     // Auto-invalidate caches after mutating requests to keep UI fresh
     const method = (response?.config?.method || 'get').toLowerCase();
     const url = response?.config?.url || '';
-    if (method === 'post' || method === 'put' || method === 'delete') {
+  if (method === 'post' || method === 'put' || method === 'delete') {
       if (url.startsWith('/admin/matches') || url.startsWith('/matches')) {
         enhancedCache.invalidateByPrefix('/matches');
         responseCache.invalidate('/matches');
@@ -215,6 +215,11 @@ api.interceptors.response.use(
       if (url.startsWith('/admin/users') || url.startsWith('/users')) {
         enhancedCache.invalidateByPrefix('/admin/users');
         responseCache.invalidate('/admin/users');
+      }
+      // Invalidate bets caches on mutations to ensure My Bets reflects changes instantly
+      if (url.startsWith('/bets') || url.startsWith('/admin/bets')) {
+        enhancedCache.invalidateByPrefix('/bets');
+        responseCache.invalidate('/bets');
       }
     }
     return response;
@@ -270,10 +275,10 @@ const apiService = {
   signup: (userData) => api.post('/auth/register', userData),
 
   // Users
-  getUserProfile: () => api.get('/auth/profile'),
+  getUserProfile: () => instantGet('/auth/profile', 60000),
   updateUserProfile: (profileData) => api.put('/auth/profile', profileData),
   changePassword: (passwordData) => api.put('/users/change-password', passwordData),
-  getTransactions: () => api.get('/users/transactions'),
+  getTransactions: () => instantGet('/users/transactions', 120000),
   deposit: (depositData) => api.post('/users/deposit', depositData),
   withdraw: (withdrawData) => api.post('/users/withdraw', withdrawData),
 
@@ -306,8 +311,9 @@ const apiService = {
 
   // Bets
   placeBet: (betData) => api.post('/bets', betData),
-  getUserBets: () => api.get('/bets/my-bets'),
-  getBetStatsSummary: () => api.get('/bets/stats/summary'),
+  // Use instantGet to return cached data immediately and revalidate in background
+  getUserBets: () => instantGet('/bets/my-bets', 120000),
+  getBetStatsSummary: () => instantGet('/bets/stats/summary', 60000),
   
   // Admin Bet Management
   getAdminBets: (params) => api.get(`/admin/bets?${params}`),

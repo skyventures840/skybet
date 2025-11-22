@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import apiService from '../services/api';
+import enhancedCache from '../services/enhancedCache';
 import { setUser } from '../store/slices/authSlice';
 
 import NowPaymentsDeposit from '../components/NowPaymentsDeposit';
@@ -36,86 +37,158 @@ const Account = () => {
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
   const [walletAddress, setWalletAddress] = useState('');
 
+  const fetchProfile = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      setError(null);
+      const response = await apiService.getUserProfile();
+      let userData;
+      if (response.data) {
+        userData = response.data.user || response.data;
+      } else {
+        userData = response;
+      }
+      if (userData) {
+        const next = {
+          username: userData.username || '',
+          email: userData.email || '',
+          firstName: userData.firstName || '',
+          lastName: userData.lastName || '',
+          phoneNumber: userData.phoneNumber || '',
+          address: userData.address || '',
+          balance: userData.balance || 0,
+          lifetimeWinnings: userData.lifetimeWinnings || 0,
+          createdAt: userData.createdAt || ''
+        };
+        setProfileData(next);
+        dispatch(setUser(userData));
+        try {
+          sessionStorage.setItem('account_profile_data', JSON.stringify(next));
+        } catch (e) { void e; }
+      } else {
+        throw new Error('No user data received from server');
+      }
+    } catch (err) {
+      setError(`Failed to load profile data: ${err.response?.data?.error || err.message}`);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Hydrate Redux user from localStorage if missing
     const localUser = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
     if (!user && localUser && localUser.token && localUser.user) {
       dispatch(setUser(localUser.user));
     }
 
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('Fetching user profile...');
-        const response = await apiService.getUserProfile();
-        console.log('Profile API response:', response);
-    
-        // Handle different response structures
-        let userData;
-        if (response.data) {
-          userData = response.data.user || response.data;
-        } else {
-          userData = response;
-        }
-        
-        console.log('Processed user data:', userData);
-        
-        if (userData) {
-          setProfileData({
-            username: userData.username || '',
-            email: userData.email || '',
-            firstName: userData.firstName || '',
-            lastName: userData.lastName || '',
-            phoneNumber: userData.phoneNumber || '',
-            address: userData.address || '',
-            balance: userData.balance || 0,
-            lifetimeWinnings: userData.lifetimeWinnings || 0,
-            createdAt: userData.createdAt || ''
-          });
-          dispatch(setUser(userData));
-        } else {
-          throw new Error('No user data received from server');
-        }
-      } catch (err) {
-        console.error('Failed to fetch profile:', err);
-        setError(`Failed to load profile data: ${err.response?.data?.error || err.message}`);
-      } finally {
+    let hasInstantData = false;
+    try {
+      const sessionProfile = sessionStorage.getItem('account_profile_data');
+      if (sessionProfile) {
+        const parsed = JSON.parse(sessionProfile);
+        setProfileData(parsed);
         setLoading(false);
+        hasInstantData = true;
       }
-    };
+    } catch (e) { void e; }
 
-    // Only fetch profile if we have a token and haven't loaded profile data yet
-    const token = localUser?.token;
-    if (token && !profileData.username) {
-      fetchProfile();
+    if (!hasInstantData) {
+      const entry = enhancedCache.getEntry('/auth/profile');
+      if (entry && entry.data) {
+        const cached = entry.data.user || entry.data;
+        setProfileData({
+          username: cached.username || '',
+          email: cached.email || '',
+          firstName: cached.firstName || '',
+          lastName: cached.lastName || '',
+          phoneNumber: cached.phoneNumber || '',
+          address: cached.address || '',
+          balance: cached.balance || 0,
+          lifetimeWinnings: cached.lifetimeWinnings || 0,
+          createdAt: cached.createdAt || ''
+        });
+        setLoading(false);
+        hasInstantData = true;
+      }
     }
-  }, []); // Remove user and dispatch from dependencies to prevent multiple calls
+
+    const token = localUser?.token;
+    if (token) {
+      fetchProfile(!hasInstantData);
+    }
+
+    const intervalId = setInterval(() => {
+      fetchProfile(false);
+    }, 180000);
+    return () => clearInterval(intervalId);
+  }, []);
 
 
   // Reusable transaction fetcher
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (showLoading = true) => {
     try {
-      setHistoryLoading(true);
+      if (showLoading) setHistoryLoading(true);
       setHistoryError(null);
       const response = await apiService.getTransactions();
       const txns = response?.data?.transactions || response?.data || [];
       setTransactions(Array.isArray(txns) ? txns : []);
+      try {
+        sessionStorage.setItem('account_transactions_data', JSON.stringify(Array.isArray(txns) ? txns : []));
+      } catch (e) { void e; }
     } catch (err) {
-      console.error('Failed to fetch transactions:', err);
       setHistoryError(err.response?.data?.error || err.message || 'Failed to load transactions');
       setTransactions([]);
     } finally {
-      setHistoryLoading(false);
+      if (showLoading) setHistoryLoading(false);
     }
   };
 
   // Fetch transaction history when History tab becomes active
   useEffect(() => {
     if (activeTab === 'history') {
-      fetchTransactions();
+      let hasInstantHistory = false;
+      try {
+        const sessionTx = sessionStorage.getItem('account_transactions_data');
+        if (sessionTx) {
+          const parsed = JSON.parse(sessionTx);
+          if (Array.isArray(parsed)) {
+            setTransactions(parsed);
+            setHistoryLoading(false);
+            hasInstantHistory = true;
+          }
+        }
+      } catch (e) { void e; }
+
+      if (!hasInstantHistory) {
+        const entry = enhancedCache.getEntry('/users/transactions');
+        if (entry && entry.data) {
+          const txns = entry.data.transactions || entry.data || [];
+          setTransactions(Array.isArray(txns) ? txns : []);
+          setHistoryLoading(false);
+          hasInstantHistory = true;
+        }
+      }
+
+      fetchTransactions(!hasInstantHistory);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        try {
+          if (profileData) {
+            sessionStorage.setItem('account_profile_data', JSON.stringify(profileData));
+          }
+          if (transactions && transactions.length > 0) {
+            sessionStorage.setItem('account_transactions_data', JSON.stringify(transactions));
+          }
+        } catch (e) { void e; }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [profileData, transactions]);
 
   const filteredTransactions = transactions.filter(txn => {
     if (historyFilter === 'deposit') return txn.type === 'deposit';

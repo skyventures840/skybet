@@ -632,3 +632,57 @@
 .datepicker-input::-webkit-datetime-edit-year-field {
   color: var(--text-primary) !important;
 }
+
+/* =============================================================
+   FINAL MOBILE BRAND OVERRIDE (highest precedence)
+   Ensures brand text is visibly larger on small screens
+   ============================================================= */
+@media (max-width: 767px) {
+  header.navbar .navbar-left .nav-brand,
+  .navbar .navbar-left .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand,
+  .nav-brand {
+    font-size: clamp(17px, 6vw, 24px) !important;
+    line-height: 1 !important;
+    letter-spacing: -0.5px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+  }
+
+  /* Make inner brand segments bold for clarity */
+  .nav-brand .brand-w,
+  .nav-brand .brand-e {
+    font-weight: 900 !important;
+    font-size: inherit !important;
+  }
+
+  /* Slightly increase navbar spacing to accommodate larger brand */
+  .navbar { min-height: 70px !important; }
+  .navbar-container { padding: 12px 14px !important; }
+}
+
+/* Apply strong brand sizing on tablets as well */
+@media (max-width: 1024px) {
+  header.navbar .navbar-left .nav-brand,
+  .navbar .navbar-left .nav-brand,
+  .navbar .nav-brand,
+  .navbar-container .nav-brand,
+  .navbar-left .nav-brand,
+  .nav-brand {
+    font-size: clamp(19px, 5.8vw, 28px) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-brand .brand-w,
+  .nav-brand .brand-e {
+    font-size: inherit !important;
+  }
+
+  /* Give the brand more room in the left group on tablets */
+  .navbar-left { flex: 2 1 auto !important; }
+  .navbar-right { flex: 1 1 auto !important; }
+}
