@@ -88,21 +88,21 @@ const PopularMatches = ({ matches }) => {
         <button className="slider-btn next-btn popular-slider-btn" onClick={scrollRight} title="Scroll right">&#8250;</button>
         <div className="popular-matches-scroll" ref={scrollRef}>
           {displayedMatches.map((match) => {
-            const sportName = match.sport || match.sport_title || '';
-            const sportKeyOrName = match.sport_key || sportName;
-            const country = match.country || match.subcategory || '';
-            const league = match.league || match.competition || match.tournament || '';
-
-            // Compute unified league title similar to regular match cards
+            const sportKeyOnly = match.sport_key || '';
             const computedFull = computeFullLeagueTitle({
-              sportKeyOrName,
-              country,
-              leagueName: league,
-              fallbackSportTitle: match.sport_title || match.sport || ''
+              sportKeyOrName: sportKeyOnly,
+              country: '',
+              leagueName: '',
+              fallbackSportTitle: ''
             });
-            const fullLeagueTitle = (match.fullLeagueTitle || computedFull || '')
-              .replace(/\./g, ' ') // convert "Sport.Country.League" -> "Sport Country League"
-              .trim();
+            const fallbackTitle = (match.sport || match.sport_title || '').trim();
+            const fullLeagueTitle = (computedFull || fallbackTitle)
+              .replace(/_/g, '.')
+              .split('.')
+              .map(s => s.trim())
+              .filter(Boolean)
+              .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+              .join('.');
 
             return (
             <div key={match.id || match._id} className="popular-match-card">

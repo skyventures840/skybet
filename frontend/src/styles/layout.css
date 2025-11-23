@@ -501,8 +501,16 @@
     min-height: 80px;
   }
   .navbar-container {
-    padding-top: var(--spacing-md);
-    padding-bottom: var(--spacing-md);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .hero-slider {
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+  }
+  .match-card {
+    padding-bottom: 2px !important;
   }
 
   .under-navbar {
@@ -517,6 +525,10 @@
     flex: 1; /* Make middle section grow to fill available space */
     display: flex;
     flex-direction: column;
+  }
+
+  .main-content {
+    padding-bottom: 0;
   }
   
   .bet-slip-wrapper {
@@ -550,6 +562,11 @@
   /* Remove bottom margin from match containers */
   .match-container,
   .match-card {
+    margin-bottom: 0;
+  }
+
+  .hero-slider {
+    margin-top: 0;
     margin-bottom: 0;
   }
   

@@ -110,9 +110,10 @@ const Login = () => {
         <div className="auth-footer">
           <p>
             Don't have an account?{' '}
-            <Link to="/signup" className="auth-link">
-              Sign up here
-            </Link>
+            <Link to="/signup" className="auth-link">Sign up here</Link>
+          </p>
+          <p>
+            <Link to="/reset-password" className="auth-link">Forgot your password?</Link>
           </p>
         </div>
       </div>

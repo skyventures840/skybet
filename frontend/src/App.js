@@ -35,6 +35,7 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const MatchDetail = React.lazy(() => import('./pages/MatchDetail'));
 const MatchMarkets = React.lazy(() => import('./pages/MatchMarkets'));
 const SportFallback = React.lazy(() => import('./components/SportFallback'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 
 import useOddsStore from './store/oddsStore';
 
@@ -120,7 +121,7 @@ function App() {
   const isLoggedIn = useSelector(state => state.auth?.loggedIn || false);
   const isAdmin = useSelector(state => state.auth?.isAdmin || false);
   
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/reset-password';
 
   const toggleSidebar = () => {
     console.log('toggleSidebar called, current state:', isSidebarOpen);
@@ -170,6 +171,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<SignUp />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/account" element={
                   <PrivateRoute auth={{ isLoggedIn }}>
                     <Account />
@@ -232,4 +234,3 @@ function App() {
 }
 
 export default App;
-

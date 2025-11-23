@@ -171,9 +171,21 @@ const Bets = () => {
     };
 
     websocketService.on('matchResultUpdate', onMatchUpdate);
+    const onBetStatusUpdate = () => {
+      fetchBetHistory(false);
+      fetchBetStats();
+    };
+    websocketService.on('betStatusUpdate', onBetStatusUpdate);
+
+    try {
+      websocketService.subscribeToUserBets(undefined);
+    } catch (e) {
+      console.warn('subscribeToUserBets failed', e && e.message ? e.message : e);
+    }
 
     return () => {
       websocketService.off('matchResultUpdate', onMatchUpdate);
+      websocketService.off('betStatusUpdate', onBetStatusUpdate);
       websocketService.stopHeartbeat();
       websocketService.disconnect();
     };
@@ -760,7 +772,7 @@ const Bets = () => {
                   if (match.result && (match.result.homeScore != null || match.result.awayScore != null)) {
                     const hs = match.result.homeScore ?? '-';
                     const as = match.result.awayScore ?? '-';
-                    return `${hs}-${as}`;
+                    return `${hs}:${as}`;
                   }
                   // Fallbacks
                   if (match.finalScore) return match.finalScore;

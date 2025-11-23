@@ -273,6 +273,9 @@ const apiService = {
   // Auth
   login: (credentials) => api.post('/auth/login', credentials),
   signup: (userData) => api.post('/auth/register', userData),
+  requestPasswordReset: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: ({ token, email, password }) => api.post('/auth/reset-password', { token, email, password }),
+  resetPasswordWithOtp: ({ otp, email, password }) => api.post('/auth/reset-password', { otp, email, password }),
 
   // Users
   getUserProfile: () => instantGet('/auth/profile', 60000),
