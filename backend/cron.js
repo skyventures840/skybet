@@ -205,6 +205,8 @@ const startCronJobs = async () => {
   let isCleaningUp = false;
   let isBetSettling = false;
   let isLiveMatchSyncing = false;
+  let isScoresFetching = false;
+  let isResultsFetching = false;
 
   // Immediate fetch on startup to populate data
   logger.info('🚀 Starting immediate data fetch on startup...');
@@ -285,6 +287,74 @@ const startCronJobs = async () => {
       logger.error('❌ Error during delayed scores and results fetch:', error);
     }
   }, 15 * 60 * 1000); // 15 minutes delay
+
+  // Periodic scores fetch every 2 minutes
+  cron.schedule('*/2 * * * *', async () => {
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      logger.warn('MongoDB not connected; skipping scheduled scores fetch');
+      return;
+    }
+    if (isScoresFetching) {
+      logger.warn('Scores fetching already in progress, skipping...');
+      return;
+    }
+    if (!oddsApiService) {
+      logger.warn('OddsApiService unavailable; skipping scores fetch');
+      return;
+    }
+    isScoresFetching = true;
+    try {
+      const sportsList = await oddsApiService.getSports();
+      const supportedSports = (sportsList || []).filter(sport => sport && sport.key && !sport.key.includes('politics') && !sport.key.includes('entertainment'));
+      for (const sport of supportedSports.slice(0, 5)) {
+        try {
+          await oddsApiService.getScores(sport.key, 0);
+        } catch (e) {
+          logger.warn(`Scores fetch failed for ${sport.key}: ${e.message}`);
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      logger.info('Scheduled scores fetch completed');
+    } catch (error) {
+      logger.error('Error during scheduled scores fetch:', error);
+    } finally {
+      isScoresFetching = false;
+    }
+  });
+
+  // Periodic results fetch every 10 minutes (past 3 days)
+  cron.schedule('*/10 * * * *', async () => {
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      logger.warn('MongoDB not connected; skipping scheduled results fetch');
+      return;
+    }
+    if (isResultsFetching) {
+      logger.warn('Results fetching already in progress, skipping...');
+      return;
+    }
+    if (!oddsApiService) {
+      logger.warn('OddsApiService unavailable; skipping results fetch');
+      return;
+    }
+    isResultsFetching = true;
+    try {
+      const sportsList = await oddsApiService.getSports();
+      const supportedSports = (sportsList || []).filter(sport => sport && sport.key && !sport.key.includes('politics') && !sport.key.includes('entertainment'));
+      for (const sport of supportedSports.slice(0, 5)) {
+        try {
+          await oddsApiService.getResults(sport.key, 3);
+        } catch (e) {
+          logger.warn(`Results fetch failed for ${sport.key}: ${e.message}`);
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      logger.info('Scheduled results fetch completed');
+    } catch (error) {
+      logger.error('Error during scheduled results fetch:', error);
+    } finally {
+      isResultsFetching = false;
+    }
+  });
 
   // Fetch upcoming odds every 30 minutes
   cron.schedule('*/30 * * * *', async () => {

@@ -90,7 +90,7 @@ class WebSocketServer {
               this.broadcastMatchResult(doc._id.toString(), {
                 homeScore: doc.homeScore,
                 awayScore: doc.awayScore,
-                score: `${doc.homeScore}-${doc.awayScore}`,
+                score: `${doc.homeScore}:${doc.awayScore}`,
               });
             }
           }

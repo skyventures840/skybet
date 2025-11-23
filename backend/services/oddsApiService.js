@@ -552,13 +552,13 @@ class OddsApiService {
   /**
    * Enhanced method to fetch scores with caching
    */
-  async getScores(sportKey) {
+  async getScores(sportKey, daysFrom = 0) {
     if (!this.isEnabled) {
       console.warn('OddsApiService is disabled due to missing configuration');
       return [];
     }
 
-    const cacheKey = `scores_${sportKey}`;
+    const cacheKey = `scores_${sportKey}_${daysFrom}`;
     const cached = scoresCache.get(cacheKey);
     if (cached) {
       console.log(`Returning cached scores for ${sportKey}`);
@@ -566,7 +566,12 @@ class OddsApiService {
     }
 
     try {
-      const response = await this.client.get(`/sports/${sportKey}/scores`);
+      const response = await this.client.get(`/sports/${sportKey}/scores`, {
+        params: {
+          daysFrom,
+          dateFormat: 'iso'
+        }
+      });
       this.lastResponseHeaders = response.headers;
       
       const scores = response.data || [];

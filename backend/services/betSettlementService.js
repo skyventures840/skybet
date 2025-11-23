@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const Bet = require('../models/Bet');
 const Results = require('../models/Results');
-const Scores = require('../models/Scores');
 const Odds = require('../models/Odds');
+const MultiBet = require('../models/MultiBet');
 const logger = require('../utils/logger');
 const { bus } = require('../utils/cache');
 
@@ -28,12 +28,8 @@ class BetSettlementService {
     try {
       logger.info('Starting automated bet settlement process...');
 
-      // Get all completed matches from Results and Scores
       const completedResults = await Results.find({ completed: true });
-      const completedScores = await Scores.find({ completed: true });
-
-      // Combine and deduplicate completed matches
-      const completedMatches = this.combineCompletedMatches(completedResults, completedScores);
+      const completedMatches = this.combineCompletedMatches(completedResults);
       
       logger.info(`Found ${completedMatches.length} completed matches to process`);
 
@@ -68,10 +64,8 @@ class BetSettlementService {
   /**
    * Combine completed matches from Results and Scores, avoiding duplicates
    */
-  combineCompletedMatches(results, scores) {
+  combineCompletedMatches(results) {
     const matchMap = new Map();
-
-    // Add results
     results.forEach(result => {
       matchMap.set(result.eventId, {
         eventId: result.eventId,
@@ -81,19 +75,6 @@ class BetSettlementService {
         completed: result.completed,
         sport_key: result.sport_key,
         source: 'results'
-      });
-    });
-
-    // Add scores (will overwrite if same eventId)
-    scores.forEach(score => {
-      matchMap.set(score.eventId, {
-        eventId: score.eventId,
-        homeTeam: score.home_team,
-        awayTeam: score.away_team,
-        scores: score.scores,
-        completed: score.completed,
-        sport_key: score.sport_key,
-        source: 'scores'
       });
     });
 
@@ -113,8 +94,7 @@ class BetSettlementService {
         return 0;
       }
 
-      // Find all pending bets for this match
-      // We need to match by eventId or by team names since matchId might be stored differently
+      await this.updateBetslipWithResult(match, homeScore, awayScore);
       const pendingBets = await this.findMatchingBets(match);
 
       if (pendingBets.length === 0) {
@@ -139,6 +119,39 @@ class BetSettlementService {
     } catch (error) {
       logger.error(`Error settling bets for match ${match.eventId}:`, error);
       return 0;
+    }
+  }
+
+  async updateBetslipWithResult(match, homeScore, awayScore) {
+    try {
+      const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
+      await MultiBet.updateMany(
+        { 'matches.matchId': match.eventId },
+        {
+          $set: {
+            'matches.$.matchStatus': 'Finished',
+            'matches.$.result': { homeScore, awayScore, finalOutcome }
+          }
+        }
+      );
+      await Bet.updateMany(
+        { 'matches.matchId': match.eventId },
+        {
+          $set: {
+            'matches.$.outcome': finalOutcome,
+            'matches.$.result': { homeScore, awayScore, finalOutcome }
+          }
+        }
+      );
+      try { bus.emit('bets:changed'); } catch (e) {}
+
+      if (global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
+        try {
+          global.websocketServer.broadcastMatchResult(String(match.eventId), { homeScore, awayScore, score: `${homeScore}:${awayScore}` });
+        } catch (wsErr) {}
+      }
+    } catch (error) {
+      logger.warn('Failed to push result to betslip:', error);
     }
   }
 
@@ -240,6 +253,7 @@ class BetSettlementService {
       };
 
       await Bet.findByIdAndUpdate(bet._id, update);
+      try { bus.emit('bets:changed'); } catch (e) {}
 
       // Emit event for real-time updates
       try {
@@ -253,6 +267,11 @@ class BetSettlementService {
           homeScore,
           awayScore
         });
+        if (global.websocketServer && typeof global.websocketServer.broadcastBetStatusUpdate === 'function') {
+          try {
+            global.websocketServer.broadcastBetStatusUpdate(String(bet._id), String(bet.userId), update.status, bet.matches || []);
+          } catch (wsErr) {}
+        }
       } catch (emitError) {
         logger.warn('Failed to emit bet update event:', emitError);
       }

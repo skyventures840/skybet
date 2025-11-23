@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { auth } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const config = require('../config/config');
+const crypto = require('crypto');
 
 // Register new user
 router.post('/register', [
@@ -208,6 +209,116 @@ router.put('/profile', auth, [
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ message: 'Server error.', details: error.message });
+  }
+});
+
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'Email not found' });
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    user.resetOtp = otpHash;
+    user.resetOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    let sent = false;
+    try {
+      if (process.env.SMTP_HOST) {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT || 587),
+          secure: false,
+          auth: process.env.SMTP_USER && process.env.SMTP_PASS ? {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+          } : undefined
+        });
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'no-reply@platypus.local',
+          to: email,
+          subject: 'Your password reset OTP',
+          text: `Your OTP is ${otp}. It expires in 10 minutes.`,
+        });
+        sent = true;
+      }
+    } catch (mailErr) {
+      // fall through, we'll still respond with preview in dev
+    }
+
+    return res.status(200).json({ message: 'verification code has been sent' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error.', details: error.message });
+  }
+});
+
+router.post('/reset-password', [
+  body('email').isEmail().normalizeEmail(),
+  body('token').optional(),
+  body('password')
+    .isLength({ min: 8 })
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]).*$/)
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, token, password, otp } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired token/otp.' });
+    }
+
+    if (otp) {
+      const otpHash = crypto.createHash('sha256').update(String(otp)).digest('hex');
+      if (!user.resetOtp || !user.resetOtpExpires) {
+        return res.status(400).json({ message: 'Invalid or expired OTP.' });
+      }
+      if (user.resetOtp !== otpHash) {
+        return res.status(400).json({ message: 'Invalid or expired OTP.' });
+      }
+      if (user.resetOtpExpires < new Date()) {
+        return res.status(400).json({ message: 'Invalid or expired OTP.' });
+      }
+    } else if (token) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      if (!user.resetPasswordToken || !user.resetPasswordExpires) {
+        return res.status(400).json({ message: 'Invalid or expired token.' });
+      }
+      if (user.resetPasswordToken !== tokenHash) {
+        return res.status(400).json({ message: 'Invalid or expired token.' });
+      }
+      if (user.resetPasswordExpires < new Date()) {
+        return res.status(400).json({ message: 'Invalid or expired token.' });
+      }
+    } else {
+      return res.status(400).json({ message: 'OTP or token required.' });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    user.resetOtp = undefined;
+    user.resetOtpExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: 'Password has been reset.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error.', details: error.message });
   }
 });
 

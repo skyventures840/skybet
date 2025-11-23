@@ -17,7 +17,11 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   lastActivity: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
+  resetOtp: { type: String },
+  resetOtpExpires: { type: Date }
 });
 
 // Add indexes for better query performance

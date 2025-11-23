@@ -7,6 +7,7 @@ const Match = require('../models/Match');
 const { auth } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const Odds = require('../models/Odds');
+const Results = require('../models/Results');
 const { cache, keyFor } = require('../utils/cache');
 // Removed unused matchDataEnricher import
 
@@ -415,7 +416,7 @@ router.get('/my-bets', auth, cacheUserBets(60), [
       Bet.countDocuments(query)
     ]);
 
-    const formattedBets = bets.map(bet => {
+    const formattedBets = await Promise.all(bets.map(async (bet) => {
       // Prefer actual teams/league from bet document, fallback to enhancedMatchData
       const matchInfo = {
         id: bet.matchId,
@@ -441,24 +442,61 @@ router.get('/my-bets', auth, cacheUserBets(60), [
         settledAt: bet.settledAt,
         profit: bet.actualWin ? bet.actualWin - bet.stake : 0
       };
+      // Build matches array and inject FT results if available
+      let matches = Array.isArray(bet.matches) ? bet.matches.map(m => ({ ...m })) : [];
+      if (matches.length === 0) {
+        matches = [{
+          matchId: bet.matchId,
+          homeTeam: matchInfo.homeTeam,
+          awayTeam: matchInfo.awayTeam,
+          selection: bet.selection,
+          odds: bet.odds,
+          status: bet.status,
+          outcome: null,
+          startTime: bet.createdAt
+        }];
+      }
+
+      // Lookup completed results for this bet's main match
+      let homeScore = null, awayScore = null, finalOutcome = null;
+      try {
+        const resDoc = await Results.findOne({ eventId: bet.matchId, completed: true }).lean();
+        if (resDoc && Array.isArray(resDoc.scores)) {
+          const hs = resDoc.scores.find(s => s.name === matchInfo.homeTeam) || resDoc.scores[0];
+          const as = resDoc.scores.find(s => s.name === matchInfo.awayTeam) || resDoc.scores[1];
+          homeScore = hs ? parseInt(hs.score) || 0 : null;
+          awayScore = as ? parseInt(as.score) || 0 : null;
+          if (homeScore != null && awayScore != null) {
+            finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
+          }
+        }
+      } catch (e) {}
+
+      // Inject result and outcome into matches
+      matches = matches.map(m => {
+        const isMain = String(m.matchId) === String(bet.matchId);
+        const result = (isMain && homeScore != null && awayScore != null) ? { homeScore, awayScore } : m.result;
+        const outcome = isMain && finalOutcome ? finalOutcome : m.outcome;
+        return { ...m, result, outcome };
+      });
 
       return {
-      id: bet._id,
+        id: bet._id,
         match: matchInfo,
-      market: bet.market,
-      selection: bet.selection,
+        market: bet.market,
+        selection: bet.selection,
         odds: oddsInfo,
         result: resultInfo,
         createdAt: bet.createdAt,
-      stake: bet.stake,
-      potentialWin: bet.potentialWin,
-      actualWin: bet.actualWin,
-      status: bet.status,
-      settledAt: bet.settledAt,
-      matchId: bet.matchId,
-      matches: bet.matches || []
+        stake: bet.stake,
+        potentialWin: bet.potentialWin,
+        actualWin: bet.actualWin,
+        status: bet.status,
+        settledAt: bet.settledAt,
+        matchId: bet.matchId,
+        matches
       };
-    });
+    }));
 
     const response = {
       bets: formattedBets,
