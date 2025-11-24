@@ -326,6 +326,8 @@ router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TT
         awayTeam: odds.away_team,
         startTime: odds.commence_time,
         sport: odds.sport_key,
+        sport_key: odds.sport_key,
+        sport_title: odds.sport_title,
         status: 'upcoming',
         odds: markets,
         additionalMarkets: additionalMarketsCount,
@@ -626,6 +628,8 @@ router.get('/popular/trending', async (req, res) => {
         odds: formattedOdds,
         additionalMarkets: (matchObj.markets || []).length,
         sport: matchObj.sport,
+        sport_key: matchObj.sport,
+        sport_title: leagueName,
         source: 'admin',
         country,
         fullLeagueTitle
@@ -676,6 +680,8 @@ router.get('/popular/trending', async (req, res) => {
       awayTeam: match.awayTeam,
       odds: match.odds,
       sport: match.sport,
+      sport_key: match.sport_key || match.sport,
+      sport_title: match.sport_title || match.league,
       source: match.source,
       country: match.country || '',
       fullLeagueTitle: match.fullLeagueTitle || `${titleCase(match.sport || '')}${match.country ? '.' + match.country : ''}${match.league ? '.' + match.league : ''}`

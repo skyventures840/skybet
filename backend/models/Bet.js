@@ -78,7 +78,17 @@ const betSchema = new mongoose.Schema({
       default: 'pending'
     },
     outcome: String,
-    startTime: Date
+    startTime: Date,
+    matchStatus: {
+      type: String,
+      enum: ['Scheduled', 'Live', 'Finished', 'Cancelled'],
+      default: 'Scheduled'
+    },
+    result: {
+      homeScore: Number,
+      awayScore: Number,
+      finalOutcome: String
+    }
   }],
   createdAt: {
     type: Date,
