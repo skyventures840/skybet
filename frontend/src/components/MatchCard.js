@@ -367,6 +367,7 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
         
         const matchId = match._id || match.id;
         if (matchId) {
+            try { import('../services/api').then(m => m.default.getMatchMarkets(matchId)).catch(err => { void err; }); } catch (e) { void e; }
             navigate(`/match/${matchId}/markets`);
         } else {
             console.error('Invalid match ID format');

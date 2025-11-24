@@ -644,7 +644,7 @@
   .navbar-container .nav-brand,
   .navbar-left .nav-brand,
   .nav-brand {
-    font-size: clamp(17px, 6vw, 24px) !important;
+    font-size: clamp(14px, 5vw, 20px) !important;
     line-height: 1 !important;
     letter-spacing: -0.5px !important;
     white-space: nowrap !important;

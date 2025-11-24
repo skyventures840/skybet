@@ -8,7 +8,7 @@ const Bets = () => {
   const [betHistory, setBetHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [expandedBets, setExpandedBets] = useState(new Set());
+  const [expandedBets] = useState(new Set());
   const [stats, setStats] = useState({
     activeBets: 0,
     totalBets: 0,
@@ -205,7 +205,7 @@ const Bets = () => {
     const nextSubscribed = new Set();
 
     // Subscribe to matches in any expanded bet cards
-    getFilteredBets().forEach(bet => {
+    filteredBets.forEach(bet => {
       if (expandedBets.has(bet.id)) {
         (bet.matches || []).forEach(m => {
           if (m.matchId) nextSubscribed.add(String(m.matchId));
@@ -524,16 +524,7 @@ const Bets = () => {
     return lowOutcome && lowPick && lowOutcome.includes(lowPick) ? 'won' : 'lost';
   };
 
-  const toggleBetExpansion = (betId) => {
-    // Enforce single-open accordion behavior
-    if (expandedBets.has(betId)) {
-      // Collapse if the same bet is clicked
-      setExpandedBets(new Set());
-    } else {
-      // Open only the clicked bet, close others
-      setExpandedBets(new Set([betId]));
-    }
-  };
+  
 
   // Full-page bet view functions
   const openFullPageBet = (bet) => {
@@ -585,7 +576,7 @@ const Bets = () => {
     }));
   };
 
-  const getFilteredBets = () => {
+  const filteredBets = React.useMemo(() => {
     return betHistory.filter(bet => {
       // Status filter
       if (filters.status !== 'all') {
@@ -608,7 +599,7 @@ const Bets = () => {
 
       return true;
     });
-  };
+  }, [betHistory, filters]);
 
   // Function to expand multibets into individual match rows
 
@@ -633,7 +624,7 @@ const Bets = () => {
       </div>
 
       <div className="bets-content">
-        {loading ? (
+        {(loading && betHistory.length === 0) ? (
           <div style={{ padding: '12px 0' }}>
             <SkeletonLoader type="generic" count={5} />
           </div>
@@ -695,20 +686,14 @@ const Bets = () => {
             </div>
             
             <div className="bet-history-list">
-              {getFilteredBets().map((bet) => {
+              {filteredBets.map((bet) => {
                 const isExpanded = expandedBets.has(bet.id);
                 const isMultibet = bet.market === 'parlay' && bet.matches && bet.matches.length > 1;
                 
                 // For testing - create sample matches if none exist
                 let displayMatches = bet.matches || [];
                 // Normalize match status casing and shape for consistent rendering
-                const normalizeStatus = (s) => {
-                  if (!s) return 'pending';
-                  const lower = String(s).toLowerCase();
-                  if (lower === 'win') return 'won';
-                  if (lower === 'loss') return 'lost';
-                  return lower; // pending, won, lost, void
-                };
+                
                 if (isMultibet && displayMatches.length === 0) {
                   // Parse matches from selection string for legacy bets
                   if (bet.selection && bet.selection.includes(';')) {
@@ -761,24 +746,7 @@ const Bets = () => {
                   };
                 });
 
-                const wonCount = displayMatches.filter(m => (m.derivedStatus) === 'won').length;
-                const lostCount = displayMatches.filter(m => (m.derivedStatus) === 'lost').length;
-                const totalCount = displayMatches.length || 1;
-
-                // getMatchType removed since Type column is no longer used
-
-                const getFtResult = (match) => {
-                  // Prefer structured result scores if present
-                  if (match.result && (match.result.homeScore != null || match.result.awayScore != null)) {
-                    const hs = match.result.homeScore ?? '-';
-                    const as = match.result.awayScore ?? '-';
-                    return `${hs}:${as}`;
-                  }
-                  // Fallbacks
-                  if (match.finalScore) return match.finalScore;
-                  if (match.outcome && ['1','X','2'].includes(String(match.outcome))) return match.outcome;
-                  return normalizeStatus(match.status) === 'pending' ? '—' : (match.outcome || match.status || '—');
-                };
+                
 
                 return (
                   <div key={bet.id} className={`bet-card ${bet.status} ${isExpanded ? 'expanded' : 'collapsed'}`}>
@@ -800,120 +768,11 @@ const Bets = () => {
                               return s === 'won' ? 'Won' : s === 'lost' ? 'Lost' : s === 'void' ? 'Void' : 'Pending';
                             })()}
                           </span>
-                          <button 
-                            className="expand-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleBetExpansion(bet.id);
-                            }}
-                            title="Expand/Collapse bet details"
-                          >
-                            ▼
-                          </button>
                         </div>
                       </div>
                     )}
 
-                    {/* Expanded Content */}
-                    {isExpanded && (
-                      <div 
-                        className="betslip-match-details"
-                        onClick={() => openFullPageBet(bet)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {/* Compact header summary: three small cards in a row */}
-                        <div className="full-page-bet-summary">
-                          <div className="summary-cards">
-                            <div className="summary-card stat">
-                              <div className="summary-item">
-                                <span className="label">Amount</span>
-                                <span className="value">KES{formatAmount(bet.stake)}
-                                  <span className="info-icon" title="Stake amount">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-                                      <path d="M12 17v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                      <circle cx="12" cy="8" r="1.5" fill="currentColor" />
-                                    </svg>
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="summary-card stat">
-                              <div className="summary-item">
-                                <span className="label">Possible Payout</span>
-                                <span className="value">KES{formatAmount(bet.potentialWin)}
-                                  <span className="info-icon" title="Max payout based on odds">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-                                      <path d="M12 17v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                      <circle cx="12" cy="8" r="1.5" fill="currentColor" />
-                                    </svg>
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="summary-card stat">
-                              <div className="summary-item">
-                                <span className="label">Won/Lost/Total</span>
-                                <span className="value">{wonCount}/{lostCount}/{totalCount}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                          <button 
-                            className="collapse-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleBetExpansion(bet.id);
-                            }}
-                            title="Collapse bet details"
-                          >
-                            ▲
-                          </button>
-                        </div>
-
-                        {/* Match table with derived outcomes and status */}
-                        <table className="betslip-match-table">
-                          <thead>
-                            <tr>
-                              <th>Match</th>
-                              <th>Pick</th>
-                              <th>FT Results</th>
-                              <th>Outcome</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {displayMatches.map((match, index) => (
-                              <tr key={index}>
-                                <td className="match-name">
-                                  <div className="match-name-stack">
-                                    <span className="home-team">{match.homeTeam}</span>
-                                    <span className="vs">vs</span>
-                                    <span className="away-team">{match.awayTeam}</span>
-                                  </div>
-                                </td>
-                                <td className="selection">
-                                  {match.homeTeam && match.awayTeam ? (
-                                    <>
-                                      {match.selection} ({formatOdds(match.odds)})
-                                    </>
-                                  ) : (match.selection)}
-                                </td>
-                                <td className="odds">{getFtResult(match)}</td>
-                                <td className="derived-outcome">{match.derivedOutcome || '—'}</td>
-                                <td>
-                                  <span className={`bet-status status-${(match.derivedStatus || 'pending')}`}>
-                                    {match.derivedStatus === 'won' ? 'Won' : match.derivedStatus === 'lost' ? 'Lost' : 'Pending'}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    
                   </div>
                 );
               })}

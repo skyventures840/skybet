@@ -307,7 +307,7 @@ const apiService = {
   // Cache popular matches for longer duration for instant loading
   getPopularMatches: () => cachedGet('/matches/popular/trending', 300000), // 5 minutes cache
   getMatchById: (id) => cachedGet(`/matches/${id}`, 15000),
-  getLiveMatches: () => cachedGet('/matches/live/real-time', 5000),
+  getLiveMatches: () => instantGet('/matches/live/real-time', 30000),
   addMatch: (matchData) => api.post('/admin/matches', matchData),
   updateMatch: (id, matchData) => api.put(`/admin/matches/${id}`, matchData),
   deleteMatch: (id) => api.delete(`/admin/matches/${id}`),
@@ -364,7 +364,7 @@ const apiService = {
   createLeague: (data) => api.post('/admin/leagues', data),
   // Fetch matches by sport key (public, no auth); cache briefly
   getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
-  getMatchMarkets: (matchId) => cachedGet(`/matches/${matchId}/markets`, 30000),
+  getMatchMarkets: (matchId) => instantGet(`/matches/${matchId}/markets`, 120000),
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>
     api.put(`/admin/matches/${matchId}/status`, { status, homeScore, awayScore }),

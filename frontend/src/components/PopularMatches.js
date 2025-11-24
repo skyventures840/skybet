@@ -87,16 +87,15 @@ const PopularMatches = ({ matches }) => {
         <button className="slider-btn prev-btn popular-slider-btn" onClick={scrollLeft} title="Scroll left">&#8249;</button>
         <button className="slider-btn next-btn popular-slider-btn" onClick={scrollRight} title="Scroll right">&#8250;</button>
         <div className="popular-matches-scroll" ref={scrollRef}>
-          {displayedMatches.map((match) => {
-            const sportKeyOnly = match.sport_key || '';
+          {displayedMatches.filter(m => m.sport_key).map((match) => {
+            const sportKeyOnly = match.sport_key;
             const computedFull = computeFullLeagueTitle({
               sportKeyOrName: sportKeyOnly,
               country: '',
               leagueName: '',
               fallbackSportTitle: ''
             });
-            const fallbackTitle = (match.sport || match.sport_title || '').trim();
-            const fullLeagueTitle = (computedFull || fallbackTitle)
+            const fullLeagueTitle = computedFull
               .replace(/_/g, '.')
               .split('.')
               .map(s => s.trim())
@@ -105,11 +104,11 @@ const PopularMatches = ({ matches }) => {
               .join('.');
 
             return (
-            <div key={match.id || match._id} className="popular-match-card">
-              <div className="match-league">{fullLeagueTitle}</div>
-              {/* Date + Time display placed directly under league title */}
-              <div className="match-time">
-                {(() => {
+              <div key={match.id || match._id} className="popular-match-card">
+                <div className="match-league">{fullLeagueTitle}</div>
+                {/* Date + Time display placed directly under league title */}
+                <div className="match-time">
+                  {(() => {
                   const dt = match.startTime ? new Date(match.startTime) : null;
                   const dateStr = dt ? dt.toLocaleDateString() : '';
                   const timeStr = dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (match.time || '');

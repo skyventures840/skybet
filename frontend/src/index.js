@@ -5,6 +5,7 @@ import './index.css';
 import './styles/main.css';
 import './styles/overrides.css';
 import App from './App';
+import apiService from './services/api';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
@@ -35,6 +36,11 @@ if (process.env.NODE_ENV !== 'production') {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 import { BrowserRouter as Router } from 'react-router-dom';
+
+// Prewarm live matches cache to enable instant rendering on first visit
+try {
+  apiService.getLiveMatches().catch(err => { void err; });
+} catch (e) { void e; }
 
 root.render(
   <React.StrictMode>

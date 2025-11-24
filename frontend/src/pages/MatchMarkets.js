@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import apiService from '../services/api';
 import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
+import enhancedCache from '../services/enhancedCache';
 
 const MatchMarkets = () => {
     const { matchId } = useParams();
@@ -28,10 +29,56 @@ const MatchMarkets = () => {
         // const urlParams = new URLSearchParams(location.search);
         // const fromAdditionalMarkets = urlParams.get('from') === 'additional';
         
-        // Fetch match data from API
+        // First restore from durable cache/session for instant display
+        try {
+            const cached = enhancedCache.getCachedData(`/matches/${matchId}/markets`);
+            if (cached && (cached.markets || cached.bookmakers)) {
+                const matchData = cached;
+                let processedMatchData = { ...matchData };
+                if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
+                    processedMatchData.markets = mergeAndNormalizeMarkets(matchData.markets, matchData);
+                } else if (matchData.bookmakers && matchData.bookmakers.length > 0) {
+                    const aggregated = new Map();
+                    matchData.bookmakers.forEach((bookmaker) => {
+                        (bookmaker.markets || []).forEach((market) => {
+                            const normKey = normalizeMarketKey(market.key);
+                            const marketTitle = titleForKey(normKey);
+                            const existing = aggregated.get(normKey);
+                            const incomingOutcomes = (market.outcomes || []).map(outcome => ({
+                                name: outcome.name,
+                                price: outcome.price,
+                                point: outcome.point || null
+                            }));
+                            if (!existing) {
+                                aggregated.set(normKey, { key: normKey, title: marketTitle, outcomes: incomingOutcomes });
+                            } else {
+                                const bySig = new Map();
+                                [...existing.outcomes, ...incomingOutcomes].forEach(o => {
+                                    const sig = `${(o.name||'').toLowerCase()}|${o.point ?? ''}`;
+                                    if (!bySig.has(sig)) bySig.set(sig, o);
+                                    else {
+                                        const prev = bySig.get(sig);
+                                        if ((!prev.price || prev.price <= 0) && o.price && o.price > 0) bySig.set(sig, o);
+                                    }
+                                });
+                                existing.outcomes = Array.from(bySig.values());
+                            }
+                        });
+                    });
+                    const markets = Array.from(aggregated.values());
+                    processedMatchData.markets = normalizeOutcomeLabels(markets, matchData);
+                } else {
+                    processedMatchData.markets = [];
+                }
+                setMatch(processedMatchData);
+                setLoading(false);
+            }
+        } catch (restoreErr) { void restoreErr; }
+
+        // Fetch match data from API (background revalidation if cache was shown)
         const fetchMatch = async () => {
             try {
-                setLoading(true);
+                if (!match) setLoading(true);
                 setError(null);
                 
                 // Use the markets endpoint for comprehensive data
@@ -103,6 +150,7 @@ const MatchMarkets = () => {
                 }
                 
                 setMatch(processedMatchData);
+                try { sessionStorage.setItem(`match_markets_${matchId}`, JSON.stringify(processedMatchData)); } catch { void 0; }
                 setLoading(false);
             } catch (error) {
                 console.error('Error fetching match data:', error);
@@ -348,7 +396,7 @@ const MatchMarkets = () => {
         );
     };
 
-    if (loading) {
+    if (loading && !match) {
         return (
             <div className="match-markets-page">
                 <div className="match-markets-header">

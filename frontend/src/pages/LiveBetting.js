@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import SkeletonLoader from '../components/SkeletonLoader';
 import MatchCard from '../components/MatchCard';
-import apiService from '../services/api';
-import io from 'socket.io-client';
+ 
+import websocketService from '../services/websocketService';
 import { useSelector } from 'react-redux';
 import enhancedCache from '../services/enhancedCache';
+import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import apiService from '../services/api';
 
 const LiveBetting = () => {
   const [liveMatches, setLiveMatches] = useState([]);
@@ -70,8 +72,9 @@ const LiveBetting = () => {
                 const start = m.commence_time ? new Date(m.commence_time) : new Date();
                 const diffMs = Date.now() - start.getTime();
                 const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
-                const sportKey = (m.sport_key || '').split('_')[0] || '';
-                const maxWindow = MAX_WINDOWS_MIN[sportKey] || 180; // default cap
+                const sportKeyFull = (m.sport_key || '').toString();
+                const sportKey = sportKeyFull.split('_')[0] || '';
+                const maxWindow = MAX_WINDOWS_MIN[sportKey] || 180;
 
                 // Determine live status within realistic window
                 const withinWindow = diffMins >= 0 && diffMins <= maxWindow;
@@ -81,6 +84,13 @@ const LiveBetting = () => {
                 const liveTime = withinWindow
                   ? (sportKey === 'soccer' ? `LIVE ${Math.min(diffMins, 120)}'` : 'LIVE')
                   : undefined;
+
+                const fullLeagueTitle = computeFullLeagueTitle({
+                  sportKeyOrName: sportKeyFull,
+                  country: '',
+                  leagueName: '',
+                  fallbackSportTitle: ''
+                });
 
                 return {
                   id: m.id || m.gameId,
@@ -94,6 +104,7 @@ const LiveBetting = () => {
                   odds,
                   additionalMarkets: Math.max(0, (markets.length || 0) - (h2h ? 1 : 0)),
                   sport: sportKey || 'live',
+                  sport_key: sportKeyFull,
                   allMarkets: markets,
                   status,
                   isLive: status === 'live',
@@ -103,7 +114,7 @@ const LiveBetting = () => {
                   awayScore: null,
                   lastUpdate: new Date().toISOString(),
                   country: '',
-                  fullLeagueTitle: undefined
+                  fullLeagueTitle
                 };
               });
             };
@@ -113,6 +124,7 @@ const LiveBetting = () => {
               .filter(m => m.status === 'live');
             console.log(`[LIVE BETTING] Fallback produced ${transformed.length} live matches from odds feed`);
             setLiveMatches(transformed);
+            try { sessionStorage.setItem('live_matches_data', JSON.stringify(transformed)); } catch { void 0; }
             setLastUpdate(new Date().toISOString());
           } catch (fallbackErr) {
             console.error('[LIVE BETTING] Fallback odds fetch failed:', fallbackErr);
@@ -120,6 +132,7 @@ const LiveBetting = () => {
           }
         } else {
           setLiveMatches(matches);
+          try { sessionStorage.setItem('live_matches_data', JSON.stringify(matches)); } catch { void 0; }
           setLastUpdate(new Date().toISOString());
         }
       } else {
@@ -135,75 +148,66 @@ const LiveBetting = () => {
     }
   };
 
-  // Setup WebSocket connection and subscriptions
-  const setupWebSocket = () => {
-    const WS_URL = process.env.REACT_APP_WS_URL || null;
-    if (!WS_URL) {
-      console.warn('[LIVE BETTING] WS_URL not set; skipping Socket.IO');
+  // Setup WebSocket service connection and subscriptions
+  const setupWebSocketService = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('[LIVE BETTING] No auth token; skipping WS connection');
       return;
     }
 
     try {
-      const socket = io(WS_URL, { withCredentials: true });
-      socket.on('connect', () => {
-        console.log('[LIVE BETTING] Connected to Socket.IO');
-        socket.emit('subscribe:live');
-      });
+      websocketService.connect(token);
+      websocketService.startHeartbeat();
 
-      socket.on('matchUpdate', (updatedMatch) => {
-        setLiveMatches(prev => {
-          const idToMatch = updatedMatch._id || updatedMatch.id;
-          const idx = prev.findIndex(m => (m._id || m.id) === idToMatch);
-          if (idx === -1) return prev;
-
-          const prevItem = prev[idx];
-          const merged = { ...prevItem, ...updatedMatch };
-          // Ensure isLive follows status strictly
-          merged.isLive = merged.status === 'live';
-
-          // If the match is no longer live, remove it from live list
-          if (merged.status && merged.status !== 'live') {
-            return prev.filter(m => (m._id || m.id) !== idToMatch);
-          }
-
-          const next = [...prev];
-          next[idx] = merged;
+      const handleLiveMatchesUpdate = (payload) => {
+        const matches = Array.isArray(payload?.matches) ? payload.matches : [];
+        setLiveMatches(() => {
+          const next = matches.map(m => ({
+            ...m,
+            isLive: m.status === 'live'
+          }));
+          try { sessionStorage.setItem('live_matches_data', JSON.stringify(next)); } catch { void 0; }
           return next;
         });
-        setLastUpdate(new Date().toISOString());
-      });
+        setLastUpdate(payload?.timestamp || new Date().toISOString());
+      };
 
-      socket.on('oddsUpdate', (payload) => {
-        const matchId = payload?.matchId || payload?._id || payload?.id;
-        const odds = payload?.delta || payload?.odds || payload;
-        setLiveMatches(prev => prev.map(m => {
-          const id = m._id || m.id;
-          if (id !== matchId) return m;
-          return { ...m, odds: { ...(m.odds || {}), ...(odds || {}) } };
-        }));
-      });
-
-      socket.on('newMatch', (newMatch) => {
+      const handleMatchResultUpdate = (payload) => {
+        const matchId = payload?.matchId;
+        const result = payload?.result || {};
+        if (!matchId) return;
         setLiveMatches(prev => {
-          const id = newMatch._id || newMatch.id;
-          if (!id) return prev;
-          const exists = prev.some(m => (m._id || m.id) === id);
-          return exists ? prev : [newMatch, ...prev];
+          const idx = prev.findIndex(m => (m._id || m.id) === matchId);
+          if (idx === -1) return prev;
+          const prevItem = prev[idx];
+          const merged = {
+            ...prevItem,
+            homeScore: result.homeScore ?? prevItem.homeScore ?? null,
+            awayScore: result.awayScore ?? prevItem.awayScore ?? null,
+            score: result.score ?? (result.homeScore != null && result.awayScore != null ? `${result.homeScore}-${result.awayScore}` : prevItem.score || null)
+          };
+          const next = [...prev];
+          next[idx] = merged;
+          try { sessionStorage.setItem('live_matches_data', JSON.stringify(next)); } catch { void 0; }
+          return next;
         });
-      });
+        setLastUpdate(payload?.timestamp || new Date().toISOString());
+      };
 
-      socket.on('matchDeleted', (matchId) => {
-        setLiveMatches(prev => prev.filter(m => (m._id || m.id) !== matchId));
-      });
+      websocketService.on('liveMatchesUpdate', handleLiveMatchesUpdate);
+      websocketService.on('matchResultUpdate', handleMatchResultUpdate);
+      websocketService.subscribeToLiveMatches();
+      websocketService.requestLiveMatches();
 
-      socket.on('disconnect', () => {
-        console.log('[LIVE BETTING] Disconnected from Socket.IO');
-      });
-
-      // Cleanup
-      return () => socket.disconnect();
+      return () => {
+        websocketService.unsubscribeFromLiveMatches();
+        websocketService.off('liveMatchesUpdate', handleLiveMatchesUpdate);
+        websocketService.off('matchResultUpdate', handleMatchResultUpdate);
+        websocketService.stopHeartbeat();
+      };
     } catch (error) {
-      console.error('[LIVE BETTING] Error setting up Socket.IO:', error);
+      console.error('[LIVE BETTING] Error setting up WebSocket service:', error);
     }
   };
 
@@ -252,22 +256,29 @@ const LiveBetting = () => {
 
 
   useEffect(() => {
-    // Instant restore from durable cache for instant display
+    // Instant restore from sessionStorage or durable cache for instant display
     try {
-      const cached = enhancedCache.getCachedData('/matches/live/real-time');
-      if (cached && Array.isArray(cached.matches)) {
-        const matches = cached.matches || [];
-        if (cached.success && matches.length > 0) {
-          console.log('[LIVE BETTING] Instant restore from cache:', matches.length, 'matches');
-          setLiveMatches(matches);
-          setLastUpdate(new Date().toISOString());
-          setLoading(false);
+      const sessionRaw = sessionStorage.getItem('live_matches_data');
+      const sessionMatches = sessionRaw ? JSON.parse(sessionRaw) : null;
+      if (Array.isArray(sessionMatches) && sessionMatches.length > 0) {
+        setLiveMatches(sessionMatches);
+        setLastUpdate(new Date().toISOString());
+        setLoading(false);
+      } else {
+        const cached = enhancedCache.getCachedData('/matches/live/real-time');
+        if (cached && Array.isArray(cached.matches)) {
+          const matches = cached.matches || [];
+          if (cached.success && matches.length > 0) {
+            console.log('[LIVE BETTING] Instant restore from cache:', matches.length, 'matches');
+            setLiveMatches(matches);
+            setLastUpdate(new Date().toISOString());
+            setLoading(false);
+          } else {
+            setLoading(enhancedCache.shouldShowSkeleton());
+          }
         } else {
-          // Show skeleton briefly on first load
           setLoading(enhancedCache.shouldShowSkeleton());
         }
-      } else {
-        setLoading(enhancedCache.shouldShowSkeleton());
       }
     } catch (e) {
       setLoading(enhancedCache.shouldShowSkeleton());
@@ -276,8 +287,8 @@ const LiveBetting = () => {
     // Initial fetch with background revalidation (do not gate UI)
     fetchLiveMatches();
     
-    // Setup WebSocket
-    setupWebSocket();
+    // Setup WebSocket service
+    const cleanupWs = setupWebSocketService();
     
     // Set up polling for live matches (every 30 seconds as fallback)
     const intervalId = setInterval(() => {
@@ -287,10 +298,24 @@ const LiveBetting = () => {
     
     return () => {
       clearInterval(intervalId);
+      if (typeof cleanupWs === 'function') cleanupWs();
     };
   }, [user]);
 
-  if (loading) {
+  // Prefetch additional markets for the first few visible live matches
+  useEffect(() => {
+    try {
+      const topLive = (liveMatches || []).slice(0, 5);
+      topLive.forEach(m => {
+        const id = m._id || m.id;
+        if (id) {
+          apiService.getMatchMarkets(id).catch(err => { void err; });
+        }
+      });
+    } catch (e) { void e; }
+  }, [liveMatches]);
+
+  if (loading && liveMatches.length === 0) {
     return (
       <div className="sport-page">
         <div className="sport-header">
@@ -363,19 +388,11 @@ const LiveBetting = () => {
                       <span className="arrow">▲</span>
                       {(() => {
                         const first = matches && matches[0] ? matches[0] : {};
-                        const sport = first.sport || first.sport_title;
-                        const country = first.subcategory || first.country;
-                        const norm = (s) => (s || '').toString().trim().replace(/[.·]+$/,'');
-                        const parts = [norm(sport), norm(country), norm(league)].filter(Boolean);
-                        // If league already contains country, skip country to avoid duplication
-                        const finalParts = parts.filter((p, idx) => {
-                          if (idx === 1 && parts[2] && parts[2].toLowerCase().includes(p.toLowerCase())) return false;
-                          return true;
-                        });
-                        const title = Array.from(new Set(finalParts.map(p => p.toLowerCase())))
-                          .map(lower => finalParts.find(p => p.toLowerCase() === lower))
-                          .join(' · ');
-                        return title;
+                        const sportKey = first.sport_key || '';
+                        const computed = sportKey
+                          ? computeFullLeagueTitle({ sportKeyOrName: sportKey, country: '', leagueName: '', fallbackSportTitle: '' })
+                          : league;
+                        return computed;
                       })()}
                     </div>
                     {/* Odds Headers - Aligned with respective odds */}
@@ -388,17 +405,32 @@ const LiveBetting = () => {
                   
                   {/* Matches in this league */}
                   <div className="league-matches">
-                    {matches.map((match) => (
-                      <MatchCard
-                        key={match.id || match._id}
-                        match={match}
-                        sport={match.sport}
-                        league={match.league}
-                        subcategory={match.subcategory}
-                        showLeagueHeader={false} // Don't show individual league headers
-                        showOddsHeaders={false} // Don't show individual odds headers
-                      />
-                    ))}
+                    {matches.map((match) => {
+                      const computedLeague = match.fullLeagueTitle || (
+                        match.sport_key
+                          ? computeFullLeagueTitle({
+                              sportKeyOrName: match.sport_key,
+                              country: '',
+                              leagueName: '',
+                              fallbackSportTitle: ''
+                            })
+                          : match.league
+                      );
+                      const computedSport = match.sport || (
+                        match.sport_key ? String(match.sport_key).split('_')[0] : 'live'
+                      );
+                      return (
+                        <MatchCard
+                          key={match.id || match._id}
+                          match={match}
+                          sport={computedSport}
+                          league={computedLeague}
+                          subcategory={match.subcategory}
+                          showLeagueHeader={false}
+                          showOddsHeaders={false}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               );

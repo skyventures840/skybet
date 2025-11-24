@@ -463,6 +463,7 @@ const Home = () => {
             })
             // Only upcoming
             .filter(match => new Date(match.startTime) >= now)
+            .filter(match => match.sport_key)
             .slice(0, 6)
             .map(match => ({
               id: match.id || match._id,
@@ -477,6 +478,7 @@ const Home = () => {
               awayTeam: match.awayTeam,
               odds: match.odds || {},
               sport: match.sport || '',
+              sport_key: match.sport_key,
               country: match.country || '',
               fullLeagueTitle: match.fullLeagueTitle || ''
             }));
@@ -552,6 +554,7 @@ const Home = () => {
         })
         // Only upcoming
         .filter(match => new Date(match.startTime) >= now)
+        .filter(match => match.sport_key)
         .slice(0, 6)
         .map(match => ({
           id: match.id || match._id,
@@ -567,7 +570,8 @@ const Home = () => {
           odds: match.odds || {},
           sport: match.sport || '',
           country: match.country || '',
-          fullLeagueTitle: match.fullLeagueTitle || ''
+          fullLeagueTitle: match.fullLeagueTitle || '',
+          sport_key: match.sport_key
         }));
       
       // Deduplicate popular matches as well
@@ -753,6 +757,7 @@ const Home = () => {
             const now = new Date();
             const transformedPopular = popularData
               .filter(match => new Date(match.startTime) >= now)
+              .filter(match => match.sport_key)
               .map(match => ({
                 id: match.id || match._id,
                 league: match.league || '',
@@ -763,6 +768,7 @@ const Home = () => {
                 awayTeam: match.awayTeam,
                 odds: match.odds || {},
                 sport: match.sport || '',
+                sport_key: match.sport_key,
                 country: match.country || '',
                 fullLeagueTitle: match.fullLeagueTitle || ''
               }));
@@ -878,6 +884,7 @@ const Home = () => {
       const transformedPopular = popularData
         // Only upcoming
         .filter(match => new Date(match.startTime) >= now)
+        .filter(match => match.sport_key)
         .map(match => ({
         id: match.id || match._id,
         league: match.league || '',
@@ -891,6 +898,7 @@ const Home = () => {
         awayTeam: match.awayTeam,
         odds: match.odds || {},
         sport: match.sport || '',
+        sport_key: match.sport_key,
         country: match.country || '',
         fullLeagueTitle: match.fullLeagueTitle || ''
       }));
@@ -1103,7 +1111,7 @@ const Home = () => {
           </div>
 
           <div className="matches-container">
-            {(loading || isInitialError) ? (
+            {(!hasAnyData && (loading || isInitialError)) ? (
               <div className="matches-list">
                 <SkeletonLoader type="match-card" count={6} />
               </div>
