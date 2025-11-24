@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { setUser } from '../store/slices/authSlice';
 import '../index.css';
@@ -6,6 +7,7 @@ import apiService from '../services/api';
 
 const WheelOfFortune = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user, loggedIn } = useSelector(state => state.auth);
   const [betAmount, setBetAmount] = useState('');
   const [selectedMultiplier, setSelectedMultiplier] = useState(null);
@@ -111,7 +113,8 @@ const WheelOfFortune = () => {
   // Calculate total segments dynamically
   const totalSegments = segments.reduce((sum, segment) => sum + segment.count, 0);
   const segmentAngle = 360 / totalSegments;
-  const wheelRadius = 150; // Updated to match new wheel size (300px / 2)
+  const width = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const wheelRadius = width <= 480 ? 70 : width <= 767 ? 80 : 150;
 
   // Create randomized wheel segments array
   const [wheelSegments, setWheelSegments] = useState(() => {
@@ -181,11 +184,16 @@ const WheelOfFortune = () => {
 
     // Wait for animation to complete with reduced timeout for instant response
     setTimeout(async () => {
-      setIsProcessing(true); // Show balance update is processing
+      setIsProcessing(true);
       
-      // Calculate winnings
       const won = selectedSegment.multiplier === selectedMultiplier;
       const winAmount = won ? betAmount * selectedMultiplier : 0;
+      const optimisticBalance = originalBalance - parseFloat(betAmount) + winAmount;
+      dispatch(setUser({ 
+        ...user, 
+        balance: optimisticBalance,
+        lifetimeWinnings: won ? (user.lifetimeWinnings || 0) + winAmount : user.lifetimeWinnings 
+      }));
       
       const result = {
         won,
@@ -238,7 +246,50 @@ const WheelOfFortune = () => {
 
   return (
     <div className="wheel-of-fortune">
-      <div className="wheel-header">
+      <div className="wheel-header" style={{ position: 'relative', paddingTop: 56 }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 10,
+            top: 10,
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-primary)',
+            padding: '6px 10px',
+            borderRadius: 12,
+            fontWeight: 700,
+            fontSize: 14,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            zIndex: 2
+          }}
+        >
+          Balance: ${user?.balance != null ? Number(user.balance).toFixed(2) : '0.00'}
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          aria-label="Close"
+          style={{
+            position: 'absolute',
+            right: 10,
+            top: 10,
+            background: 'rgba(0,0,0,0.35)',
+            border: '1px solid rgba(255,255,255,0.35)',
+            color: '#fff',
+            fontSize: 28,
+            fontWeight: 800,
+            lineHeight: '1',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 2
+          }}
+        >
+          ×
+        </button>
         <h2>Wheel of Fortune</h2>
         <div className="promo-text">Spin the lucky wheel and win easy and big!</div>
         {!loggedIn && (

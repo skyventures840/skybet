@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { loginSuccess } from './store/slices/authSlice';
 
 import io from 'socket.io-client';
+import WheelOfFortune from './components/WheelOfFortune';
 
 // Core components (loaded immediately)
 import Navbar from './components/Navbar';
@@ -210,6 +211,7 @@ function App() {
                 <Route path="/odds" element={<OddsPage />} />
                 <Route path="/match/:matchId" element={<MatchDetail />} />
                 <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
+                <Route path="/wheel" element={<WheelOfFortune />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

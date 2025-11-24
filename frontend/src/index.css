@@ -4853,7 +4853,7 @@ body {
 }
 .wheel-pointer {
   position: absolute;
-  top: 9%;
+  top: 4%;
   left: 50%;
   transform: translateX(-50%) translateY(-100%) rotate(180deg); /* Adjust as needed to point down */
   width: 45px;
@@ -5108,8 +5108,8 @@ body {
   }
   
   .wheel-container {
-    width: 210px;
-    height: 210px;
+    width: 160px;
+    height: 160px;
     margin: 30px auto;
   }
   
@@ -5125,14 +5125,15 @@ body {
 
 @media (max-width: 480px) {
   .wheel-container {
-    width: 210px;
-    height: 210px;
+    width: 140px;
+    height: 140px;
     margin: 20px auto;
   }
   
   .wheel-pointer {
     width: 35px;
     height: 25px;
+    top: 2%;
   }
   
   .wheel-segment span {

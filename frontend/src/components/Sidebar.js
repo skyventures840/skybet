@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { FaRegCalendarAlt } from 'react-icons/fa';
-import WheelOfFortune from './WheelOfFortune';
 
 const Sidebar = ({ closeSidebar }) => {
   const location = useLocation();
@@ -16,7 +15,7 @@ const Sidebar = ({ closeSidebar }) => {
   const [showDateInput, setShowDateInput] = useState(false);
   const [showDatePopover, setShowDatePopover] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [showWheelModal, setShowWheelModal] = useState(false);
+  
 
   // Helper function to close sidebar on mobile
   const handleMobileNavigation = (callback) => {
@@ -690,11 +689,7 @@ const Sidebar = ({ closeSidebar }) => {
           <button
             className="wheel-item"
             onClick={() => {
-              setShowWheelModal(true);
-              // Close sidebar on mobile when opening wheel
-              if (window.innerWidth <= 1024 && closeSidebar) {
-                closeSidebar();
-              }
+              handleMobileNavigation(() => navigate('/wheel'));
             }}
           >
             <div className="wheel-info">
@@ -704,26 +699,6 @@ const Sidebar = ({ closeSidebar }) => {
           </button>
         </div>
       </div>
-
-      {/* Wheel of Fortune Modal */}
-      {showWheelModal && (
-        <div className="wheel-modal-overlay" onClick={() => setShowWheelModal(false)}>
-          <div className="wheel-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="wheel-modal-header">
-              <h2>Wheel of Fortune</h2>
-              <button 
-                className="wheel-close-btn"
-                onClick={() => setShowWheelModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="wheel-modal-body">
-              <WheelOfFortune />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
