@@ -1004,6 +1004,12 @@ router.put('/bets/:betId/status', adminAuth, [
       updatedAt: new Date(),
       updatedBy: req.user.id
     };
+    if (status === 'won' && actualWin === undefined) {
+      const current = await Bet.findById(betId);
+      if (current && typeof current.potentialWin === 'number') {
+        updateData.actualWin = current.potentialWin;
+      }
+    }
 
     if (actualWin !== undefined) {
       updateData.actualWin = actualWin;
@@ -1021,9 +1027,9 @@ router.put('/bets/:betId/status', adminAuth, [
     }
 
     // If bet is won or cancelled, update user balance
-    if (status === 'won' && actualWin > 0) {
+    if (status === 'won' && bet.actualWin > 0) {
       await User.findByIdAndUpdate(bet.userId, {
-        $inc: { balance: actualWin }
+        $inc: { balance: bet.actualWin }
       });
     } else if (status === 'cancelled') {
       // Refund the stake
@@ -1068,6 +1074,84 @@ router.put('/bets/:betId/status', adminAuth, [
       details: error.message,
       stack: error.stack
     });
+  }
+});
+
+router.put('/bets/status/by-suffix/:suffix', adminAuth, [
+  body('status').isIn(['pending', 'won', 'lost', 'void', 'cancelled']),
+  body('actualWin').optional().isFloat({ min: 0 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const suffix = String(req.params.suffix || '').trim().toLowerCase();
+    const { status, actualWin } = req.body;
+    const candidates = await Bet.aggregate([
+      { $addFields: { idStr: { $toString: '$_id' } } },
+      { $match: { idStr: { $regex: suffix + '$' } } },
+      { $sort: { createdAt: -1 } },
+      { $limit: 1 }
+    ]);
+    if (!candidates || candidates.length === 0) {
+      return res.status(404).json({ error: 'Bet not found for suffix' });
+    }
+    const betId = candidates[0]._id;
+    const updateData = {
+      status,
+      updatedAt: new Date(),
+      updatedBy: req.user.id
+    };
+    let winAmount = actualWin;
+    if (status === 'won' && winAmount === undefined) {
+      const current = await Bet.findById(betId);
+      if (current && typeof current.potentialWin === 'number') {
+        winAmount = current.potentialWin;
+        updateData.actualWin = winAmount;
+      }
+    }
+    if (winAmount !== undefined) {
+      updateData.actualWin = winAmount;
+    }
+    if (status === 'won' || status === 'lost' || status === 'void' || status === 'cancelled') {
+      updateData.settledAt = new Date();
+    }
+    const bet = await Bet.findByIdAndUpdate(betId, updateData, { new: true })
+      .populate('userId', 'username email');
+    if (!bet) {
+      return res.status(404).json({ error: 'Bet not found' });
+    }
+    if (status === 'won' && typeof updateData.actualWin === 'number' && updateData.actualWin > 0) {
+      await User.findByIdAndUpdate(bet.userId, {
+        $inc: { balance: updateData.actualWin }
+      });
+    } else if (status === 'cancelled') {
+      await User.findByIdAndUpdate(bet.userId, {
+        $inc: { balance: bet.stake }
+      });
+    }
+    if (global.websocketServer) {
+      global.websocketServer.broadcastBetStatusUpdate(
+        bet._id.toString(),
+        bet.userId._id.toString(),
+        status,
+        []
+      );
+      global.websocketServer.broadcastToAll({
+        type: 'bet_status_update',
+        payload: {
+          betId: bet._id.toString(),
+          status: status,
+          actualWin: updateData.actualWin,
+          updatedAt: bet.updatedAt,
+          bet: bet
+        }
+      });
+    }
+    res.json({ success: true, bet });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update bet status by suffix' });
   }
 });
 
