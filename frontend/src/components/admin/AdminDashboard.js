@@ -67,6 +67,10 @@ const AdminDashboard = () => {
   const [bulkAction, setBulkAction] = useState('');
   const [betEditModal, setBetEditModal] = useState({ open: false, bet: null });
   const [betSettleModal, setBetSettleModal] = useState({ open: false, bet: null });
+  const [betResultModal, setBetResultModal] = useState({ open: false, bet: null });
+  const [resultHomeScore, setResultHomeScore] = useState(0);
+  const [resultAwayScore, setResultAwayScore] = useState(0);
+  const [resultCompleted, setResultCompleted] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [showAllBets, setShowAllBets] = useState(false);
@@ -555,6 +559,13 @@ const AdminDashboard = () => {
     setBetSettleModal({ open: true, bet });
   };
 
+  const openBetResultModal = (bet) => {
+    setBetResultModal({ open: true, bet });
+    setResultHomeScore(0);
+    setResultAwayScore(0);
+    setResultCompleted(true);
+  };
+
   const exportBetsToCSV = () => {
     // Check if there are bets to export
     if (!bets || bets.length === 0) {
@@ -809,6 +820,12 @@ const AdminDashboard = () => {
                         onClick={() => openBetSettleModal(bet)}
                       >
                         Settle
+                      </button>
+                      <button 
+                        className="btn-settle"
+                        onClick={() => openBetResultModal(bet)}
+                      >
+                        Update Result
                       </button>
                       <button 
                         className="btn-cancel"
@@ -1153,6 +1170,84 @@ const AdminDashboard = () => {
                     Cancel
                   </button>
                   <button type="submit">Settle Bet</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {betResultModal.open && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Update Result</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setBetResultModal({ open: false, bet: null })}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const resp = await apiService.updateOddsResult(betResultModal.bet.matchId, {
+                    homeScore: Number(resultHomeScore),
+                    awayScore: Number(resultAwayScore),
+                    completed: Boolean(resultCompleted)
+                  });
+                  if (resp?.data?.success) {
+                    setBetResultModal({ open: false, bet: null });
+                    fetchBets();
+                  }
+                } catch (err) {
+                  console.error('Update result failed:', err);
+                  alert('Failed to update result: ' + (err?.response?.data?.error || err.message));
+                }
+              }}>
+                <div className="bet-info">
+                  <p><strong>Match:</strong> {betResultModal.bet?.homeTeam} vs {betResultModal.bet?.awayTeam}</p>
+                  <p><strong>League:</strong> {betResultModal.bet?.league}</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Home Score:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={resultHomeScore}
+                      onChange={(e) => setResultHomeScore(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Away Score:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={resultAwayScore}
+                      onChange={(e) => setResultAwayScore(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Completed:</label>
+                    <select
+                      value={resultCompleted ? 'true' : 'false'}
+                      onChange={(e) => setResultCompleted(e.target.value === 'true')}
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button type="button" onClick={() => setBetResultModal({ open: false, bet: null })}>
+                    Cancel
+                  </button>
+                  <button type="submit">Save Result</button>
                 </div>
               </form>
             </div>

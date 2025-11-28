@@ -114,7 +114,10 @@ const WheelOfFortune = () => {
   const totalSegments = segments.reduce((sum, segment) => sum + segment.count, 0);
   const segmentAngle = 360 / totalSegments;
   const width = typeof window !== 'undefined' ? window.innerWidth : 1024;
-  const wheelRadius = width <= 480 ? 70 : width <= 767 ? 80 : 150;
+  const wheelFraction = width <= 480 ? 0.34 : width <= 767 ? 0.34 : 0.11;
+  const wheelRadiusBase = Math.round(width * wheelFraction);
+  const wheelRadius = width >= 768 ? Math.min(wheelRadiusBase, 130) : wheelRadiusBase;
+  const isMobile = width <= 767;
 
   // Create randomized wheel segments array
   const [wheelSegments, setWheelSegments] = useState(() => {
@@ -265,31 +268,33 @@ const WheelOfFortune = () => {
         >
           Balance: ${user?.balance != null ? Number(user.balance).toFixed(2) : '0.00'}
         </div>
-        <button
-          onClick={() => navigate('/')}
-          aria-label="Close"
-          style={{
-            position: 'absolute',
-            right: 10,
-            top: 10,
-            background: 'rgba(0,0,0,0.35)',
-            border: '1px solid rgba(255,255,255,0.35)',
-            color: '#fff',
-            fontSize: 28,
-            fontWeight: 800,
-            lineHeight: '1',
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 2
-          }}
-        >
-          ×
-        </button>
+        {isMobile && (
+          <button
+            onClick={() => navigate('/')}
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              right: 10,
+              top: 10,
+              background: 'rgba(0,0,0,0.35)',
+              border: '1px solid rgba(255,255,255,0.35)',
+              color: '#fff',
+              fontSize: 28,
+              fontWeight: 800,
+              lineHeight: '1',
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 2
+            }}
+          >
+            ×
+          </button>
+        )}
         <h2>Wheel of Fortune</h2>
         <div className="promo-text">Spin the lucky wheel and win easy and big!</div>
         {!loggedIn && (
@@ -306,12 +311,12 @@ const WheelOfFortune = () => {
             const rad = (angle * Math.PI) / 180;
             const x1 = 50; // Center x
             const y1 = 50; // Center y
-            // Extend beyond 50% to ensure no gaps between segments
-            // Using 75% instead of 50% to create maximum overlap and eliminate gaps
-            const x2 = 50 + 75 * Math.cos(0); // Right edge at 0 degrees, extended
-            const y2 = 50 + 75 * Math.sin(0);
-            const x3 = 50 + 75 * Math.cos(rad); // Edge at segmentAngle, extended
-            const y3 = 50 + 75 * Math.sin(rad);
+            // Slightly overshoot radius to remove anti-aliased hairline gaps
+            const extend = 52;
+            const x2 = 50 + extend * Math.cos(0);
+            const y2 = 50 + extend * Math.sin(0);
+            const x3 = 50 + extend * Math.cos(rad);
+            const y3 = 50 + extend * Math.sin(rad);
 
             return (
               <div
@@ -324,7 +329,9 @@ const WheelOfFortune = () => {
                   width: '100%',
                   height: '100%',
                   position: 'absolute',
-                  transformOrigin: 'center',
+                  transformOrigin: '50% 50%',
+                  willChange: 'transform, clip-path',
+                  backfaceVisibility: 'hidden',
                   zIndex: totalSegments - index // Higher index = lower z-index
                 }}
               >
@@ -338,7 +345,7 @@ const WheelOfFortune = () => {
                     transformOrigin: 'center',
                     color: 'white',
                     fontWeight: 'bold',
-                    fontSize: '16px', // Reduced for better fit
+                    fontSize: '14px',
                     textAlign: 'center'
                   }}
                 >
@@ -348,6 +355,7 @@ const WheelOfFortune = () => {
             );
           })}
         </div>
+        <div className="wheel-border-overlay"></div>
       </div>
       
       <div className="betting-controls">

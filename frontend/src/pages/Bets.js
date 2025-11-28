@@ -883,7 +883,7 @@ const Bets = () => {
                         <div className="summary-card stat">
                           <div className="summary-item">
                             <span className="label">Amount</span>
-                            <span className="value">KES{formatAmount(bet.stake)}
+                            <span className="value">${formatAmount(bet.stake)}
                               <span className="info-icon" title="Stake amount">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                   <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -897,7 +897,7 @@ const Bets = () => {
                         <div className="summary-card stat">
                           <div className="summary-item">
                             <span className="label">Possible Payout</span>
-                            <span className="value">KES{formatAmount(bet.potentialWin)}
+                            <span className="value">${formatAmount(bet.potentialWin)}
                               <span className="info-icon" title="Max payout based on odds">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                   <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />

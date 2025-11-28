@@ -186,6 +186,86 @@
   }
 }
 
+/* Desktop: remove all spacing between match cards in grids */
+@media (min-width: 1024px) {
+  .matches-grid {
+    gap: 0 !important;
+  }
+
+  .matches-grid .match-card,
+  .matches-grid .match-container {
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .sport-container {
+    margin-bottom: 12px !important;
+  }
+
+  .matches-grid .match-card:last-child,
+  .matches-grid .match-container:last-child,
+  .subcategory-section .match-card:last-child,
+  .subcategory-section .match-container:last-child {
+    border-radius: var(--radius-md) !important;
+  }
+}
+
+/* Desktop: render betslip type and pick as plain text (no cards) */
+@media (min-width: 1024px) {
+  .bet-line-sub {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    font-size: 12px !important;
+    color: var(--text-primary) !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    line-height: 1.3 !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+    margin-right: 0 !important;
+  }
+  .bet-line-market,
+  .bet-line-selection {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    display: inline !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    color: var(--text-primary) !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    hyphens: auto !important;
+    flex: 0 0 49% !important;
+    min-width: 0 !important;
+    margin-right: 0 !important;
+  }
+  .bet-line-market { text-align: left !important; }
+  .bet-line-selection { text-align: right !important; }
+  .bet-line-bullet { display: none !important; }
+  .bet-details-expanded {
+    background: transparent !important;
+    border-top: none !important;
+    box-shadow: none !important;
+    padding: 8px 0 !important;
+  }
+  .bet-line-odds {
+    display: none !important;
+  }
+  .bet-outcome {
+    display: none !important;
+  }
+}
+
 /* Mobile-specific: move odds buttons inward for regular match cards rendered with match-container */
 @media (max-width: 767px) {
   /* Live league header: match width and padding of match cards */
@@ -256,15 +336,20 @@
   padding-top: 72px !important; /* account for ~64px navbar + border/shadow */
 }
 
-/* Desktop: remove extra gap below navbar for compact layout */
-@media (min-width: 1024px) {
-  /* Reduce desktop top padding slightly to tighten spacing */
-  .page-content,
-  .main-content,
-  .middle,
-  .under-navbar {
-    padding-top: 64px !important;
-  }
+  /* Desktop: remove extra gap below navbar for compact layout */
+  @media (min-width: 1024px) {
+    /* Reduce desktop top padding slightly to tighten spacing */
+    .under-navbar {
+      padding-top: 68px !important;
+    }
+    .page-content,
+    .main-content,
+    .middle {
+      padding-top: 0 !important;
+    }
+    /* Reduce bottom gap by allowing content to size naturally */
+    .page-content { min-height: auto !important; }
+    .main-content { height: auto !important; overflow-y: visible !important; }
   .navbar {
     margin-bottom: 0 !important;
   }
@@ -282,19 +367,42 @@
   /* Sidebar area */
   .side-bar-wrapper,
   .sidebar {
-    margin-top: -12px !important; /* pull closer to navbar */
+    margin-top: 24px !important;
   }
 
   /* Hero section */
   .hero-slider,
   .hero-slider .slider-container {
-    margin-top: -24px !important; /* very small margin under navbar on desktop */
+    margin-top: 24px !important;
+    padding-top: 0 !important; /* reduce top padding within hero container */
+  }
+
+  /* Reduce internal top padding for hero slide content */
+  .hero-slider .slide-content {
+    padding-top: clamp(6px, 1.5vw, 12px) !important;
   }
 
   /* Betslip area */
   .betslip,
   .bet-slip-wrapper {
-    margin-top: -12px !important; /* pull closer to navbar */
+    margin-top: 24px !important;
+  }
+
+  /* Content vs footer: add small bottom space on desktop */
+  .middle,
+  .main-content,
+  .page-content {
+    padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
+  }
+  .matches-section {
+    margin-bottom: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .matches-section .matches-container {
+    flex: 1 !important;
+    min-height: calc(100vh - 300px) !important; /* extend to reduce footer gap */
   }
 
 /* Mobile: enforce brand size and navbar spacing with highest specificity */
@@ -685,4 +793,31 @@
   /* Give the brand more room in the left group on tablets */
   .navbar-left { flex: 2 1 auto !important; }
   .navbar-right { flex: 1 1 auto !important; }
+}
+
+/* Wheel of Fortune: size to ~2/3 of viewport, override fullscreen */
+@media (max-width: 767px) {
+  .wheel-of-fortune { position: static !important; width: 100% !important; max-width: 100% !important; padding: 8px !important; }
+  .wheel-of-fortune .wheel-container { width: min(86vw, 820px) !important; height: min(86vw, 820px) !important; aspect-ratio: 1 / 1 !important; margin: 16px auto !important; border-radius: 50% !important; border: 1px solid var(--border-color) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 4px 16px rgba(0,0,0,0.35) !important; overflow: hidden !important; }
+  .wheel-of-fortune .wheel { width: 100% !important; height: 100% !important; border-radius: 50% !important; aspect-ratio: 1 / 1 !important; transform-origin: 50% 50% !important; overflow: hidden !important; }
+  .wheel-of-fortune .wheel-pointer { width: 36px !important; height: 24px !important; top: 11% !important; transform: translateX(-50%) translateY(-40%) rotate(180deg) !important; }
+  .wheel-of-fortune .wheel-border-overlay { display: none !important; }
+  .wheel-of-fortune .wheel-segment span { font-size: clamp(12px, 3.2vw, 18px) !important; }
+}
+
+@media (max-width: 480px) {
+  .wheel-of-fortune .wheel-container { width: 88vw !important; height: 88vw !important; aspect-ratio: 1 / 1 !important; border-radius: 50% !important; border: 1px solid var(--border-color) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 4px 16px rgba(0,0,0,0.35) !important; overflow: hidden !important; }
+  .wheel-of-fortune .wheel { width: 100% !important; height: 100% !important; border-radius: 50% !important; aspect-ratio: 1 / 1 !important; transform-origin: 50% 50% !important; overflow: hidden !important; }
+  .wheel-of-fortune .wheel-pointer { width: 32px !important; height: 22px !important; top: 12% !important; transform: translateX(-50%) translateY(-35%) rotate(180deg) !important; }
+  .wheel-of-fortune .wheel-border-overlay { display: none !important; }
+  .wheel-of-fortune .wheel-segment span { font-size: clamp(12px, 3.6vw, 18px) !important; }
+}
+
+@media (min-width: 768px) {
+  .wheel-of-fortune { position: static !important; min-height: 60vh !important; }
+  .wheel-of-fortune .wheel-container { width: min(22vw, 260px) !important; height: min(22vw, 260px) !important; margin: 10px auto !important; border-radius: 50% !important; border: 1px solid var(--border-color) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 4px 16px rgba(0,0,0,0.35) !important; overflow: visible !important; aspect-ratio: 1 / 1 !important; }
+  .wheel-of-fortune .wheel { width: 100% !important; height: 100% !important; border-radius: 50% !important; aspect-ratio: 1 / 1 !important; transform-origin: 50% 50% !important; overflow: hidden !important; }
+  .wheel-of-fortune .wheel-pointer { width: 38px !important; height: 24px !important; top: -6% !important; transform: translateX(-50%) rotate(180deg) !important; z-index: 10 !important; }
+  .wheel-of-fortune .wheel-border-overlay { position: absolute !important; inset: 2px !important; border-radius: 50% !important; pointer-events: none !important; border: 2px solid var(--border-color) !important; box-shadow: none !important; box-sizing: border-box !important; z-index: 1000 !important; }
+  .wheel-of-fortune .wheel-segment span { font-size: clamp(11px, 1.6vw, 16px) !important; }
 }
