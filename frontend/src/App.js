@@ -39,6 +39,7 @@ const SportFallback = React.lazy(() => import('./components/SportFallback'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 
 import useOddsStore from './store/oddsStore';
+import apiService from './services/api';
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -118,6 +119,26 @@ function App() {
       socket.disconnect();
     };
   }, [dispatch, WS_URL]);
+
+  useEffect(() => {
+    const connection = navigator.connection || navigator.webkitConnection || navigator.mozConnection;
+    const isSlow = !!connection && (connection.effectiveType === '2g' || connection.saveData === true);
+    const ttlFast = isSlow ? 15000 : 30000;
+    const ttlLong = isSlow ? 60000 : 120000;
+    const tasks = [];
+    tasks.push(apiService.getMatches());
+    tasks.push(apiService.getPopularMatches());
+    tasks.push(apiService.getLiveMatches());
+    if (localStorage.getItem('user')) {
+      tasks.push(apiService.getUserBets());
+      tasks.push(apiService.getBalance());
+      tasks.push(apiService.getTransactions());
+    }
+    Promise.allSettled(tasks).then(() => {
+      void ttlFast;
+      void ttlLong;
+    });
+  }, []);
 
   const isLoggedIn = useSelector(state => state.auth?.loggedIn || false);
   const isAdmin = useSelector(state => state.auth?.isAdmin || false);

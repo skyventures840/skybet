@@ -1739,9 +1739,9 @@ html, body {
 
   .hero-slider,
   .hero-slider .slider-container {
-    height: 220px !important; /* further reduced fixed height for small screens */
-    min-height: 220px !important;
-    max-height: 220px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
   }
 
   .hero-slider {
@@ -1879,9 +1879,9 @@ html, body {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    height: 240px !important; /* further increased fixed height */
-    min-height: 240px !important;
-    max-height: 240px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
     overflow: hidden !important;
   }
 
@@ -5731,4 +5731,3 @@ html, body {
     padding-top: 0 !important;
   }
 }
-

@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import TermsAndConditions from './TermsAndConditions';
+import PrivacyPolicy from './PrivacyPolicy';
+import ResponsibleGambling from './ResponsibleGambling';
 
 const Footer = () => {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isResponsibleOpen, setIsResponsibleOpen] = useState(false);
 
   return (
     <footer className="footer">
@@ -16,8 +20,8 @@ const Footer = () => {
               e.preventDefault();
               setIsTermsOpen(true);
             }}>Terms and Conditions</a></li>
-            <li><a href="#" className="footer-link">Responsible Gambling</a></li>
-            <li><a href="#" className="footer-link">Privacy Policy</a></li>
+            <li><a href="#" className="footer-link" onClick={(e) => { e.preventDefault(); setIsResponsibleOpen(true); }}>Responsible Gambling</a></li>
+            <li><a href="#" className="footer-link" onClick={(e) => { e.preventDefault(); setIsPrivacyOpen(true); }}>Privacy Policy</a></li>
             <li><a href="#" className="footer-link">Cookies Policy</a></li>
             <li><a href="#" className="footer-link">Casino Promotions</a></li>
           </ul>
@@ -48,6 +52,14 @@ const Footer = () => {
       <TermsAndConditions 
         isOpen={isTermsOpen} 
         onClose={() => setIsTermsOpen(false)} 
+      />
+      <PrivacyPolicy 
+        isOpen={isPrivacyOpen} 
+        onClose={() => setIsPrivacyOpen(false)} 
+      />
+      <ResponsibleGambling 
+        isOpen={isResponsibleOpen} 
+        onClose={() => setIsResponsibleOpen(false)} 
       />
     </footer>
   );

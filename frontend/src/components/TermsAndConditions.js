@@ -115,13 +115,128 @@ const TermsAndConditions = ({ isOpen, onClose }) => {
         <h3>RULES OF THE GAME AND PLACING BETS ON THE SITE</h3>
         <p>10.1. Before confirming your transaction during the game, make sure that the information about any transaction you make is correct. You are responsible for this.</p>
         
-        <p>10.2. The history of your transactions can be obtained by clicking on the "Checkout" link on the Website.</p>
+        <p>10.2. The history of your transactions can be obtained by clicking on the "Check Bets" link on the Website.</p>
         
         <p>10.3. We reserve the right at any time to partially or completely (at our sole discretion) refuse to conduct any transaction requested by you through the Website if you have violated the Terms. No transaction is considered accepted until you receive confirmation from us. If you have not received confirmation that your transaction has been accepted, you need to contact customer support.</p>
         
         <p>10.4. You can cancel the transaction at any time by sending a request to the support service.</p>
         
         <p>10.5. Cancellation of the transaction takes effect after receipt of confirmation of cancellation.</p>
+        <p>10.5.1. If the request to cancel the transaction was not received and/or not processed on time, you agree that your transaction may remain in the process of processing and be available for acceptance.</p>
+        <p>10.6. You agree that due to technical and other reasons, the casino has the right to reduce any number to hundredths when calculating the amount of winnings. In this case, the rule applies: in any fractional number, two digits remain after the decimal point, the rest are discarded.</p>
+
+        <h3>COLLUSION, MISLEADING ACTIONS, FRAUD AND CRIMINAL ACTIVITY</h3>
+        <p>11.1. Not allowed:</p>
+        <p>11.1.1. Provision of information to third parties;</p>
+        <p>11.1.2. Fraud, including the use of malware, errors in our software, the use of automated players ("bots");</p>
+        <p>11.1.3. Using illegally obtained credit or debit card data when replenishing your account;</p>
+        <p>11.1.4. Participation in any criminal activity with criminal consequences;</p>
+        <p>11.1.5. Entering into or attempting to enter into collusion, and/or intending to directly or indirectly participate in any collusion scheme with another player while playing on the Website.</p>
+        <p>11.2. The Company reserves the right to suspend, revoke or cancel any payments or winnings related to bonus funds received from the Company (points, bonuses, etc.) if there is suspicion that you are trying to abuse them.</p>
+        <p>11.3. The Company will take all reasonable measures to exclude, as well as to identify collusions and their participants. Appropriate measures will be taken in relation to them. We are not responsible for losses incurred by you or any other player as a result of collusion, fraudulent actions and other illegal transactions or deception.</p>
+        <p>11.4. If you suspect that a person is in collusion or carries out fraudulent actions, you must inform us about it by email as soon as possible.</p>
+        <p>11.5. If we suspect you of fraudulent activity, we may at any time, without prior notice, close your access to the services of the Website and block your account. In such a case, we disclaim the obligation to refund or otherwise compensate you for the funds in your account.</p>
+        <p>11.6. It is prohibited to use the services and/or the software for any illegal or fraudulent activity. The Company reserves the right to suspend or block your and any other accounts in the system at any time and withhold funds in case of fraud detection.</p>
+
+        <h3>OTHER PROHIBITED ACTIVITIES ON THE WEBSITE</h3>
+        <p>12.1. The use of profanity, threats, belittling in relation to both players and employees of the Website is not allowed.</p>
+        <p>12.2. It is prohibited to perform any actions that may affect the functioning of the site in any form. The distribution of viruses or similar malware, any mass distribution of information is prohibited. It is prohibited to distort, delete or otherwise modify any information contained on the Website.</p>
+        <p>12.3. It is prohibited to use the Website for commercial purposes, to copy any information without prior agreement with the site administration.</p>
+        <p>12.4. It is forbidden to hack the security system, try to gain access. In case of such actions, we will be forced to immediately block your account and close access to the site, as well as inform the relevant authorities about this.</p>
+        <p>12.5. The Company is not responsible and does not compensate for losses in case of monetary losses caused by viruses, attacks, malfunctions of information technology tools when using the Website and/or downloading any materials posted on the Website and/or any links located on the Website.</p>
+        <p>12.6. It is prohibited to sell or transfer accounts between players or intentionally lose chips for further transfer of chips to another player. Intentional loss of chips occurs when there is an intentional loss in order to transfer funds to another user.</p>
+
+        <h3>VALIDITY AND CANCELLATION OF THE CONTRACT</h3>
+        <p>13.1. You can terminate your account (including deleting your username and password) at any time by sending us an email.</p>
+        <p>13.2. From the moment you sent us a letter requesting the closure of your account until you receive confirmation of the closure of your account, you are responsible for any activity on your account.</p>
+        <p>13.3. The Company reserves the right to charge a commission or the amount you owe to the Company before closing your account. If your account is deleted, blocked or cancelled, the funds that were at the time of closing your account will not be refunded, and no other funds (for example, bonuses, additional points, etc.) will be credited to you or cashed out, and further access to your account will be impossible.</p>
+        <p>13.4. Based on these Terms and Conditions, in case of cancellation of your account, neither party has any further obligations towards each other.</p>
+        <p>13.5. The Company has the right to delete your account (including username and password) without prior notice if:</p>
+        <p>13.5.1. For any reason, we have decided to stop providing services in general or specifically for you;</p>
+        <p>13.5.2. If your account is linked in any way to an account that has been deleted.</p>
+        <p>13.5.3. If your account is linked to existing blocked accounts. Except as provided in the Terms and Conditions, any balance in your account will be refunded to you within a certain period of time upon your request, after deducting the amount you owe to the Company;</p>
+        <p>13.5.4. You are involved in collusion or trying to hack the system;</p>
+        <p>13.5.5. You interfere with the software;</p>
+        <p>13.5.6. You use your Account for purposes that can be considered illegal under the current law. For example, you are trying to access a Website from a jurisdiction where gambling is prohibited;</p>
+        <p>13.5.7. You publish offensive information on the Website;</p>
+        <p>13.6. If for an extended period of time (six months or more) Your account remains inactive, we may close or suspend it without notice. In the event of such closure of the account, the Conditions will be automatically canceled, starting from the effective date of such cancellation.</p>
+        <p>13.7. The Company may close your account and cancel the Terms by sending you an email notification (or advance notification) to the email address associated with your account.</p>
+        <p>In the event of any such cancellation on our part, except in situations where such closure and termination of the Terms are consistent with paragraph 10 ("Collusion, Deceptive Acts, Fraud and Criminal Activity") or paragraph 17 ("Violation of the Terms") of these Terms, we will refund the amount of your account balance. If we are unable to contact you, the funds will be transferred to the Company or the supervisory authority.</p>
+
+        <h3>13.8. INACTIVE ACCOUNTS</h3>
+        <p>13.8.1 If you have not placed bets from the Player's Account for a period of one hundred eighty (180) days (the “Grace Period”), your account will be deemed Inactive.</p>
+        <p>13.8.2 As soon as your Account is deemed inactive, we will have the right to charge you a commission for maintaining a current account ('Inactive Account Commission'). We can deduct an amount equal to the Inactive Account Commission from your Game balance starting from the last day of the Grace Period, and then every thirty (30) days thereafter in accordance with the Inactive Account Commission Payment Schedule. If your Account continues to be recognized by us as an inactive account for a period of time equal to twelve consecutive months, as a guarantee of the safety of your funds, we may withhold any remaining funds in your Player Account and close your Player Account. You can contact us in order to claim the funds withheld within 5 years from the moment when you last made a Bet, minus all service fees due.</p>
+        <p>13.8.3 We will stop withholding Inactive Account Commission from your Player Account if bets are placed on your account and it is reactivated or, in connection with the closure of the account in accordance with clause 13.1.</p>
+        <p>13.8.4, the Inactive Account Commission is 5% of the amount on the account balance; the minimum commission amount is $5 or equivalent this amount is in another currency.</p>
+        <p>13.8.5 The amounts of any types of commissions and other penalties may change from time to time.</p>
+
+        <h3>CHANGES ON THE SITE</h3>
+        <p>14.1. The Company has the right to make changes or supplement any service offered on the Website at any time in order to maintain and update the Website.</p>
+
+        <h3>SYSTEM ERRORS</h3>
+        <p>15.1. In case of any malfunction in the system or an error in the game (deviation from the normal functioning of the game logic for any reason), the Company will correct the situation as soon as possible. The Company is not responsible for information technology malfunctions caused by the operation of equipment used by you or other players to access the Website, as well as for failures in the operation of your Internet provider or the Internet provider of other players.</p>
+
+        <h3>ERRORS OR OMISSIONS</h3>
+        <p>16.1. In the process of using the services of the Website, certain circumstances may arise when the bet was accepted, or the payment was made with errors on the part of the Company (for example, incorrect setting of the conditions of game bets on our part as a result of an obvious error or omission when entering information, or as a result of a computer failure, or an error in the calculation made by us the amount of winnings/refunds due to you, including as a result of incorrect data entry manually or automatically).</p>
+        <p>16.2. The Company may limit or cancel any bet.</p>
+        <p>16.3. If you have used funds that have been credited to your account or have been transferred to you by mistake to place subsequent bets or participate in the game, we may cancel such bets and/or any winnings that you may receive using such funds, and if we have already paid you funds for such bets or games, then these amounts will be considered transferred to you in trust, and you will have to immediately return them to us at our request.</p>
+        <p>16.4. The Company (including our employees or agents), partners or suppliers are not responsible for any damage, including loss of winnings, resulting from an error on your or our part.</p>
+        <p>16.5. The Company and its licensees, distributors, subsidiaries, branches and all employees and directors are not liable for any loss or damage that may be caused by the interception or misuse of any information transmitted over the Internet.</p>
+
+        <h3>LIMITATION OF OUR LIABILITY</h3>
+        <p>17.1. You understand and accept the fact that the choice to use the services of the Website or not lies entirely with you, and you do this solely at your own choice, discretion and at your own risk.</p>
+        <p>17.2. The operation of the Website is carried out according to the Conditions described on this Website. We make no further representations or warranties with respect to the Website or the services offered on the Website, and hereby exclude our liability (to the extent permitted by law) with respect to all implied warranties.</p>
+        <p>17.3. The Company is not responsible for the content of any of the Internet sites that can be accessed through the Website. The Company is not responsible for contracts, torts, negligence, any damage or losses caused, including, but not limited to, loss of data, income, prestige, reputation, as well as for any losses that we cannot currently foresee.</p>
+
+        <h3>VIOLATION OF THE TERMS</h3>
+        <p>18.1. You understand and accept the fact that you will have to fully compensate us for any claims, liability, costs or expenses (including legal fees), as well as any other costs that may arise as a result of your violation of the Terms.</p>
+        <p>18.2. You confirm that you are ready to fully compensate for losses, protect and defend the interests of the Company, its non-branded partners and their respective companies, as well as their respective officers, directors and employees from any claims, demands, liability, damages, losses, costs and expenses, including legal fees and any other expenses, arising for any reason due to:</p>
+        <p>18.2.1. Violations of the Terms of Use by you;</p>
+        <p>18.2.2. Violations by you of the law or the rights of third parties;</p>
+        <p>18.2.3. Using your access to the services by any other person with or without your permission or accepting any winnings received in this way.</p>
+        <p>18.3. If you violate the Terms, we reserve the right, but do not undertake</p>
+        <p>18.3.1. Send you a notification (using your contact details) that you are violating the Terms by demanding to stop violations;</p>
+        <p>18.3.2. Suspend your Account so that you cannot place bets or play games on the Website;</p>
+        <p>18.3.3. Block Your Account;</p>
+        <p>18.3.4. Cancel bonuses or winnings that you have acquired as a result of any serious violation;</p>
+        <p>18.4. If you do not comply with any of the provisions of the Terms, the Company has the right to cancel your username and password.</p>
+
+        <h3>INTELLECTUAL PROPERTY RIGHTS</h3>
+        <p>19.1. The content of the Website is subject to copyright and other proprietary rights owned by the Company or used under a license from third-party copyright holders. The use of any materials posted on the Website for commercial purposes is prohibited.</p>
+        <p>19.2. The use of the Website does not grant the user any intellectual property rights (e.g. copyrights, know-how or trademarks) owned by the Company or any other third party.</p>
+        <p>19.3. It is prohibited to use or reproduce the trade name, trademark, logo or other creative materials presented on the Website.</p>
+        <p>19.4. You undertake to compensate for any damage, costs or expenses incurred due to or in connection with the commission of any prohibited activity. You undertake to notify the Company of the commission of any prohibited activities by any person, to provide the necessary assistance to the Company and to provide all information regarding this issue that you have.</p>
+
+        <h3>YOUR PERSONAL INFORMATION</h3>
+        <p>20.1. We process the personal information provided by you strictly in accordance with the privacy policy.</p>
+        <p>20.2. By providing the Company with personal information, you consent to the processing of your personal data for the purposes described by the Site administration in the Terms.</p>
+        <p>20.3. We do not disclose players' personal information to anyone except employees who need access to the data to provide services.</p>
+        <p>20.4. The Company stores the correspondence received from you (including copies of all emails) in order to accurately register all the information received from you.</p>
+        <p>20.5. The Company has the right to send informational letters to the e-mail address specified by the user during registration.</p>
+
+        <h3>USE OF COOKIES ON THE WEBSITE</h3>
+        <p>21.1. In order to ensure the functionality of the Website, the Company uses cookies. Additional information on how to delete or control cookies is available on the website www.aboutcookies.org . Deleting the Company's cookies or taking measures to prohibit their storage on your computer in the future may lead to the inability to access certain sections or functions of the Website.</p>
+
+        <h3>COMPLAINTS AND NOTIFICATIONS</h3>
+        <p>22.1. To file a claim regarding the Website, please contact our support service.</p>
+        <p>22.2. You understand and accept that the records on the server will act as final evidence in determining the outcome of any dispute.</p>
+        <p>22.3. You accept the results of all games and acknowledge that the result is determined by a random number generator. If the information displayed on your screen does not match the balance on your account, the balance available on the Company's server is considered decisive.</p>
+
+        <h3>INTERPRETATION</h3>
+        <p>23.1. The original text of the Terms is written in European, so the European version has an advantage. Any interpretation of the Terms and Conditions text must be based on the original European text.</p>
+
+        <p>24.1. The Company has the right to transfer, assign and sublicense or pledge the Terms, in whole or in part, to any person (without your consent), provided that such appointment will be on the same terms or conditions no less favorable to you.</p>
+
+        <h3>FORCE MAJEURE CIRCUMSTANCES</h3>
+        <p>25.1. The Company is not liable in case of non-fulfillment or delay in fulfillment of any of our obligations under the Conditions that are caused by force majeure, including natural disasters, wars, civil unrest, interruptions in public communication networks or services, industrial disputes or DDOS attacks and similar Internet attacks that may have adverse consequences ("Force majeure").</p>
+        <p>25.2. For a period equal to the period of Force Majeure, there is a delay in the performance of obligations. The Company's activities during the period of Force Majeure are considered suspended. The Company will use all possible resources to stop the action of Force Majeure or to look for a solution by which it will be able to fulfill its obligations, despite Force Majeure.</p>
+
+        <h3>DISCLAIMER OF OBLIGATIONS</h3>
+        <p>26.1. If the Company fails to ensure that you strictly fulfill any of the obligations, or the Company is unable to exercise any of the rights or remedies to which it is entitled, this will not be a waiver of such rights or remedies, and will not release you from compliance with obligations.</p>
+        <p>26.2. The Company's refusal to fulfill any of the obligations of the Conditions is not legally binding if it has not been formalized and has not been transmitted to you in writing, electronically or orally in accordance with the above.</p>
+
+        <h3>DIVISIBILITY OF THE AGREEMENT</h3>
+        <p>27.1. If any of the Terms lose their legal force, the terms "condition" or "provision" will be separated to an appropriate extent from the remaining terms, conditions and formulations, which will fully retain their legal force, as provided by law. In such cases, the part that is considered invalid is changed in accordance with applicable law in order to reflect the original goals as accurately as possible.</p>
       </div>
     </div>
   );

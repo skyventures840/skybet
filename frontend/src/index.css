@@ -451,6 +451,79 @@ body {
   color: var(--primary-green);
 }
 
+.balance-display-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.balance-row .label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.balance-row .value {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.balance-row.total .value {
+  color: var(--primary-green);
+}
+
+.balance-row.bonus .value {
+  color: var(--warning);
+}
+
+.balance-row.bonus .label {
+  color: var(--warning);
+}
+
+.bonus-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(255, 170, 0, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(255, 170, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 170, 0, 0.08) inset;
+  font-weight: 700;
+}
+
+.wr-progress {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.wr-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--hover-bg);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wr-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--secondary-green), var(--primary-green));
+}
+
+.wr-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .logout-btn {
   background: transparent;
   color: var(--text-secondary);
@@ -4813,14 +4886,15 @@ body {
 
 .wheel-container {
   position: relative;
-  width: 210px; /* Increased by 40% from 150px */
-  height: 210px; /* Increased by 40% from 150px */
+  width: 210px;
+  height: 210px;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
-  overflow: hidden; /* Ensures segments don't spill outside the circle */
+  overflow: hidden;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  margin: 40px auto; /* Reduced margin for better fit */
-  max-width: 80vw; /* Prevent overflow on small screens */
-  max-height: 80vw; /* Maintain aspect ratio */
+  margin: 40px auto;
+  max-width: 80vw;
+  max-height: 80vw;
 }
 
 .wheel {
@@ -4828,7 +4902,8 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  transition: transform 3s ease-out; /* Smooth spinning animation */
+  transition: transform 1.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
 }
 
 .wheel-segment {
@@ -5108,8 +5183,9 @@ body {
   }
   
   .wheel-container {
-    width: 160px;
-    height: 160px;
+    width: 120px;
+    height: 120px;
+    aspect-ratio: 1 / 1;
     margin: 30px auto;
   }
   
@@ -5125,9 +5201,20 @@ body {
 
 @media (max-width: 480px) {
   .wheel-container {
-    width: 140px;
-    height: 140px;
+    width: 120px;
+    height: 120px;
+    aspect-ratio: 1 / 1;
     margin: 20px auto;
+  }
+  .wheel-border-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    pointer-events: none;
+    border: 2px solid var(--border-color);
   }
   
   .wheel-pointer {
@@ -6235,12 +6322,14 @@ body {
   position: absolute;
   top: 45px;
   right: 0;
-  width: 280px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  z-index: 9999; /* ensure dropdown overlays hero and main content */
+  width: 300px;
+  background: inherit !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: saturate(120%) blur(6px);
+  -webkit-backdrop-filter: saturate(120%) blur(6px);
+  z-index: 12060;
   overflow: hidden;
 }
 

@@ -6,6 +6,7 @@ import './styles/main.css';
 import './styles/overrides.css';
 import App from './App';
 import apiService from './services/api';
+import translator from './services/translator';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
@@ -53,3 +54,5 @@ root.render(
     </Provider>
   </React.StrictMode>
 );
+
+try { translator.initPageTranslator(); } catch (e) { void e; }

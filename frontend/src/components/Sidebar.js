@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { FaRegCalendarAlt } from 'react-icons/fa';
+import lingva from '../services/lingva';
 
 const Sidebar = ({ closeSidebar }) => {
   const location = useLocation();
@@ -15,6 +16,8 @@ const Sidebar = ({ closeSidebar }) => {
   const [showDateInput, setShowDateInput] = useState(false);
   const [showDatePopover, setShowDatePopover] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
+  const [lang, setLang] = useState(lingva.getLang());
+  const [tr, setTr] = useState({});
   
 
   // Helper function to close sidebar on mobile
@@ -32,6 +35,17 @@ const Sidebar = ({ closeSidebar }) => {
       callback();
     }
   };
+
+  useEffect(() => {
+    const keys = ['Prematch', 'Live', 'Check Bets'];
+    lingva.translateMany(keys, lang).then(setTr);
+  }, [lang]);
+
+  useEffect(() => {
+    const onLang = (e) => setLang(e.detail.lang);
+    window.addEventListener('languageChanged', onLang);
+    return () => window.removeEventListener('languageChanged', onLang);
+  }, []);
 
   // Global search functionality
   const handleSearchChange = (e) => {
@@ -483,13 +497,13 @@ const Sidebar = ({ closeSidebar }) => {
             className={`nav-tab ${matchType === 'prematch' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('prematch')}
           >
-            Prematch
+            {tr['Prematch'] || 'Prematch'}
           </button>
           <button 
             className={`nav-tab ${matchType === 'live' ? 'active' : ''}`}
             onClick={() => handleTabSwitch('live')}
           >
-            Live
+            {tr['Live'] || 'Live'}
           </button>
         </div>
         <Link 
@@ -500,7 +514,7 @@ const Sidebar = ({ closeSidebar }) => {
             });
           }}
         >
-          Check Bets
+          {tr['Check Bets'] || 'Check Bets'}
         </Link>
       </div>
 

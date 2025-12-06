@@ -13,6 +13,36 @@
  
 /* Fixed width for regular match section on small screens */
 @media (max-width: 767px) {
+  .page-content,
+  .main-content,
+  .middle,
+  .under-navbar { padding-top: 56px !important; }
+
+  body .hero-slider,
+  body .hero-slider .slider-container,
+  .hero-slider,
+  .hero-slider .slider-container {
+    margin-top: 0 !important;
+    height: clamp(160px, 26vh, 220px) !important;
+    min-height: clamp(160px, 26vh, 220px) !important;
+    max-height: 220px !important;
+    overflow: hidden !important;
+  }
+  .hero-slider { margin-bottom: 6px !important; }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-background img,
+  .hero-slider .slide-overlay { height: 100% !important; }
+  .hero-slider .slide-content { padding-top: clamp(3px, 1.8vw, 6px) !important; padding-bottom: clamp(3px, 1.8vw, 6px) !important; }
+  .hero-slider .slider-dots { bottom: 4px !important; gap: 1px !important; }
+  body .hero-slider .slider-dots .dot,
+  .hero-slider .slider-dots .dot {
+    width: 1px !important;
+    height: 1px !important;
+    min-width: 1px !important;
+    min-height: 1px !important;
+  }
    /* Scope to the regular matches section to avoid affecting popular matches */
   .matches-section .matches-container,
   .matches-section .competition-group,
@@ -422,7 +452,103 @@
   }
 
   .navbar { min-height: 68px !important; }
-  .navbar-container { padding: 12px 12px !important; }
+  .navbar-container { 
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    padding-right: 12px !important;
+    padding-left: 2px !important;
+    display: flex !important;
+    white-space: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    left: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+  .navbar-left {
+    order: 0 !important;
+    flex: 0 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    margin-left: 0 !important;
+  }
+  .navbar-right {
+    order: 1 !important;
+    flex: 0 1 auto !important;
+    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    margin-top: 0 !important;
+    transform: translateY(-22px) !important;
+    line-height: 1 !important;
+    position: relative !important;
+    z-index: 9998 !important;
+  }
+  .nav-brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    flex-shrink: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    margin-left: 16px !important;
+    margin-top: 4px !important;
+    padding-left: 16px !important;
+  }
+  .language-selector {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+    }
+  .language-current { font-size: 20px !important; }
+  .language-current-code { font-size: 13px !important; }
+  .auth-buttons {
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    max-width: none !important;
+    overflow: visible !important;
+    flex: 1 1 auto !important;
+    justify-content: flex-start !important;
+  }
+  .auth-buttons .login-btn,
+  .auth-buttons .signup-btn {
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+  }
+  .user-section { 
+    display: flex !important; 
+    align-items: center !important; 
+    justify-content: flex-end !important; 
+    gap: 8px !important; 
+    flex-wrap: nowrap !important; 
+    max-width: none !important; 
+    overflow: visible !important; 
+    flex: 0 0 auto !important;
+  }
+  .user-section .balance-display,
+  .user-section .logout-btn { display: none !important; }
+  .user-section .profile-avatar { width: 28px !important; height: 28px !important; min-width: 28px !important; min-height: 28px !important; }
+  .user-section .username-link { max-width: 28vw !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+  .hamburger-menu { width: 28px !important; height: 28px !important; min-width: 28px !important; min-height: 28px !important; margin-left: 6px !important; }
+
+  .auth-buttons { display: flex !important; align-items: center !important; gap: 8px !important; justify-content: flex-end !important; }
+  .auth-buttons .login-btn,
+  .auth-buttons .signup-btn { white-space: nowrap !important; }
 }
 }
 
@@ -456,7 +582,7 @@
     margin-bottom: 8px !important;
   }
 
-  .date-popover-close {
+.date-popover-close {
     background: transparent !important;
     border: none !important;
     color: var(--text-primary) !important;
@@ -769,7 +895,7 @@
 
   /* Slightly increase navbar spacing to accommodate larger brand */
   .navbar { min-height: 70px !important; }
-  .navbar-container { padding: 12px 14px !important; }
+  .navbar-container { padding: 8px 0 !important; }
 }
 
 /* Apply strong brand sizing on tablets as well */
@@ -821,3 +947,333 @@
   .wheel-of-fortune .wheel-border-overlay { position: absolute !important; inset: 2px !important; border-radius: 50% !important; pointer-events: none !important; border: 2px solid var(--border-color) !important; box-shadow: none !important; box-sizing: border-box !important; z-index: 1000 !important; }
   .wheel-of-fortune .wheel-segment span { font-size: clamp(11px, 1.6vw, 16px) !important; }
 }
+.language-selector {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  position: relative !important;
+  cursor: pointer !important;
+  padding: 10px 14px !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  margin-right: 10px !important;
+  min-width: 72px !important;
+  white-space: nowrap !important;
+  z-index: 9998 !important;
+}
+.language-current { font-size: 24px !important; line-height: 1 !important; display: inline-block !important; }
+.language-current-code { font-weight: 700 !important; font-size: 14px !important; color: #000000 !important; display: inline-block !important; }
+.language-dropdown {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
+  backdrop-filter: saturate(120%) blur(6px) !important;
+  -webkit-backdrop-filter: saturate(120%) blur(6px) !important;
+  padding: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 260px !important;
+  gap: 4px !important;
+  z-index: 12050 !important;
+}
+.language-dropdown-portal {
+  position: fixed !important;
+  top: 56px !important;
+  right: 8px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
+  backdrop-filter: saturate(120%) blur(6px) !important;
+  -webkit-backdrop-filter: saturate(120%) blur(6px) !important;
+  padding: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 260px !important;
+  gap: 4px !important;
+  z-index: 200000 !important;
+}
+.language-option {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 6px !important;
+  color: #000000 !important;
+}
+.language-option:hover,
+.language-option.active {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+.language-flag { font-size: 22px !important; line-height: 1 !important; display: inline-block !important; }
+.language-label { font-weight: 700 !important; font-size: 13px !important; }
+@media (max-width: 767px) {
+  .navbar-container {
+    display: block !important;
+    white-space: nowrap !important;
+    align-items: initial !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    padding-left: 0 !important;
+    padding-right: 6px !important;
+  }
+  .navbar-left,
+  .navbar-right {
+    display: inline-block !important;
+    vertical-align: top !important;
+    flex-wrap: nowrap !important;
+  }
+  .nav-brand { flex: 0 0 auto !important; }
+  .language-selector,
+  .auth-buttons,
+  .hamburger-menu { flex: 0 0 auto !important; }
+  .navbar-left {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+  }
+  .nav-brand {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: nowrap !important;
+    margin-left: 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding-left: 16px !important;
+  }
+  .navbar-right {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    gap: 10px !important;
+    transform: none !important;
+    margin-top: -26px !important;
+    line-height: 1 !important;
+    position: relative !important;
+    z-index: 9998 !important;
+    margin-right: 2px !important;
+  }
+  .language-dropdown {
+    position: fixed !important;
+    top: 56px !important;
+    right: 8px !important;
+    z-index: 200000 !important;
+  }
+  .profile-dropdown-portal {
+    position: fixed !important;
+    top: 56px !important;
+    right: 8px !important;
+    z-index: 200000 !important;
+  }
+}
+  .profile-dropdown {
+    position: fixed !important;
+    top: 56px !important;
+    right: 8px !important;
+    z-index: 200000 !important;
+  }
+  .balance-display {
+    padding: 2px 10px !important;
+  }
+  .auth-buttons {
+    flex: 0 1 32% !important;
+    max-width: 32% !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    gap: 4px !important;
+    align-items: center !important;
+    align-self: center !important;
+    flex: 0 1 auto !important;
+    max-width: calc(100% - 44px) !important;
+  }
+  .language-selector { flex: 0 0 auto !important; align-self: center !important; }
+  .hamburger-menu { flex: 0 0 auto !important; align-self: center !important; }
+  .language-selector { padding: 8px 12px !important; gap: 10px !important; border-radius: 10px !important; margin-right: 8px !important; min-width: 64px !important; z-index: 9998 !important; }
+  .language-current { font-size: 18px !important; }
+  .language-current-code { font-size: 12px !important; display: inline-block !important; }
+  .hamburger-menu { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; margin-left: 4px !important; margin-right: 2px !important; }
+  .auth-buttons .login-btn,
+  .auth-buttons .signup-btn { font-size: clamp(9px, 2.2vw, 11px) !important; padding: 2px 6px !important; }
+
+
+@media (max-width: 480px) {
+  .language-selector { padding: 6px 10px !important; gap: 6px !important; margin-right: 6px !important; min-width: 58px !important; z-index: 9998 !important; }
+  .language-current { font-size: 16px !important; }
+  .language-current-code { font-size: 11px !important; display: inline-block !important; }
+  .hamburger-menu { width: 28px !important; height: 28px !important; min-width: 28px !important; min-height: 28px !important; }
+}
+
+@media (max-width: 767px) {
+  header.navbar,
+  .navbar,
+  .navbar-container,
+  .navbar-left {
+    margin-left: 0 !important;
+    padding-left: 16px !important; /* add left margin space for navbar */
+  }
+  .navbar-container { left: 0 !important; }
+  .nav-brand { margin-left: 16px !important; }
+  .navbar-right .language-selector { display: inline-flex !important; }
+}
+@media (min-width: 1024px) {
+  .navbar-container { padding-left: 40px !important; padding-right: 16px !important; }
+  .navbar-left { margin-left: 40px !important; }
+  .nav-brand { font-size: clamp(20px, 2.2vw, 28px) !important; line-height: 1 !important; }
+  .navbar-right { gap: 16px !important; }
+  .language-selector { padding: 5px 7px !important; gap: 4px !important; }
+  .language-current { font-size: 16px !important; }
+  .language-current-code { font-size: 11px !important; }
+}
+@media (min-width: 1024px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(360px, 54vh, 560px) !important;
+    min-height: clamp(360px, 54vh, 560px) !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+  .sports-list { gap: 2px !important; }
+  .sport-item { margin-bottom: 2px !important; }
+  .subcategory-item { padding-top: 4px !important; padding-bottom: 4px !important; font-size: 13px !important; }
+  .sidebar-nav li { margin-bottom: 2px !important; }
+  .sidebar-nav a { padding: 6px 8px !important; font-size: 13px !important; line-height: 1.2 !important; }
+  .sport-name { font-size: 13px !important; }
+  /* Remove card-level horizontal scrollbars and enforce wrapping */
+  .matches-section .match-card,
+  .matches-section .match-container { 
+    width: 100% !important; 
+    max-width: 100% !important; 
+    overflow: hidden !important; 
+  }
+  .matches-section .match-card .match-row,
+  .matches-section .match-card .odds-headers-container,
+  .matches-section .match-card .odds-buttons-container { 
+    max-width: 100% !important; 
+    overflow-x: clip !important; 
+    flex-wrap: wrap !important; 
+    white-space: normal !important; 
+  }
+  .matches-section .match-card * { min-width: 0 !important; }
+  /* Hide any residual horizontal scrollbar tracks inside cards */
+  .matches-section .match-card { scrollbar-width: none !important; }
+  .matches-section .match-card::-webkit-scrollbar { height: 0 !important; }
+  .matches-section .matches-container,
+  .matches-section .competition-group,
+  .matches-section .match-list {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-height: 72vh !important;
+    overscroll-behavior: contain !important;
+  }
+  .matches-section .match-card .team-name,
+  .matches-section .match-card .team-score,
+  .matches-section .match-card .match-league,
+  .matches-section .match-card .match-time,
+  .matches-section .match-card .match-date-time,
+  .matches-section .match-card .odd-label,
+  .matches-section .match-card .odd-value {
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(300px, 52vh, 480px) !important;
+    min-height: clamp(300px, 52vh, 480px) !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+}
+@media (max-width: 767px) {
+  .hero-slider,
+  .hero-slider .slider-container {
+    height: clamp(240px, 50vh, 360px) !important;
+    min-height: clamp(240px, 50vh, 360px) !important;
+  }
+  .hero-slider .slides-wrapper,
+  .hero-slider .slide,
+  .hero-slider .slide-background,
+  .hero-slider .slide-overlay {
+    height: 100% !important;
+  }
+}
+  /* Sidebar: extend to full viewport height on desktop */
+  .side-bar-wrapper,
+  .sidebar {
+    height: 100vh !important;
+    min-height: 120vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Regular match cards: fully disable horizontal scroll and force wrapping */
+  .matches-section .match-card,
+  .matches-section .match-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  .matches-section .match-card .match-row,
+  .matches-section .match-card .league-header,
+  .matches-section .match-card .odds-headers-container,
+  .matches-section .match-card .odds-buttons-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    white-space: normal !important;
+    flex-wrap: wrap !important;
+  }
+  .matches-section .match-card .odds-button {
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+  }
+  .matches-section .match-card * { min-width: 0 !important; }
+  .matches-section .match-card { scrollbar-width: none !important; }
+  .matches-section .match-card::-webkit-scrollbar { display: none !important; }
+
+  /* Global anti-horizontal-scroll overrides for all match cards */
+.match-card,
+.match-container {
+  overflow-x: hidden !important;
+}
+.match-card .match-row,
+.match-card .odds-headers-container,
+.match-card .odds-buttons-container {
+  flex-wrap: wrap !important;
+  white-space: normal !important;
+  overflow-x: hidden !important;
+}
+.match-card * { min-width: 0 !important; }
+.match-card::-webkit-scrollbar { height: 0 !important; display: none !important; }
+  .matches-section .match-container::-webkit-scrollbar { display: none !important; }
+  .navbar-right .auth-buttons .hamburger-menu {
+    margin-left: auto !important;
+    order: 2 !important;
+  }

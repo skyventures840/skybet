@@ -13,6 +13,7 @@ const SignUp = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -31,7 +32,9 @@ const SignUp = () => {
         const response = await apiService.signup({
             username: email.split('@')[0],
             email,
-            password
+            password,
+            promoCode: promoCode || undefined,
+            referralCode: promoCode || undefined
         });
         
         const { token, user } = response.data;
@@ -119,6 +122,19 @@ const SignUp = () => {
               required
             />
           </div>
+
+          <div className="form-group">
+            <label htmlFor="promoCode">Promo Code (optional)</label>
+            <input
+              type="text"
+              id="promoCode"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              placeholder="WELCOME100 or REF50"
+            />
+          </div>
+
+          
 
           <button 
             type="submit" 

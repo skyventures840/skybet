@@ -433,8 +433,8 @@ html, body { overflow-x: hidden !important; }
 @media (max-width: 767px) {
   .hero-slider,
   .hero-slider .slider-container {
-    height: clamp(130px, 24vh, 200px) !important;
-    min-height: clamp(130px, 24vh, 200px) !important;
+    height: clamp(90px, 18vh, 140px) !important;
+    min-height: clamp(90px, 18vh, 140px) !important;
     overflow: hidden !important;
   }
   .hero-slider .slides-wrapper,

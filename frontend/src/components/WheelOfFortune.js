@@ -17,6 +17,8 @@ const WheelOfFortune = () => {
   const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
   const wheelRef = useRef(null);
+  const containerRef = useRef(null);
+  const [labelRadius, setLabelRadius] = useState(null);
 
   // Shuffling algorithm to favor consecutive multipliers based on count,
   // prevent consecutive 20x, ensure no more than 2 consecutive same multipliers,
@@ -136,6 +138,21 @@ const WheelOfFortune = () => {
     setWheelSegments(randomizedSegments);
   }, []);
 
+  useEffect(() => {
+    const update = () => {
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+      const mobile = w <= 767;
+      if (mobile && containerRef.current) {
+        setLabelRadius(containerRef.current.offsetWidth / 2);
+      } else {
+        setLabelRadius(null);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   const validateBet = () => {
     if (!loggedIn) {
       setError('Please log in to play');
@@ -176,12 +193,12 @@ const WheelOfFortune = () => {
     const selectedSegment = wheelSegments[randomIndex];
 
     // Calculate rotation angle with more rotations for dramatic effect
-    const baseRotation = 360 * 8; // Increased from 5 to 8 rotations for more excitement
+    const baseRotation = 360 * 10;
     const finalRotation = baseRotation + (randomIndex * segmentAngle);
 
     // Apply rotation animation with faster speed
     if (wheelRef.current) {
-      wheelRef.current.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      wheelRef.current.style.transition = 'transform 1.6s cubic-bezier(0.22, 0.61, 0.36, 1)';
       wheelRef.current.style.transform = `rotate(${finalRotation}deg)`;
     }
 
@@ -244,7 +261,7 @@ const WheelOfFortune = () => {
         // Revert balance to original on error
         dispatch(setUser({ ...user, balance: originalBalance }));
       }
-    }, 1000);
+    }, 1700);
   };
 
   return (
@@ -302,7 +319,7 @@ const WheelOfFortune = () => {
         )}
       </div>
 
-      <div className="wheel-container">
+      <div className="wheel-container" ref={containerRef}>
         <div className="wheel-pointer"></div>
         <div className="wheel" ref={wheelRef}>
           {wheelSegments.map((segment, index) => {
@@ -311,8 +328,7 @@ const WheelOfFortune = () => {
             const rad = (angle * Math.PI) / 180;
             const x1 = 50; // Center x
             const y1 = 50; // Center y
-            // Slightly overshoot radius to remove anti-aliased hairline gaps
-            const extend = 52;
+            const extend = isMobile ? 51 : 52;
             const x2 = 50 + extend * Math.cos(0);
             const y2 = 50 + extend * Math.sin(0);
             const x3 = 50 + extend * Math.cos(rad);
@@ -341,7 +357,7 @@ const WheelOfFortune = () => {
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
-                    transform: `translate(-50%, -50%) rotate(${angle / 2}deg) translateY(-${wheelRadius * 0.6}px)`,
+                    transform: `translate(-50%, -50%) rotate(${angle / 2}deg) translateY(-${(labelRadius ?? wheelRadius) * 0.6}px)`,
                     transformOrigin: 'center',
                     color: 'white',
                     fontWeight: 'bold',

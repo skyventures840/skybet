@@ -14,12 +14,12 @@
   /* Reduce hero height and enforce proportional min-height */
   .hero-slider,
   .hero-slider .slider-container {
-    height: 160px !important;
+    height: 140px !important;
     border-radius: var(--radius-md) !important;
     overflow: hidden !important;
   }
   .hero-slider .slider-container {
-    min-height: clamp(160px, 42vh, 280px) !important;
+    min-height: clamp(90px, 18vh, 140px) !important;
   }
 
   /* Remove full-bleed for hero on mobile to reveal radius */
@@ -43,7 +43,7 @@
   /* Fixed height for hero container */
   .hero-slider,
   .hero-slider .slider-container {
-    height: 200px !important;
+    height: 140px !important;
   }
 
   /* Make wrapper and slides fill the fixed height */
@@ -66,7 +66,7 @@
 @media (max-width: 767px) {
   /* Taller hero for small screens */
   .hero-slider .slider-container {
-    min-height: clamp(180px, 45vh, 300px) !important;
+    min-height: clamp(90px, 18vh, 140px) !important;
   }
 
   /* Increase popular matches container height */

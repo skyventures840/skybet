@@ -1,4 +1,5 @@
 import axios from 'axios';
+import QuickLRU from 'quick-lru';
 import enhancedCache from './enhancedCache';
 
 // Use environment variable for API URL, fallback to localhost for development
@@ -15,38 +16,39 @@ const api = axios.create({
 });
 
 // Simple in-memory cache with TTL to speed up initial loads
+const lruStore = new QuickLRU({ maxSize: 500 });
 const responseCache = {
-  store: new Map(),
   get(key) {
-    const entry = this.store.get(key);
+    const entry = lruStore.get(key);
     if (!entry) return null;
-    const now = Date.now();
-    if (now - entry.timestamp > entry.ttl) {
-      this.store.delete(key);
+    if (Date.now() > entry.expireAt) {
+      lruStore.delete(key);
+      try {
+        localStorage.removeItem(`cache:${key}`);
+      } catch (err) {
+        void err;
+      }
       return null;
     }
     return entry.response;
   },
   set(key, response, ttl) {
-    this.store.set(key, { response, ttl, timestamp: Date.now() });
+    lruStore.set(key, { response, expireAt: Date.now() + ttl });
   },
   delete(key) {
-    this.store.delete(key);
+    lruStore.delete(key);
     try {
       localStorage.removeItem(`cache:${key}`);
     } catch (err) {
-      // Swallow storage errors (quota/unavailable) intentionally
       void err;
     }
   },
   invalidate(prefix) {
-    // Remove in-memory entries by prefix
-    for (const k of this.store.keys()) {
+    for (const k of lruStore.keys()) {
       if (String(k).startsWith(prefix)) {
-        this.store.delete(k);
+        lruStore.delete(k);
       }
     }
-    // Remove localStorage entries by prefix
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i) || '';
@@ -55,7 +57,6 @@ const responseCache = {
         }
       }
     } catch (err) {
-      // Swallow storage errors (quota/unavailable) intentionally
       void err;
     }
   }
@@ -282,6 +283,7 @@ const apiService = {
   updateUserProfile: (profileData) => api.put('/auth/profile', profileData),
   changePassword: (passwordData) => api.put('/users/change-password', passwordData),
   getTransactions: () => instantGet('/users/transactions', 120000),
+  getBalance: () => instantGet('/users/balance', 30000),
   deposit: (depositData) => api.post('/users/deposit', depositData),
   withdraw: (withdrawData) => api.post('/users/withdraw', withdrawData),
 
