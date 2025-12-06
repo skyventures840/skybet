@@ -17,7 +17,9 @@ router.post('/register', [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).*$/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   body('firstName').optional().trim().escape(),
-  body('lastName').optional().trim().escape()
+  body('lastName').optional().trim().escape(),
+  body('promoCode').optional().isString(),
+  body('referralCode').optional().isString()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -25,7 +27,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password, firstName, lastName, phoneNumber, address, isAdmin } = req.body;
+    const { username, email, password, firstName, lastName, phoneNumber, address, isAdmin, promoCode, referralCode } = req.body;
     
     // Check if user exists
     const existingUser = await User.findByUsernameOrEmail(username) || await User.findByUsernameOrEmail(email);
@@ -46,6 +48,45 @@ router.post('/register', [
     });
 
     await user.save();
+
+    // Generate a unique referral code for the new user
+    const generatedRef = User.generateReferralCode(username || email);
+    await User.findByIdAndUpdate(user._id, { $set: { referralCode: generatedRef } });
+
+    // Optional referral bonus on registration
+    if (referralCode) {
+      const PromoCode = require('../models/PromoCode');
+      const PromoUsage = require('../models/PromoUsage');
+      const referrer = await User.findOne({ referralCode: String(referralCode).trim() });
+      if (referrer && String(referrer._id) !== String(user._id)) {
+        const codeStr = String(promoCode || 'REF50').toUpperCase().trim();
+        const promo = await PromoCode.findOne({ code: codeStr, type: 'REFERRAL', isActive: true });
+        const alreadyUsed = await PromoUsage.findOne({ userId: user._id, type: 'REFERRAL' });
+        if (promo && !alreadyUsed) {
+          const referrerBonus = Number(promo.referrerBonus || 0);
+          const refereeBonus = Number(promo.refereeBonus || 0);
+          if (refereeBonus > 0) {
+            const wrReferee = refereeBonus * (promo.wageringMultiplier || 5);
+            await User.creditBonus(user._id, refereeBonus, wrReferee);
+          }
+          if (referrerBonus > 0) {
+            const wrReferrer = referrerBonus * (promo.wageringMultiplier || 5);
+            await User.creditBonus(referrer._id, referrerBonus, wrReferrer);
+          }
+          await new PromoUsage({
+            userId: user._id,
+            promoCodeId: promo._id,
+            code: promo.code,
+            type: promo.type,
+            context: 'registration',
+            amountAwarded: refereeBonus,
+            referrerId: referrer._id,
+            refereeId: user._id
+          }).save();
+          await User.findByIdAndUpdate(user._id, { $set: { referredBy: referrer._id } });
+        }
+      }
+    }
 
     const token = jwt.sign({ id: user._id }, config.jwtSecret, { expiresIn: '30d' });
 

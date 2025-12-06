@@ -237,18 +237,18 @@ router.post('/', auth, [
 
     console.log('Processing bet with data:', { matchId, market, selection, stake, odds, userId });
 
-    // Validate user balance
+    // Validate user and debit stake using bonus-first logic
     console.log('Validating user balance...');
     const user = await User.findById(userId);
     if (!user) {
       console.log('User not found:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
-
-    console.log('User found:', { id: user._id, balance: user.balance, stake });
-
-    if (user.balance < stake) {
-      console.log('Insufficient balance:', { balance: user.balance, stake });
+    let debit;
+    try {
+      debit = await User.debitForBet(userId, stake);
+    } catch (e) {
+      console.log('Insufficient balance or debit error:', e.message);
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
@@ -303,7 +303,9 @@ router.post('/', auth, [
       selection,
       stake,
       odds,
-      potentialWin: stake * odds
+      potentialWin: stake * odds,
+      bonusStakeUsed: debit.bonusUsed,
+      realStakeUsed: debit.realUsed
     };
 
     // Add matches array for multibets/parlays
@@ -326,10 +328,7 @@ router.post('/', auth, [
     await bet.save();
     console.log('Bet saved successfully:', bet._id);
 
-    // Update user balance
-    console.log('Updating user balance...');
-    await User.updateBalance(userId, -stake);
-    console.log('User balance updated');
+    // Balance already debited via debitForBet
 
     // Broadcast new bet via WebSocket
     if (global.websocketServer) {

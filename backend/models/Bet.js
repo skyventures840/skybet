@@ -52,6 +52,14 @@ const betSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  bonusStakeUsed: {
+    type: Number,
+    default: 0
+  },
+  realStakeUsed: {
+    type: Number,
+    default: 0
+  },
   actualWin: {
     type: Number,
     default: 0

@@ -6,6 +6,8 @@ const nowpayments = require('../services/nowpayments');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const PromoCode = require('../models/PromoCode');
+const PromoUsage = require('../models/PromoUsage');
 
 // Helper functions for mock payments
 function generateMockAddress(currency) {
@@ -63,7 +65,9 @@ router.get('/currencies', async (req, res) => {
 router.post('/create', auth, [
   body('amount').isFloat({ min: 10 }),
   body('currency').isString().notEmpty(),
-  body('description').optional().isString()
+  body('description').optional().isString(),
+  body('promoCode').optional().isString(),
+  body('referralCode').optional().isString()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -71,7 +75,7 @@ router.post('/create', auth, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { amount, currency, description } = req.body;
+    const { amount, currency, description, promoCode, referralCode } = req.body;
     const userId = req.user.id;
 
     // Generate unique order ID
@@ -200,7 +204,9 @@ router.post('/create', auth, [
       metadata: {
         paymentId: payment.payment_id,
         orderId: orderId,
-        payAddress: payment.pay_address
+        payAddress: payment.pay_address,
+        promoCode: promoCode || null,
+        referralCode: referralCode || null
       }
     });
 
@@ -348,13 +354,85 @@ router.post('/callback', async (req, res) => {
 
       if (transaction) {
         if (payment_status === 'finished' || payment_status === 'confirmed') {
-          // Update user balance
-          await User.updateBalance(payment.userId, payment.amount);
-          
-          // Mark transaction as completed
+          // Credit real wallet
+          await User.creditReal(payment.userId, payment.amount);
+
+          // First-deposit check and bonus
+          const user = await User.findById(payment.userId);
+          const isFirstDeposit = !user.hasDeposited;
+          const now = new Date();
+          if (isFirstDeposit) {
+            await User.findByIdAndUpdate(payment.userId, { $set: { hasDeposited: true, firstDepositAt: now } });
+            const welcomePercent = 100;
+            const welcomeBonus = Math.floor(payment.amount * welcomePercent) / 100;
+            if (welcomeBonus > 0) {
+              const wrMult = 5;
+              await User.creditBonus(payment.userId, welcomeBonus, welcomeBonus * wrMult);
+            }
+          }
+
+          // Apply promo/referral from transaction metadata if present
+          const codeStr = String(transaction?.metadata?.promoCode || '').toUpperCase().trim();
+          const refCode = String(transaction?.metadata?.referralCode || '').trim();
+          if (codeStr) {
+            const promo = await PromoCode.findOne({ code: codeStr, isActive: true });
+            if (promo) {
+              const alreadyUsed = await PromoUsage.findOne({ userId: payment.userId, code: promo.code });
+              if (!promo.oneTimePerUser || !alreadyUsed) {
+                if (promo.type === 'FIRST_DEPOSIT' && isFirstDeposit) {
+                  let bonus = 0;
+                  if (promo.percent && promo.percent > 0) {
+                    bonus = (payment.amount * promo.percent) / 100;
+                    if (promo.maxBonus && bonus > promo.maxBonus) bonus = promo.maxBonus;
+                  } else if (promo.fixedAmount && promo.fixedAmount > 0) {
+                    bonus = promo.fixedAmount;
+                  }
+                  if (bonus > 0) {
+                    const wrInc = bonus * (promo.wageringMultiplier || 5);
+                    await User.creditBonus(payment.userId, bonus, wrInc);
+                    await new PromoUsage({
+                      userId: payment.userId,
+                      promoCodeId: promo._id,
+                      code: promo.code,
+                      type: promo.type,
+                      context: 'deposit',
+                      amountAwarded: bonus,
+                      metadata: { paymentId: payment.paymentId }
+                    }).save();
+                  }
+                } else if (promo.type === 'REFERRAL' && refCode) {
+                  const referrer = await User.findOne({ referralCode: refCode });
+                  if (referrer && String(referrer._id) !== String(payment.userId)) {
+                    const referrerBonus = Number(promo.referrerBonus || 0);
+                    const refereeBonus = Number(promo.refereeBonus || 0);
+                    if (refereeBonus > 0) {
+                      const wrReferee = refereeBonus * (promo.wageringMultiplier || 5);
+                      await User.creditBonus(payment.userId, refereeBonus, wrReferee);
+                    }
+                    if (referrerBonus > 0) {
+                      const wrReferrer = referrerBonus * (promo.wageringMultiplier || 5);
+                      await User.creditBonus(referrer._id, referrerBonus, wrReferrer);
+                    }
+                    await new PromoUsage({
+                      userId: payment.userId,
+                      promoCodeId: promo._id,
+                      code: promo.code,
+                      type: promo.type,
+                      context: 'deposit',
+                      amountAwarded: refereeBonus,
+                      referrerId: referrer._id,
+                      refereeId: payment.userId,
+                      metadata: { paymentId: payment.paymentId }
+                    }).save();
+                  }
+                }
+              }
+            }
+          }
+
+          // Complete transaction
           await Transaction.completeTransaction(transaction._id, outcome_txid);
-          
-          nowpayments.logger.info('Payment completed and balance updated:', {
+          nowpayments.logger.info('Payment completed and balance updated with bonuses:', {
             userId: payment.userId,
             amount: payment.amount,
             orderId: order_id

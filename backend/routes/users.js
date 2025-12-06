@@ -2,7 +2,20 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const PromoCode = require('../models/PromoCode');
+const PromoUsage = require('../models/PromoUsage');
 const { auth, adminAuth } = require('../middleware/auth');
+const { get: cacheGet, set: cacheSet } = require('../utils/cache');
+const crypto = require('crypto');
+
+function computeEtag(obj) {
+  try {
+    const json = JSON.stringify(obj);
+    return 'W/"' + crypto.createHash('sha1').update(json).digest('hex') + '"';
+  } catch (e) {
+    return null;
+  }
+}
 const { body, validationResult } = require('express-validator');
 // Constants for transaction methods and currencies
 const TRANSACTION_METHODS = {
@@ -17,12 +30,37 @@ const CURRENCIES = ['USD', 'EUR', 'BTC', 'ETH', 'USDT', 'USDC'];
 // Get user balance
 router.get('/balance', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('balance');
+    const keyParams = { userId: String(req.user.id) };
+    const cached = cacheGet('/api/users/balance', keyParams);
+    if (cached) {
+      const etag = computeEtag(cached);
+      res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
+      if (etag) res.set('ETag', etag);
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+      return res.json(cached);
+    }
+
+    const user = await User.findById(req.user.id).select('balance balanceReal balanceBonus wageringRequired wageringProgress');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
-      }
+    }
 
-    res.json({ balance: user.balance });
+    const payload = {
+      balance: user.balance,
+      balanceReal: user.balanceReal,
+      balanceBonus: user.balanceBonus,
+      wageringRequired: user.wageringRequired,
+      wageringProgress: user.wageringProgress
+    };
+    const etag = computeEtag(payload);
+    try { cacheSet('/api/users/balance', keyParams, payload, 30); } catch (e) {}
+    if (etag) res.set('ETag', etag);
+    res.set('X-Cache', 'MISS');
+    res.set('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
+    res.json(payload);
   } catch (error) {
     console.error('Get balance error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -41,7 +79,7 @@ router.post('/deposit', auth, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { amount, method, currency, walletAddress } = req.body;
+    const { amount, method, currency, walletAddress, promoCode, referralCode } = req.body;
     const userId = req.user.id;
 
     // For crypto deposits, use NOWPayments
@@ -56,7 +94,9 @@ router.post('/deposit', auth, [
         body: JSON.stringify({
           amount,
           currency: currency || 'BTC',
-          description: `Crypto deposit via ${currency || 'BTC'}`
+          description: `Crypto deposit via ${currency || 'BTC'}`,
+          promoCode: promoCode || null,
+          referralCode: referralCode || null
         })
       });
 
@@ -72,7 +112,16 @@ router.post('/deposit', auth, [
         res.status(paymentResponse.status).json(paymentData);
       }
     } else {
-      // For non-crypto deposits, use the old system
+      // Non-crypto deposits: immediately credit real wallet and apply promos
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (user.isBanned || user.isBlocked === true) {
+        return res.status(403).json({ error: 'Account is blocked or banned' });
+      }
+
       const transaction = new Transaction({
         userId,
         type: 'deposit',
@@ -80,15 +129,125 @@ router.post('/deposit', auth, [
         method,
         currency,
         walletAddress,
-        status: 'pending'
+        status: 'completed',
+        description: 'Instant deposit'
       });
-
       await transaction.save();
 
+      await User.creditReal(userId, amount);
+
+      const now = new Date();
+      const isFirstDeposit = !user.hasDeposited;
+      if (isFirstDeposit) {
+        await User.findByIdAndUpdate(userId, { $set: { hasDeposited: true, firstDepositAt: now } });
+      }
+
+      let awardedBonuses = [];
+
+      if (isFirstDeposit) {
+        const autoWelcomeBonusPercent = 100;
+        const bonusAmount = Math.floor(amount * autoWelcomeBonusPercent) / 100;
+        if (bonusAmount > 0) {
+          const wageringMultiplier = 5;
+          const wageringIncrement = bonusAmount * wageringMultiplier;
+          await User.creditBonus(userId, bonusAmount, wageringIncrement);
+          awardedBonuses.push({ code: 'WELCOME100_AUTO', amount: bonusAmount, wagering: wageringIncrement });
+        }
+      }
+
+      if (promoCode) {
+        const codeStr = String(promoCode).toUpperCase().trim();
+        const promo = await PromoCode.findOne({ code: codeStr, isActive: true });
+        if (!promo) {
+          return res.status(400).json({ error: 'Invalid or inactive promo code' });
+        }
+        if (promo.startsAt && now < promo.startsAt) {
+          return res.status(400).json({ error: 'Promo not yet active' });
+        }
+        if (promo.endsAt && now > promo.endsAt) {
+          return res.status(400).json({ error: 'Promo has expired' });
+        }
+        const alreadyUsed = await PromoUsage.findOne({ userId, code: promo.code });
+        if (promo.oneTimePerUser && alreadyUsed) {
+          return res.status(400).json({ error: 'Promo code already used' });
+        }
+
+        if (promo.type === 'FIRST_DEPOSIT') {
+          if (!isFirstDeposit) {
+            return res.status(400).json({ error: 'Promo valid only on first deposit' });
+          }
+          if (promo.minDeposit && amount < promo.minDeposit) {
+            return res.status(400).json({ error: `Minimum deposit for promo is ${promo.minDeposit}` });
+          }
+          let bonus = 0;
+          if (promo.percent && promo.percent > 0) {
+            bonus = (amount * promo.percent) / 100;
+            if (promo.maxBonus && bonus > promo.maxBonus) {
+              bonus = promo.maxBonus;
+            }
+          } else if (promo.fixedAmount && promo.fixedAmount > 0) {
+            bonus = promo.fixedAmount;
+          }
+          if (bonus > 0) {
+            const wageringInc = bonus * (promo.wageringMultiplier || 5);
+            await User.creditBonus(userId, bonus, wageringInc);
+            await new PromoUsage({
+              userId,
+              promoCodeId: promo._id,
+              code: promo.code,
+              type: promo.type,
+              context: 'deposit',
+              amountAwarded: bonus,
+              metadata: { depositAmount: amount }
+            }).save();
+            awardedBonuses.push({ code: promo.code, amount: bonus, wagering: wageringInc });
+          }
+        } else if (promo.type === 'REFERRAL') {
+          if (!referralCode) {
+            return res.status(400).json({ error: 'Referral promo requires referral code' });
+          }
+          const referrer = await User.findOne({ referralCode: referralCode.trim() });
+          if (!referrer) {
+            return res.status(400).json({ error: 'Invalid referral code' });
+          }
+          if (String(referrer._id) === String(userId)) {
+            return res.status(400).json({ error: 'Self-referral not allowed' });
+          }
+          const alreadyReferred = await PromoUsage.findOne({ userId, type: 'REFERRAL' });
+          if (alreadyReferred) {
+            return res.status(400).json({ error: 'Referral promo already used' });
+          }
+          const referrerBonus = Number(promo.referrerBonus || 0);
+          const refereeBonus = Number(promo.refereeBonus || 0);
+          if (refereeBonus > 0) {
+            const wrReferee = refereeBonus * (promo.wageringMultiplier || 5);
+            await User.creditBonus(userId, refereeBonus, wrReferee);
+            awardedBonuses.push({ code: promo.code, amount: refereeBonus, wagering: wrReferee });
+          }
+          if (referrerBonus > 0) {
+            const wrReferrer = referrerBonus * (promo.wageringMultiplier || 5);
+            await User.creditBonus(referrer._id, referrerBonus, wrReferrer);
+          }
+          await new PromoUsage({
+            userId,
+            promoCodeId: promo._id,
+            code: promo.code,
+            type: promo.type,
+            context: 'deposit',
+            amountAwarded: refereeBonus,
+            referrerId: referrer._id,
+            refereeId: userId,
+            metadata: { depositAmount: amount }
+          }).save();
+        }
+      }
+
       res.status(201).json({
+        success: true,
         transactionId: transaction._id,
         status: transaction.status,
-        message: 'Deposit pending approval'
+        awardedBonuses,
+        message: 'Deposit completed'
       });
     }
   } catch (error) {
@@ -113,14 +272,17 @@ router.post('/withdraw', auth, [
     const { amount, method, walletAddress, currency } = req.body;
     const userId = req.user.id;
 
-    // Check user balance
+    // Check user balance and wagering requirements
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    if (user.balance < amount) {
-      return res.status(400).json({ error: 'Insufficient balance' });
+    const wageringComplete = Number(user.wageringProgress || 0) >= Number(user.wageringRequired || 0);
+    if (!wageringComplete && Number(user.wageringRequired || 0) > 0) {
+      return res.status(400).json({ error: 'Withdrawals blocked until wagering requirements are met' });
+    }
+    if (Number(user.balanceReal || 0) < amount) {
+      return res.status(400).json({ error: 'Insufficient withdrawable balance' });
     }
 
     // Create transaction record
@@ -136,7 +298,7 @@ router.post('/withdraw', auth, [
 
     await transaction.save();
 
-    // Deduct from user balance immediately
+    // Deduct from real wallet immediately
     await User.updateBalance(userId, -amount);
 
     res.status(201).json({
@@ -155,7 +317,19 @@ router.get('/transactions', auth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const type = req.query.type; // deposit, withdrawal
+    const type = req.query.type;
+    const keyParams = { userId: String(req.user.id), page: String(page), limit: String(limit), type: type || '' };
+    const cached = cacheGet('/api/users/transactions', keyParams);
+    if (cached) {
+      const etag = computeEtag(cached);
+      res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'private, max-age=20, stale-while-revalidate=120');
+      if (etag) res.set('ETag', etag);
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+      return res.json(cached);
+    }
 
     const query = { userId: req.user.id };
     if (type) {
@@ -169,7 +343,7 @@ router.get('/transactions', auth, async (req, res) => {
 
     const total = await Transaction.countDocuments(query);
 
-    res.json({
+    const payload = {
       transactions,
       pagination: {
         page,
@@ -177,7 +351,13 @@ router.get('/transactions', auth, async (req, res) => {
         total,
         pages: Math.ceil(total / limit)
       }
-    });
+    };
+    const etag = computeEtag(payload);
+    try { cacheSet('/api/users/transactions', keyParams, payload, 60); } catch (e) {}
+    if (etag) res.set('ETag', etag);
+    res.set('X-Cache', 'MISS');
+    res.set('Cache-Control', 'private, max-age=20, stale-while-revalidate=120');
+    res.json(payload);
   } catch (error) {
     console.error('Get transactions error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -206,7 +386,7 @@ router.get('/transactions/:transactionId', auth, async (req, res) => {
 // Update user preferences
 router.put('/preferences', auth, [
   body('notifications').optional().isObject(),
-  body('language').optional().isIn(['en', 'es', 'fr', 'de']),
+  body('language').optional().isIn(['en','es','fr','de','it','pt','nl','sv','no','da','fi','pl','cs','sk','sl','hu','ro','bg','el','tr','uk','ru','sr','hr','ar','fa']),
   body('timezone').optional().isString()
 ], async (req, res) => {
   try {
