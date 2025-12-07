@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MatchCard from '../components/MatchCard';
+import SkeletonLoader from '../components/SkeletonLoader';
 import apiService from '../services/api';
 import enhancedCache from '../services/enhancedCache';
 
@@ -7,6 +9,7 @@ const IceHockey = () => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchIceHockeyMatches = async () => {
@@ -37,8 +40,18 @@ const IceHockey = () => {
     fetchIceHockeyMatches();
   }, []);
 
-  if (loading) return <div className="loading">Loading matches...</div>;
-  if (error) return <div className="error">{error}</div>;
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => {
+      if (loading) {
+        navigate('/');
+      }
+    }, 30000);
+    return () => clearTimeout(t);
+  }, [loading, navigate]);
+
+  if (loading) return <SkeletonLoader type="match-card" count={6} />;
+  if (error && matches.length === 0) return <SkeletonLoader type="match-card" count={6} />;
 
   return (
     <div className="sport-page">

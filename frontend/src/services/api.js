@@ -13,7 +13,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 8000,
+  timeout: 0,
 });
 
 // Simple in-memory cache with TTL to speed up initial loads
@@ -153,7 +153,7 @@ async function instantGet(path, ttl = 30000) {
       inflightRequests.set(path, controller);
       const etag = entry.etag || null;
       const headers = etag ? { 'If-None-Match': etag } : {};
-      api.get(path, { headers, signal: controller.signal })
+      api.get(path, { headers, signal: controller.signal, timeout: 0 })
         .then(resp => {
           // 304 Not Modified: only bump timestamp
           if (resp && resp.status === 304) {
@@ -166,12 +166,8 @@ async function instantGet(path, ttl = 30000) {
           enhancedCache.setEntry(path, resp.data, newEtag || null);
         })
         .catch(err => {
-          // 304 Not Modified: bump timestamp to keep cache fresh
           if (err && err.response && err.response.status === 304) {
             enhancedCache.touch(path);
-          } else {
-            // Network errors: ignore to keep UI responsive
-            console.warn('[INSTANT GET] Revalidate error:', err?.message || err);
           }
         })
         .finally(() => {
@@ -319,8 +315,8 @@ const apiService = {
       throw error;
     }
   },
-  // Cache popular matches for longer duration for instant loading
-  getPopularMatches: () => cachedGet('/matches/popular/trending', 300000), // 5 minutes cache
+  // Instant load popular matches with background revalidation
+  getPopularMatches: () => instantGet('/matches/popular/trending', 300000),
   getMatchById: (id) => cachedGet(`/matches/${id}`, 15000),
   getLiveMatches: () => instantGet('/matches/live/real-time', 30000),
   addMatch: (matchData) => api.post('/admin/matches', matchData),
@@ -356,9 +352,8 @@ const apiService = {
   unblockUser: (userId) => {
     return api.put(`/users/${userId}/unblock`);
   },
-  // Hero Section
-  // Cache hero slides longer since they change infrequently
-  getHeroSlides: () => cachedGet('/admin/hero', 300000),
+  // Hero Section: instant load with background revalidation
+  getHeroSlides: () => instantGet('/admin/hero', 300000),
   createHeroSlide: (data) => api.post('/admin/hero', data),
   updateHeroSlide: (id, data) => api.put(`/admin/hero/${id}`, data),
   deleteHeroSlide: (id) => api.delete(`/admin/hero/${id}`),
@@ -404,7 +399,7 @@ async function getWithRetry(path, maxAttempts = 3) {
   let lastError = null;
   while (attempt < maxAttempts) {
     try {
-      return await api.get(path);
+      return await api.get(path, { timeout: 0 });
     } catch (err) {
       lastError = err;
       const status = err?.response?.status;
