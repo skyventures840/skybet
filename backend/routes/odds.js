@@ -51,7 +51,11 @@ router.get('/', async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       console.log('[DEBUG] Fetching matches from database...');
       
-      const oddsData = await Odds.find({}).sort({ commence_time: 1 }).limit(1000);
+      const oddsData = await Odds.find({})
+        .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
+        .lean()
+        .sort({ commence_time: 1 })
+        .limit(1000);
               console.log(`[DEBUG] Found ${oddsData.length} matches in database`);
       
       if (oddsData.length > 0) {
@@ -117,7 +121,10 @@ router.get('/sport/:sportKey', async (req, res) => {
     
     // Try database first
     if (mongoose.connection.readyState === 1) {
-      const oddsData = await Odds.find({ sport_key: sportKey }).limit(50);
+      const oddsData = await Odds.find({ sport_key: sportKey })
+        .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
+        .lean()
+        .limit(50);
       
       if (oddsData.length > 0) {
         matches = oddsData.map(odds => ({
@@ -176,7 +183,9 @@ router.get('/match/:matchId', async (req, res) => {
     
     // Try database first
     if (mongoose.connection.readyState === 1) {
-      const oddsData = await Odds.findOne({ gameId: matchId });
+      const oddsData = await Odds.findOne({ gameId: matchId })
+        .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
+        .lean();
       
       if (oddsData) {
         match = {

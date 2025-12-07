@@ -112,6 +112,7 @@ matchSchema.index({ status: 1, startTime: 1 }); // Status-based queries with tim
 matchSchema.index({ startTime: 1, status: 1 }); // Time-based queries with status filter
 matchSchema.index({ createdAt: 1 }); // For admin queries
 matchSchema.index({ updatedAt: 1 }); // For recently updated matches
+matchSchema.index({ homeTeam: 1, awayTeam: 1, startTime: 1 }); // Team-based queries
 
 // Update timestamp on save
 matchSchema.pre('save', function(next) {

@@ -192,7 +192,10 @@ router.post('/', adminAuth, async (req, res) => {
 // Get all matches for admin (no pagination/filtering)
 router.get('/all', adminAuth, async (req, res) => {
   try {
-    const matches = await Match.find({}).sort({ createdAt: -1 });
+    const matches = await Match.find({})
+      .select('_id homeTeam awayTeam startTime sport status createdAt leagueId')
+      .lean()
+      .sort({ createdAt: -1 });
     res.json({ matches });
   } catch (error) {
     console.error('Get all matches for admin error:', error);
@@ -224,7 +227,12 @@ router.get('/search', adminAuth, async (req, res) => {
     }
 
     const [matches, total] = await Promise.all([
-      Match.find(criteria).sort({ startTime: -1 }).skip(skip).limit(limit),
+      Match.find(criteria)
+        .select('_id homeTeam awayTeam startTime sport status leagueId')
+        .lean()
+        .sort({ startTime: -1 })
+        .skip(skip)
+        .limit(limit),
       Match.countDocuments(criteria)
     ]);
 
@@ -560,19 +568,22 @@ router.get('/popular/trending', async (req, res) => {
 
     // Get matches from both collections
     const [adminMatches, oddsData] = await Promise.all([
-      // Get admin-created matches
       Match.find({
         status: 'upcoming',
         startTime: { $gte: new Date() }
       })
-      .populate('leagueId', 'name')
+      .select('_id homeTeam awayTeam startTime sport status odds markets leagueId')
+      .lean()
+      .populate('leagueId', 'name', null, { lean: true })
       .sort({ startTime: 1 })
-      .limit(20), // Get more matches to allow for filtering
-      
-      // Get odds-based matches
+      .limit(20),
       Odds.find({
         commence_time: { $gte: new Date() }
-      }).sort({ commence_time: 1 }).limit(20)
+      })
+      .select('gameId home_team away_team commence_time sport_key sport_title bookmakers')
+      .lean()
+      .sort({ commence_time: 1 })
+      .limit(20)
     ]);
 
     // Transform odds data into match format
@@ -772,7 +783,9 @@ router.get('/popular/trending', async (req, res) => {
 // Get match by ID with markets and odds
 router.get('/:matchId', async (req, res) => {
   try {
-    const match = await Match.findById(req.params.matchId);
+    const match = await Match.findById(req.params.matchId)
+      .select('_id homeTeam awayTeam sport league startTime status updatedAt odds markets')
+      .lean();
     
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
@@ -813,6 +826,18 @@ router.get('/debug/odds/:matchId', async (req, res) => {
 // Enhanced Get match markets and odds with comprehensive additional markets
 router.get('/:matchId/markets', async (req, res) => {
   try {
+    const cacheKeyPath = `/api/matches/${req.params.matchId}/markets`;
+    const cached = cacheGet(cacheKeyPath, {});
+    if (cached) {
+      const etag = computeEtag(cached);
+      res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
+      if (etag) res.set('ETag', etag);
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+      return res.json(cached);
+    }
     console.log('=== MATCH MARKETS REQUEST ===');
     console.log('Match ID received:', req.params.matchId);
     
@@ -837,7 +862,9 @@ router.get('/:matchId/markets', async (req, res) => {
     // If not found, try to find by gameId in Odds collection (for API matches)
     if (!match) {
       console.log('Searching by gameId in Odds collection...');
-      const oddsData = await Odds.findOne({ gameId: req.params.matchId });
+      const oddsData = await Odds.findOne({ gameId: req.params.matchId })
+        .select('gameId home_team away_team sport_key sport_title commence_time bookmakers')
+        .lean();
       
       if (oddsData) {
         console.log('Match found in Odds collection:', {
@@ -935,6 +962,13 @@ router.get('/:matchId/markets', async (req, res) => {
           sampleMarkets: match.markets.slice(0, 3).map(m => m.title)
         });
         
+        try {
+          cacheSet(cacheKeyPath, {}, match, 180);
+          res.set('X-Cache', 'MISS');
+          res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
+          const etag = computeEtag(match);
+          if (etag) res.set('ETag', etag);
+        } catch (_) {}
         return res.json(match);
       }
     }
@@ -1099,6 +1133,13 @@ router.get('/:matchId/markets', async (req, res) => {
     });
     console.log('=== END MATCH MARKETS REQUEST ===');
 
+    try {
+      cacheSet(cacheKeyPath, {}, responseData, 180);
+      res.set('X-Cache', 'MISS');
+      res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
+      const etag = computeEtag(responseData);
+      if (etag) res.set('ETag', etag);
+    } catch (_) {}
     res.json(responseData);
   } catch (error) {
     console.error('=== MATCH MARKETS ERROR ===');
@@ -1112,7 +1153,9 @@ router.get('/:matchId/markets', async (req, res) => {
 router.get('/live/all', async (req, res) => {  // Removed auth middleware
   try {
     const liveMatches = await Match.find({ status: 'live' })
-      .populate('leagueId', 'name')
+      .select('_id homeTeam awayTeam startTime sport leagueId homeScore awayScore odds markets')
+      .lean()
+      .populate('leagueId', 'name', null, { lean: true })
       .sort({ startTime: 1 });
 
     res.json(liveMatches);
@@ -1133,7 +1176,10 @@ router.get('/today/upcoming', async (req, res) => {  // Removed auth middleware
     const upcomingMatches = await Match.find({
       startTime: { $gte: startOfDay, $lte: endOfDay },
       status: 'upcoming'
-    }).sort({ startTime: 1 });
+    })
+    .select('_id homeTeam awayTeam startTime sport status odds markets')
+    .lean()
+    .sort({ startTime: 1 });
 
     res.json(upcomingMatches);
   } catch (error) {
@@ -1157,6 +1203,8 @@ router.get('/today', async (req, res) => {  // Removed auth middleware
         $lt: tomorrow
       }
     })
+    .select('_id homeTeam awayTeam startTime sport status odds markets')
+    .lean()
     .sort({ startTime: 1 });
 
     res.json(matches);
@@ -1566,10 +1614,14 @@ router.get('/sport/:sportKey', async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       // Get matches from both collections
       const [adminMatches, oddsData] = await Promise.all([
-        // Get admin-created matches
-        Match.find({ sport: sportKey }).sort({ startTime: 1 }),
-        // Get odds-based matches
-        Odds.find({ sport_key: sportKey }).limit(50)
+        Match.find({ sport: sportKey })
+          .select('_id homeTeam awayTeam startTime sport status odds markets')
+          .lean()
+          .sort({ startTime: 1 }),
+        Odds.find({ sport_key: sportKey })
+          .select('gameId home_team away_team commence_time sport_key sport_title bookmakers')
+          .lean()
+          .limit(50)
       ]);
 
       // Transform odds data into match format
@@ -1677,6 +1729,8 @@ router.get('/live/real-time', async (req, res) => {
     
     // Get live matches from database
     const liveMatches = await Match.find({ status: 'live' })
+      .select('_id homeTeam awayTeam startTime sport leagueId homeScore awayScore odds markets')
+      .lean()
       .sort({ startTime: 1 });
     
     console.log(`[LIVE MATCHES] Found ${liveMatches.length} live matches in database`);
@@ -1684,7 +1738,11 @@ router.get('/live/real-time', async (req, res) => {
     // Get live odds data from API
     const liveOddsData = await Odds.find({
       commence_time: { $lte: new Date() }
-    }).sort({ commence_time: -1 });
+    })
+    .select('gameId home_team away_team commence_time sport_key sport_title bookmakers')
+    .lean()
+    .sort({ commence_time: -1 })
+    .limit(500);
     
     console.log(`[LIVE MATCHES] Found ${liveOddsData.length} live odds records`);
     

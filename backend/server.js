@@ -350,7 +350,9 @@ function startHttpAndWsServers() {
   console.log('WebSocket server initialized');
 
   // Initialize keep-alive service to prevent server sleeping
-  keepAliveService.initialize();
+  // Force-enable if a base URL is available; default to local URL to keep dev servers active
+  const keepAliveBase = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  keepAliveService.initialize(keepAliveBase, true);
   console.log('Keep-alive service initialized');
 
   // Graceful shutdown
