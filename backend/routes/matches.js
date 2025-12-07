@@ -92,7 +92,32 @@ function normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName }) {
 const crypto = require('crypto');
 function computeEtag(obj) {
   try {
-    const json = JSON.stringify(obj);
+    const reduceItem = (item) => {
+      if (!item || typeof item !== 'object') return item;
+      return {
+        id: item.id || item._id || null,
+        startTime: item.startTime || item.commence_time || null,
+        homeTeam: item.homeTeam || item.home_team || null,
+        awayTeam: item.awayTeam || item.away_team || null,
+        status: item.status || null,
+        sport: item.sport || item.sport_key || null
+      };
+    };
+    let summary;
+    if (Array.isArray(obj)) {
+      const cap = Math.min(obj.length, 200);
+      summary = { len: obj.length, items: obj.slice(0, cap).map(reduceItem) };
+    } else if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj.data)) {
+        const cap = Math.min(obj.data.length, 200);
+        summary = { len: obj.data.length, items: obj.data.slice(0, cap).map(reduceItem) };
+      } else {
+        summary = Object.keys(obj).slice(0, 50).reduce((acc, k) => { acc[k] = obj[k]; return acc; }, {});
+      }
+    } else {
+      summary = obj;
+    }
+    const json = JSON.stringify(summary);
     return 'W/"' + crypto.createHash('sha1').update(json).digest('hex') + '"';
   } catch (e) {
     return null;
@@ -131,7 +156,12 @@ function cacheResponse(ttlSeconds = 300) {
     
     const originalJson = res.json.bind(res);
     res.json = (data) => {
-      try { 
+      try {
+        const large = Array.isArray(data) ? data.length > 1200 : false;
+        if (large) {
+          res.set('X-Cache', 'SKIP');
+          return originalJson(data);
+        }
         cacheSet('/api/matches', queryParams, data, ttlSeconds);
         res.set('X-Cache', 'MISS');
         res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
@@ -511,17 +541,22 @@ router.get('/popular/trending', async (req, res) => {
       return res.json(cached);
     }
 
-    const originalJson = res.json.bind(res);
-    res.json = (data) => {
-      try {
-        cacheSet('/api/matches/popular/trending', {}, data, 120);
-        res.set('X-Cache', 'MISS');
-        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=180');
-        const etag = computeEtag(data);
-        if (etag) res.set('ETag', etag);
-      } catch (e) {}
-      return originalJson(data);
-    };
+      const originalJson = res.json.bind(res);
+      res.json = (data) => {
+        try {
+          const large = Array.isArray(data) ? data.length > 1200 : false;
+          if (large) {
+            res.set('X-Cache', 'SKIP');
+            return originalJson(data);
+          }
+          cacheSet('/api/matches/popular/trending', {}, data, 120);
+          res.set('X-Cache', 'MISS');
+          res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=180');
+          const etag = computeEtag(data);
+          if (etag) res.set('ETag', etag);
+        } catch (e) {}
+        return originalJson(data);
+      };
 
     // Get matches from both collections
     const [adminMatches, oddsData] = await Promise.all([
@@ -1624,6 +1659,11 @@ router.get('/live/real-time', async (req, res) => {
     const originalJson = res.json.bind(res);
     res.json = (data) => {
       try {
+        const large = Array.isArray(data) ? data.length > 1200 : false;
+        if (large) {
+          res.set('X-Cache', 'SKIP');
+          return originalJson(data);
+        }
         cacheSet('/api/matches/live/real-time', {}, data, 30);
         res.set('X-Cache', 'MISS');
         res.set('Cache-Control', 'public, max-age=5, stale-while-revalidate=60');

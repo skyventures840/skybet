@@ -27,6 +27,7 @@ const keepAliveService = require('./services/keepAliveService');
 const compression = require('compression');
 const sharp = require('sharp');
 const { cache, get, set, del } = require('./utils/cache');
+const fs = require('fs');
 
 // Import cron jobs
 const startCronJobs = require('./cron');
@@ -39,6 +40,11 @@ const { MongoConnectionMonitor, handleMongoError } = require('./services/mongoSe
 
 const app = express();
 const PORT = process.env.PORT_BACKEND || process.env.PORT || 10000;
+
+try {
+  sharp.cache({ files: 0, memory: 0 });
+  sharp.concurrency(2);
+} catch (e) {}
 
 // Global MongoDB connection monitor
 let mongoMonitor = null;
@@ -257,6 +263,21 @@ app.get('/uploads/webp/*', async (req, res) => {
       res.setHeader('Content-Type', 'image/webp');
       return res.end(cached);
     }
+    let sizeOk = true;
+    try {
+      const stat = fs.statSync(absPath);
+      if (stat.size > 10 * 1024 * 1024) sizeOk = false;
+    } catch (_) { sizeOk = true; }
+    if (!sizeOk) {
+      return res.status(413).json({ error: 'Image too large to convert' });
+    }
+    try {
+      const meta = await sharp(absPath).metadata();
+      const pixels = (meta.width || 0) * (meta.height || 0);
+      if (pixels > 8000 * 8000) {
+        return res.status(413).json({ error: 'Image dimensions too large to convert' });
+      }
+    } catch (_) {}
     const buffer = await sharp(absPath).webp({ quality: 75 }).toBuffer();
     set(webpKey, {}, buffer, 3600);
     res.setHeader('Content-Type', 'image/webp');
