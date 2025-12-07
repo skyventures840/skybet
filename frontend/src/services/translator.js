@@ -39,6 +39,38 @@ function collectFrom(node) {
   }
 }
 
+function isElementVisible(el) {
+  try {
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+    if (!el.offsetParent && style.position !== 'fixed') return false;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return false;
+    if (rect.bottom < 0 || rect.right < 0) return false;
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.top > vh || rect.left > vw) return false;
+    return true;
+  } catch (_) {
+    return true;
+  }
+}
+
+function collectVisibleFrom(node) {
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
+  let current;
+  while ((current = walker.nextNode())) {
+    const parent = current.parentElement || current.previousSibling || current.nextSibling || current;
+    if (!parent) continue;
+    if (!isElementVisible(parent)) continue;
+    const text = current.nodeValue;
+    if (isTranslatable(text) && !isNodeSkipped(current)) {
+      if (!originals.has(current)) originals.set(current, text);
+      pending.add(current);
+    }
+  }
+}
+
 function schedule(lang) {
   if (scheduled) return;
   scheduled = true;
@@ -64,6 +96,9 @@ async function flush(lang) {
 }
 
 function applyAll(lang) {
+  pending.clear();
+  collectVisibleFrom(document.body);
+  flush(lang);
   collectFrom(document.body);
   schedule(lang);
 }
