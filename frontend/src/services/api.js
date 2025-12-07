@@ -9,10 +9,11 @@ const API_BASE_URL = /\/api$/.test(CLEAN_BASE) ? CLEAN_BASE : `${CLEAN_BASE}/api
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // This is important for sending cookies/tokens with requests
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 8000,
 });
 
 // Simple in-memory cache with TTL to speed up initial loads
@@ -94,7 +95,7 @@ async function cachedGet(path, ttl = 30000) {
   // 3) Make network request if no valid cache
   console.log(`[ENHANCED API] Fetching fresh data for ${path}`);
   try {
-    const response = await api.get(path);
+    const response = await getWithRetry(path);
     console.log(`[CACHE DEBUG] Network response for ${path}:`, response);
 
     // Cache the fresh response
@@ -398,3 +399,24 @@ const apiService = {
 };
 
 export default apiService;
+async function getWithRetry(path, maxAttempts = 3) {
+  let attempt = 0;
+  let lastError = null;
+  while (attempt < maxAttempts) {
+    try {
+      return await api.get(path);
+    } catch (err) {
+      lastError = err;
+      const status = err?.response?.status;
+      const isTimeout = err?.code === 'ECONNABORTED';
+      const isNetwork = !err?.response;
+      const retryable = isTimeout || isNetwork || (status && (status === 408 || status === 429 || status >= 500));
+      if (!retryable) break;
+      const delay = 500 * Math.pow(2, attempt);
+      await new Promise(r => setTimeout(r, delay));
+      attempt++;
+      continue;
+    }
+  }
+  throw lastError;
+}
