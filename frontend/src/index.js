@@ -43,6 +43,14 @@ try {
   apiService.getLiveMatches().catch(err => { void err; });
 } catch (e) { void e; }
 
+try {
+  apiService.getMatches().catch(err => { void err; });
+} catch (e) { void e; }
+
+try {
+  apiService.getPopularMatches().catch(err => { void err; });
+} catch (e) { void e; }
+
 root.render(
   <React.StrictMode>
     <Provider store={store}>

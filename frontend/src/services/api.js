@@ -104,6 +104,18 @@ async function cachedGet(path, ttl = 30000) {
     return response;
   } catch (error) {
     console.error(`[CACHE DEBUG] Network error for ${path}:`, error);
+    const stale = enhancedCache.getStaleEntry(path);
+    if (stale && stale.data) {
+      const resp = {
+        data: stale.data,
+        status: 200,
+        headers: {},
+        config: { url: path },
+        request: null,
+      };
+      responseCache.set(path, resp, ttl);
+      return resp;
+    }
     throw error;
   }
 }

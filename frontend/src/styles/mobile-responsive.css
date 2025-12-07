@@ -2959,7 +2959,7 @@ html, body {
   .wheel-section {
     margin-top: 16px;
     border-top: 1px solid var(--border-color);
-    padding-top: 16px;
+    padding-top: 20px;
   }
 
   .wheel-header {
@@ -2984,8 +2984,8 @@ html, body {
     width: 100%;
     background: none;
     border: none;
-    padding: 6px 16px 2px 16px;
-    margin-bottom: 4px;
+    padding: 10px 16px 6px 16px;
+    margin-bottom: 6px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -2993,6 +2993,7 @@ html, body {
     align-items: center;
     color: var(--text-primary);
     text-align: left;
+    min-height: 42px;
   }
 
   .wheel-item:hover {

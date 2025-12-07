@@ -1222,12 +1222,152 @@
     height: 100% !important;
   }
 }
-  /* Sidebar: extend to full viewport height on desktop */
-  .side-bar-wrapper,
-  .sidebar {
-    height: 100vh !important;
-    min-height: 120vh !important;
-    overflow-y: auto !important;
+  /* Sidebar: extend height on desktop */
+  @media (min-width: 1024px) {
+    .side-bar-wrapper,
+    .sidebar {
+      height: 180vh !important;
+      min-height: 220vh !important;
+      overflow-y: auto !important;
+    }
+  }
+
+  /* Desktop: eliminate horizontal scrollbars within match cards/containers */
+  @media (min-width: 1024px) {
+    .match-card,
+    .match-container {
+      overflow-x: hidden !important;
+      scrollbar-width: none !important;
+    }
+    .match-card::-webkit-scrollbar,
+    .match-container::-webkit-scrollbar {
+      height: 0 !important;
+      display: none !important;
+    }
+    .match-card .match-row,
+    .match-card .odds-headers-container,
+    .match-card .odds-buttons-container {
+      max-width: 100% !important;
+      white-space: normal !important;
+      flex-wrap: wrap !important;
+      overflow-x: hidden !important;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .matches-section .matches-grid,
+    .matches-section .section-header {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+  }
+  @media (min-width: 1024px) {
+    .matches-section,
+    .matches-section .matches-container,
+    .matches-section .match-list,
+    .matches-section .competition-group {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
+    }
+    .matches-section::-webkit-scrollbar,
+    .matches-section .matches-container::-webkit-scrollbar,
+    .matches-section .match-list::-webkit-scrollbar,
+    .matches-section .competition-group::-webkit-scrollbar {
+      height: 0 !important;
+      display: none !important;
+    }
+    .matches-section .match-card,
+    .matches-section .match-container {
+      overflow-x: hidden !important;
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
+    }
+    .matches-section .match-card::-webkit-scrollbar,
+    .matches-section .match-container::-webkit-scrollbar {
+      height: 0 !important;
+      display: none !important;
+    }
+    .matches-section .match-card .match-row,
+    .matches-section .match-card .league-header,
+    .matches-section .match-card .odds-headers-container,
+    .matches-section .match-card .odds-buttons-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      overflow-x: hidden !important;
+      white-space: normal !important;
+      flex-wrap: wrap !important;
+    }
+    .matches-section .match-card * { min-width: 0 !important; }
+  }
+
+  @media (min-width: 1024px) {
+    .match-card .match-row,
+    .match-card .match-teams,
+    .match-card .score-odds-line,
+    .match-card .odds-headers-container,
+    .match-card .odds-buttons-container {
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+      flex-wrap: wrap !important;
+    }
+    .match-card .team,
+    .match-card .team-name,
+    .match-card .league-title,
+    .match-card .match-date-time,
+    .match-card .odd-label,
+    .match-card .odd-value {
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .sports-list { gap: 0 !important; }
+    .sport-item { margin-bottom: 0 !important; }
+    .sport-info { gap: 4px !important; }
+  }
+
+  @media (min-width: 1024px) {
+    .matches-section .matches-grid {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+    }
+    .matches-section,
+    .matches-section .matches-container,
+    .matches-section .match-list,
+    .matches-section .competition-group {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      overflow-x: hidden !important;
+    }
+    .matches-section .match-card,
+    .matches-section .match-container {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      overflow-x: hidden !important;
+    }
+    .matches-section::-webkit-scrollbar,
+    .matches-section .matches-container::-webkit-scrollbar,
+    .matches-section .match-list::-webkit-scrollbar,
+    .matches-section .competition-group::-webkit-scrollbar,
+    .matches-section .matches-grid::-webkit-scrollbar {
+      height: 0 !important;
+      display: none !important;
+    }
   }
 
   /* Regular match cards: fully disable horizontal scroll and force wrapping */
@@ -1276,4 +1416,27 @@
   .navbar-right .auth-buttons .hamburger-menu {
     margin-left: auto !important;
     order: 2 !important;
+  }
+
+  @media (min-width: 1024px) {
+    .matches-section,
+    .matches-section .matches-container,
+    .matches-section .match-list,
+    .matches-section .competition-group,
+    .matches-section .matches-grid {
+      overscroll-behavior-x: contain !important;
+      overflow-x: hidden !important;
+    }
+    .matches-section .match-card,
+    .matches-section .match-container {
+      overflow-x: hidden !important;
+    }
+    .matches-section .match-card * {
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+    }
+    .matches-section .match-card *::-webkit-scrollbar {
+      height: 0 !important;
+      display: none !important;
+    }
   }

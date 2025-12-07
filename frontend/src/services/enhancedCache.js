@@ -75,6 +75,24 @@ class EnhancedCacheService {
     return null;
   }
 
+  getStaleEntry(endpoint) {
+    const memoryData = this.memoryCache.get(endpoint);
+    if (memoryData) {
+      return { data: memoryData.data, etag: memoryData.etag || null, timestamp: memoryData.timestamp };
+    }
+    try {
+      const cacheKey = this.getCacheKey(endpoint);
+      const etagKey = this.getEtagKey(endpoint);
+      const cachedData = localStorage.getItem(cacheKey);
+      const etag = localStorage.getItem(etagKey);
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        return { data: parsedData, etag: etag || null, timestamp: Date.now() };
+      }
+    } catch (error) { void error; }
+    return null;
+  }
+
   /**
    * Backward-compatible getter that returns only data
    */

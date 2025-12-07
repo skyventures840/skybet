@@ -618,101 +618,89 @@ const Sidebar = ({ closeSidebar }) => {
         </div>
         
         {!sportsSectionHidden && (
-          <div className="sports-list">
-            {uniqueSports.map((sport, idx) => (
-              <div key={`${sport.name}-${idx}`} className="sport-item">
-                <div 
-                  className="sport-header"
-                  onClick={() => {
-                    toggleSport(sport.name);
-                    
-                    // Handle navigation - if on MatchMarkets page, navigate to home with filter
-                    const wasHandled = handleSidebarNavigation(sport);
-                    
-                    // If not handled by custom navigation, apply filter normally
-                    if (!wasHandled) {
-                      handleSidebarFilter(sport.name);
-                    }
-                  }}
-                >
-                  <div className="sport-info">
-                    <span className="sport-icon">{sport.icon}</span>
-                    <span className="sport-name">{sport.name}</span>
-                  </div>
-                  {sport.isExpandable && (
-                    <span className={`expand-arrow ${expandedSports[sport.name] ? 'expanded' : ''}`}>
-                      ▶
-                    </span>
-                  )}
-                </div>
-                
-                {sport.isExpandable && expandedSports[sport.name] && (
-                  <div className="subcategories">
-                    {sport.subItems.slice(0, showAllSubcategories[sport.name] ? undefined : 5).map((subItem, subIdx) => (
-                      <Link
-                        key={`${subItem.name}-${subIdx}`}
-                        to={subItem.path}
-                        className={`subcategory-item ${location.pathname === subItem.path ? 'active' : ''}`}
-                        onClick={(e) => {
-                          // Check if we're on MatchMarkets page and handle navigation
-                          const wasHandled = handleSidebarNavigation(sport, subItem);
-                          
-                          if (wasHandled) {
-                            // Prevent default Link navigation if we handled it
-                            e.preventDefault();
-                          } else {
-                            // For normal navigation, dispatch filter events
-                            handleSidebarFilter(subItem.name);
-                            window.dispatchEvent(new CustomEvent('subcategoryFilter', { 
-                              detail: { 
-                                sport: sport.name,
-                                subcategory: subItem.name 
-                              } 
-                            }));
-                          }
-                        }}
-                      >
-                        <span className="subcategory-name">{subItem.name}</span>
-                      </Link>
-                    ))}
-                    
-                    {sport.subItems.length > 5 && (
-                      <button
-                        className="show-more-btn"
-                        onClick={() => toggleShowAllSubcategories(sport.name)}
-                      >
-                        {showAllSubcategories[sport.name] ? 'Show Less' : `Show ${sport.subItems.length - 5} More`}
-                      </button>
+          <>
+            <div className="sports-list">
+              {uniqueSports.map((sport, idx) => (
+                <div key={`${sport.name}-${idx}`} className="sport-item">
+                  <div 
+                    className="sport-header"
+                    onClick={() => {
+                      toggleSport(sport.name);
+                      const wasHandled = handleSidebarNavigation(sport);
+                      if (!wasHandled) {
+                        handleSidebarFilter(sport.name);
+                      }
+                    }}
+                  >
+                    <div className="sport-info">
+                      <span className="sport-icon">{sport.icon}</span>
+                      <span className="sport-name">{sport.name}</span>
+                    </div>
+                    {sport.isExpandable && (
+                      <span className={`expand-arrow ${expandedSports[sport.name] ? 'expanded' : ''}`}>
+                        ▶
+                      </span>
                     )}
                   </div>
-                )}
+                  {sport.isExpandable && expandedSports[sport.name] && (
+                    <div className="subcategories">
+                      {sport.subItems.slice(0, showAllSubcategories[sport.name] ? undefined : 5).map((subItem, subIdx) => (
+                        <Link
+                          key={`${subItem.name}-${subIdx}`}
+                          to={subItem.path}
+                          className={`subcategory-item ${location.pathname === subItem.path ? 'active' : ''}`}
+                          onClick={(e) => {
+                            const wasHandled = handleSidebarNavigation(sport, subItem);
+                            if (wasHandled) {
+                              e.preventDefault();
+                            } else {
+                              handleSidebarFilter(subItem.name);
+                              window.dispatchEvent(new CustomEvent('subcategoryFilter', { 
+                                detail: { sport: sport.name, subcategory: subItem.name } 
+                              }));
+                            }
+                          }}
+                        >
+                          <span className="subcategory-name">{subItem.name}</span>
+                        </Link>
+                      ))}
+                      {sport.subItems.length > 5 && (
+                        <button
+                          className="show-more-btn"
+                          onClick={() => toggleShowAllSubcategories(sport.name)}
+                        >
+                          {showAllSubcategories[sport.name] ? 'Show Less' : `Show ${sport.subItems.length - 5} More`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="wheel-section" style={{ display: window.innerWidth <= 1024 ? 'block' : 'none' }}>
+              <div className="wheel-header">
+                <span>Games</span>
               </div>
-            ))}
-          </div>
+              <div className="wheel-list">
+                <button
+                  className="wheel-item"
+                  onClick={() => {
+                    handleMobileNavigation(() => navigate('/wheel'));
+                  }}
+                >
+                  <div className="wheel-info">
+                    <span className="wheel-icon">🎰</span>
+                    <span className="wheel-name">Wheel of Fortune</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
       {/* Mobile Date Picker Modal removed in favor of anchored popover */}
 
-      {/* Wheel of Fortune Section - Only visible on small screens */}
-      <div className="wheel-section" style={{ display: window.innerWidth <= 1024 ? 'block' : 'none' }}>
-        <div className="wheel-header">
-          <span>Games</span>
-        </div>
-        <div className="wheel-list">
-          <button
-            className="wheel-item"
-            onClick={() => {
-              handleMobileNavigation(() => navigate('/wheel'));
-            }}
-          >
-            <div className="wheel-info">
-              <span className="wheel-icon">🎰</span>
-              <span className="wheel-name">Wheel of Fortune</span>
-            </div>
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
