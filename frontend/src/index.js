@@ -10,6 +10,7 @@ import translator from './services/translator';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Development-only: ensure no stale service workers or caches interfere
 if (process.env.NODE_ENV !== 'production') {
@@ -37,6 +38,16 @@ if (process.env.NODE_ENV !== 'production') {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 import { BrowserRouter as Router } from 'react-router-dom';
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 45000,
+      gcTime: 480000,
+      retry: false,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 // Prewarm live matches cache to enable instant rendering on first visit
 try {
@@ -51,13 +62,19 @@ try {
   apiService.getPopularMatches().catch(err => { void err; });
 } catch (e) { void e; }
 
+try {
+  apiService.getHeroSlides().catch(err => { void err; });
+} catch (e) { void e; }
+
 root.render(
   <React.StrictMode>
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <Router>
-          <App />
-        </Router>
+        <QueryClientProvider client={queryClient}>
+          <Router>
+            <App />
+          </Router>
+        </QueryClientProvider>
       </PersistGate>
     </Provider>
   </React.StrictMode>

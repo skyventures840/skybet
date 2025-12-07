@@ -316,7 +316,13 @@ const apiService = {
     }
   },
   // Instant load popular matches with background revalidation
-  getPopularMatches: () => instantGet('/matches/popular/trending', 300000),
+  getPopularMatches: async () => {
+    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const resp = await instantGet('/matches/popular/trending', 300000);
+    const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    try { console.log('[PERF] popular matches', Math.round(t1 - t0), 'ms'); } catch (e) { void e; }
+    return resp;
+  },
   getMatchById: (id) => cachedGet(`/matches/${id}`, 15000),
   getLiveMatches: () => instantGet('/matches/live/real-time', 30000),
   addMatch: (matchData) => api.post('/admin/matches', matchData),
@@ -353,7 +359,13 @@ const apiService = {
     return api.put(`/users/${userId}/unblock`);
   },
   // Hero Section: instant load with background revalidation
-  getHeroSlides: () => instantGet('/admin/hero', 300000),
+  getHeroSlides: async () => {
+    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const resp = await instantGet('/admin/hero', 300000);
+    const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    try { console.log('[PERF] hero slides', Math.round(t1 - t0), 'ms'); } catch (e) { void e; }
+    return resp;
+  },
   createHeroSlide: (data) => api.post('/admin/hero', data),
   updateHeroSlide: (id, data) => api.put(`/admin/hero/${id}`, data),
   deleteHeroSlide: (id) => api.delete(`/admin/hero/${id}`),

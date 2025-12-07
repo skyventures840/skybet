@@ -34,6 +34,7 @@
     "redux-persist": "^6.0.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
+    "@tanstack/react-query": "^5.56.2",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
