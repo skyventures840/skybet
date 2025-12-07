@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MatchCard from '../components/MatchCard';
 import apiService from '../services/api';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
@@ -11,6 +11,7 @@ const Baseball = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const prefetched = useRef(new Set());
 
   // Global search functionality
   useEffect(() => {
@@ -81,6 +82,21 @@ const Baseball = () => {
 
     setFilteredMatches(filtered);
   }, [matches, searchTerm, selectedDate]);
+
+  useEffect(() => {
+    const list = filteredMatches.slice(0, 6);
+    let delay = 0;
+    list.forEach(m => {
+      const id = m.id || m._id;
+      if (!id) return;
+      if (prefetched.current.has(id)) return;
+      prefetched.current.add(id);
+      setTimeout(() => {
+        apiService.getMatchMarkets(id).catch(() => {});
+      }, delay);
+      delay += 150;
+    });
+  }, [filteredMatches]);
 
   // Transform odds data to match frontend format for baseball
   const transformOddsToMatches = (oddsData) => {

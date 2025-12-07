@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MatchCard from '../components/MatchCard';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -10,6 +10,7 @@ const Hockey = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const prefetched = useRef(new Set());
 
   useEffect(() => {
     const fetchHockeyMatches = async () => {
@@ -39,6 +40,21 @@ const Hockey = () => {
 
     fetchHockeyMatches();
   }, []);
+
+  useEffect(() => {
+    const list = matches.slice(0, 6);
+    let delay = 0;
+    list.forEach(m => {
+      const id = m.id || m._id;
+      if (!id) return;
+      if (prefetched.current.has(id)) return;
+      prefetched.current.add(id);
+      setTimeout(() => {
+        apiService.getMatchMarkets(id).catch(() => {});
+      }, delay);
+      delay += 150;
+    });
+  }, [matches]);
 
   useEffect(() => {
     if (!loading) return;

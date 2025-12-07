@@ -1,14 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
 import { addBet } from '../store/slices/activeBetSlice';
+import apiService from '../services/api';
 
 const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [expanded, setExpanded] = useState(true);
+
+    const prefetched = useRef(new Set());
+
+    useEffect(() => {
+        if (!expanded) return;
+        if (!Array.isArray(matches) || matches.length === 0) return;
+        const valid = matches.filter(m => {
+            if (!m || !m.odds) return false;
+            const keys = Object.keys(m.odds || {});
+            for (let i = 0; i < keys.length; i++) {
+                const v = m.odds[keys[i]];
+                if (v && v > 0) return true;
+            }
+            return false;
+        }).slice(0, 6);
+        let delay = 0;
+        valid.forEach(m => {
+            const id = m.id || m._id;
+            if (!id) return;
+            if (prefetched.current.has(id)) return;
+            prefetched.current.add(id);
+            setTimeout(() => {
+                apiService.getMatchMarkets(id).catch(() => {});
+            }, delay);
+            delay += 150;
+        });
+    }, [expanded, matches]);
 
     const addToBetslip = (match, betType, odds) => {
         const bet = {

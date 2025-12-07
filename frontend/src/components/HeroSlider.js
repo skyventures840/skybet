@@ -7,22 +7,6 @@ const HeroSlider = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [error, setError] = useState(null);
 
-  // Preload cached slides for instant render
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('cache:/admin/hero');
-      if (raw) {
-        const entry = JSON.parse(raw);
-        const cachedSlides = entry?.data || [];
-        if (Array.isArray(cachedSlides) && cachedSlides.length > 0) {
-          setSlides(cachedSlides);
-        }
-      }
-    } catch (_) {
-      // ignore cache errors
-    }
-  }, []);
-
   useEffect(() => {
     const fetchSlides = async () => {
       try {

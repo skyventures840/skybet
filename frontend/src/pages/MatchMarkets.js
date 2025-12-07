@@ -75,86 +75,69 @@ const MatchMarkets = () => {
             }
         } catch (restoreErr) { void restoreErr; }
 
-        // Fetch match data from API (background revalidation if cache was shown)
         const fetchMatch = async () => {
-            try {
-                if (!match) setLoading(true);
-                setError(null);
-                
-                // Use the markets endpoint for comprehensive data
-                const response = await apiService.getMatchMarkets(matchId);
-                
-                const matchData = response.data;
-                console.log('Received match data:', matchData);
-                
-                // Process bookmakers data to create markets structure
-                let processedMatchData = { ...matchData };
-                
-                // Prefer backend-normalized markets if present
-                if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
-                    console.log('Using backend-normalized markets data:', matchData.markets);
-                    // Deduplicate and merge aliases into consistent groups
-                    processedMatchData.markets = mergeAndNormalizeMarkets(matchData.markets, matchData);
-                } else if (matchData.bookmakers && matchData.bookmakers.length > 0) {
-                    console.log('Processing bookmakers data:', matchData.bookmakers);
-                    console.log('Number of bookmakers:', matchData.bookmakers.length);
-                    
-                    const aggregated = new Map(); // key -> { key, title, outcomes: [] }
-                    
-                    matchData.bookmakers.forEach((bookmaker, bookmakerIndex) => {
-                        console.log(`Processing bookmaker ${bookmakerIndex}:`, bookmaker.key, bookmaker.title);
-                        console.log(`Bookmaker ${bookmakerIndex} has ${bookmaker.markets.length} markets:`, bookmaker.markets.map(m => m.key));
-                        
-                        bookmaker.markets.forEach((market, marketIndex) => {
-                            console.log(`Processing market ${marketIndex} from bookmaker ${bookmakerIndex}:`, market.key);
-                            
-                            const normKey = normalizeMarketKey(market.key);
-                            const marketTitle = titleForKey(normKey);
-                            const existing = aggregated.get(normKey);
-                            const incomingOutcomes = (market.outcomes || []).map(outcome => ({
-                                name: outcome.name,
-                                price: outcome.price,
-                                point: outcome.point || null
-                            }));
-                            if (!existing) {
-                                aggregated.set(normKey, {
-                                    key: normKey,
-                                    title: marketTitle,
-                                    outcomes: incomingOutcomes
-                                });
-                            } else {
-                                // Merge outcomes, dedupe by name+point
-                                const bySig = new Map();
-                                [...existing.outcomes, ...incomingOutcomes].forEach(o => {
-                                    const sig = `${(o.name||'').toLowerCase()}|${o.point ?? ''}`;
-                                    if (!bySig.has(sig)) bySig.set(sig, o);
-                                    else {
-                                        // Prefer outcome with valid price
-                                        const prev = bySig.get(sig);
-                                        if ((!prev.price || prev.price <= 0) && o.price && o.price > 0) {
-                                            bySig.set(sig, o);
+            const maxAttempts = 3;
+            let lastErr = null;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                try {
+                    if (!match) setLoading(true);
+                    setError(null);
+                    const response = await apiService.getMatchMarkets(matchId);
+                    const matchData = response.data;
+                    let processedMatchData = { ...matchData };
+                    if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
+                        processedMatchData.markets = mergeAndNormalizeMarkets(matchData.markets, matchData);
+                    } else if (matchData.bookmakers && matchData.bookmakers.length > 0) {
+                        const aggregated = new Map();
+                        matchData.bookmakers.forEach((bookmaker) => {
+                            (bookmaker.markets || []).forEach((market) => {
+                                const normKey = normalizeMarketKey(market.key);
+                                const marketTitle = titleForKey(normKey);
+                                const existing = aggregated.get(normKey);
+                                const incomingOutcomes = (market.outcomes || []).map(outcome => ({
+                                    name: outcome.name,
+                                    price: outcome.price,
+                                    point: outcome.point || null
+                                }));
+                                if (!existing) {
+                                    aggregated.set(normKey, { key: normKey, title: marketTitle, outcomes: incomingOutcomes });
+                                } else {
+                                    const bySig = new Map();
+                                    [...existing.outcomes, ...incomingOutcomes].forEach(o => {
+                                        const sig = `${(o.name||'').toLowerCase()}|${o.point ?? ''}`;
+                                        if (!bySig.has(sig)) bySig.set(sig, o);
+                                        else {
+                                            const prev = bySig.get(sig);
+                                            if ((!prev.price || prev.price <= 0) && o.price && o.price > 0) bySig.set(sig, o);
                                         }
-                                    }
-                                });
-                                existing.outcomes = Array.from(bySig.values());
-                            }
+                                    });
+                                    existing.outcomes = Array.from(bySig.values());
+                                }
+                            });
                         });
-                    });
-                    const markets = Array.from(aggregated.values());
-                    console.log('Final processed markets (after deduplication):', markets.map(m => ({ key: m.key, title: m.title })));
-                    processedMatchData.markets = normalizeOutcomeLabels(markets, matchData);
-                    console.log('Processed markets:', markets);
-                } else {
-                    console.log('No markets or bookmakers data found');
-                    processedMatchData.markets = [];
+                        const markets = Array.from(aggregated.values());
+                        processedMatchData.markets = normalizeOutcomeLabels(markets, matchData);
+                    } else {
+                        processedMatchData.markets = [];
+                    }
+                    setMatch(processedMatchData);
+                    try { sessionStorage.setItem(`match_markets_${matchId}`, JSON.stringify(processedMatchData)); } catch { void 0; }
+                    setLoading(false);
+                    return;
+                } catch (error) {
+                    lastErr = error;
+                    const delays = [500, 1500, 3500];
+                    const delay = delays[attempt] || 5000;
+                    await new Promise(res => setTimeout(res, delay));
                 }
-                
-                setMatch(processedMatchData);
-                try { sessionStorage.setItem(`match_markets_${matchId}`, JSON.stringify(processedMatchData)); } catch { void 0; }
+            }
+            const fallback = buildFallbackFromCachedMatches(matchId);
+            if (fallback) {
+                setMatch(fallback);
+                setError('Showing cached data');
                 setLoading(false);
-            } catch (error) {
-                console.error('Error fetching match data:', error);
-                setError(error.message || 'Failed to load match data');
+            } else {
+                setError(lastErr?.message || 'Failed to load match data');
                 setLoading(false);
             }
         };
@@ -166,6 +149,16 @@ const MatchMarkets = () => {
             setLoading(false);
         }
     }, [matchId, location.search]);
+
+    useEffect(() => {
+        let t;
+        if (!match && (loading || error)) {
+            t = setTimeout(() => {
+                navigate('/');
+            }, 30000);
+        }
+        return () => { if (t) clearTimeout(t); };
+    }, [match, loading, error, navigate]);
 
     // Merge and normalize markets when backend provides markets array
     const mergeAndNormalizeMarkets = (markets, matchData) => {
@@ -295,6 +288,28 @@ const MatchMarkets = () => {
         });
     };
 
+    const buildFallbackFromCachedMatches = (id) => {
+        try {
+            const session = sessionStorage.getItem('home_matches_data');
+            if (session) {
+                const arr = JSON.parse(session);
+                const found = arr.find(m => String(m.id) === String(id) || String(m._id) === String(id));
+                if (found && found.odds) {
+                    const home = found.homeTeam || found.home_team;
+                    const away = found.awayTeam || found.away_team;
+                    const outcomes = [];
+                    const o = found.odds;
+                    if (o['1'] && o['1'] > 0) outcomes.push({ name: home, price: o['1'] });
+                    if (o['X'] && o['X'] > 0) outcomes.push({ name: 'Draw', price: o['X'] });
+                    if (o['2'] && o['2'] > 0) outcomes.push({ name: away, price: o['2'] });
+                    const markets = outcomes.length > 0 ? [{ key: 'winner', title: 'Winner', outcomes }] : [];
+                    return { ...found, markets };
+                }
+            }
+        } catch (_) { void 0; }
+        return null;
+    };
+
     // Initialize expanded state when match data is loaded
     useEffect(() => {
         if (match && match.markets && Array.isArray(match.markets)) {
@@ -415,7 +430,7 @@ const MatchMarkets = () => {
         );
     }
 
-    if (error) {
+    if (error && !match) {
         return (
             <div className="error-container">
                 <div className="error-message">
@@ -491,14 +506,14 @@ const MatchMarkets = () => {
                                     setLoading(false);
                                 } catch (error) {
                                     console.error('Retry failed:', error);
-                                    setError(error.message || 'Failed to load match data');
+                                    setError(error.message || 'Failed to load additional markets');
                                     setLoading(false);
                                 }
                             };
                             retryFetch();
                         }}
                     >
-                        Retry Loading Real Data
+                        Retry Loading Additional Markets
                     </button>
                     <button 
                         className="retry-btn"
