@@ -1474,7 +1474,9 @@ router.get('/:id', async (req, res) => {
         // First, try to find by MongoDB ObjectId (for admin-created matches)
         if (mongoose.Types.ObjectId.isValid(id)) {
             console.log('Valid ObjectId format, searching in Match collection...');
-            match = await Match.findById(id);
+            match = await Match.findById(id)
+                .select('_id homeTeam awayTeam startTime sport status leagueId homeScore awayScore markets odds createdAt updatedAt')
+                .lean();
             
             if (match) {
                 console.log('Match found in Match collection');
@@ -1487,7 +1489,9 @@ router.get('/:id', async (req, res) => {
         
         // If not found, try to find by gameId in Odds collection (for API matches)
         console.log('Searching by gameId in Odds collection...');
-        const oddsData = await Odds.findOne({ gameId: id });
+        const oddsData = await Odds.findOne({ gameId: id })
+            .select('gameId home_team away_team commence_time sport_key sport_title bookmakers lastFetched')
+            .lean();
         
         if (oddsData) {
             console.log('Match found in Odds collection');

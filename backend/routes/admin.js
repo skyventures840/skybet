@@ -393,7 +393,10 @@ router.get('/hero', async (req, res) => {
       return res.json(cached);
     }
 
-    const slides = await Hero.find().sort({ createdAt: -1 });
+    const slides = await Hero.find()
+      .select('image caption1 caption2 buttonText buttonUrl createdAt')
+      .lean()
+      .sort({ createdAt: -1 });
     const etag = computeEtag(slides);
     cacheSet('/api/admin/hero', {}, slides, 300);
     res.set('X-Cache', 'MISS');

@@ -1,14 +1,8 @@
-const NodeCache = require('node-cache');
+const QuickLRU = require('quick-lru').default;
 const EventEmitter = require('events');
 
-// Optimized cache configuration with better memory management
-const cache = new NodeCache({ 
-  stdTTL: 300, // Increased default TTL to 5 minutes
-  checkperiod: 60, // More frequent cleanup
-  useClones: false, // Better performance
-  maxKeys: 1000, // Prevent memory overflow
-  deleteOnExpire: true
-});
+// quick-lru-based cache with TTL metadata
+const store = new QuickLRU({ maxSize: 5000 });
 
 // Event bus for invalidation and broadcast hooks
 const bus = new EventEmitter();
@@ -37,30 +31,27 @@ function keyFor(path, params = {}) {
 
 function get(path, params) {
   const key = keyFor(path, params);
-  const value = cache.get(key);
-  
-  if (value !== undefined) {
-    stats.hits++;
-    return value;
+  const entry = store.get(key);
+  if (!entry) {
+    stats.misses++;
+    return undefined;
   }
-  
-  stats.misses++;
-  return undefined;
+  if (entry.expireAt && Date.now() > entry.expireAt) {
+    store.delete(key);
+    stats.misses++;
+    return undefined;
+  }
+  stats.hits++;
+  return entry.value;
 }
 
 function set(path, params, value, ttlSeconds = 300) {
   try {
-    // Don't cache null/undefined values
     if (value == null) return false;
-    
     const key = keyFor(path, params);
-    const success = cache.set(key, value, ttlSeconds);
-    
-    if (success) {
-      stats.sets++;
-    }
-    
-    return success;
+    store.set(key, { value, expireAt: ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : null });
+    stats.sets++;
+    return true;
   } catch (error) {
     console.warn('Cache set error:', error.message);
     return false;
@@ -69,11 +60,9 @@ function set(path, params, value, ttlSeconds = 300) {
 
 function del(pathPrefix) {
   try {
-    const keys = cache.keys().filter(k => k.startsWith(pathPrefix));
-    if (keys.length) {
-      cache.del(keys);
-      stats.deletes += keys.length;
-    }
+    const keys = Array.from(store.keys()).filter(k => k.startsWith(pathPrefix));
+    for (const k of keys) store.delete(k);
+    stats.deletes += keys.length;
     return keys.length;
   } catch (error) {
     console.warn('Cache delete error:', error.message);
@@ -83,14 +72,14 @@ function del(pathPrefix) {
 
 // Enhanced cache management
 function clear() {
-  cache.flushAll();
+  store.clear();
   Object.keys(stats).forEach(key => stats[key] = 0);
 }
 
 function getStats() {
   return {
     ...stats,
-    keys: cache.keys().length,
+    keys: store.size,
     hitRate: stats.hits + stats.misses > 0 ? (stats.hits / (stats.hits + stats.misses) * 100).toFixed(2) + '%' : '0%'
   };
 }
@@ -113,11 +102,36 @@ Object.entries(invalidationPatterns).forEach(([event, patterns]) => {
 
 // Memory monitoring
 setInterval(() => {
-  const keyCount = cache.keys().length;
-  if (keyCount > 800) { // 80% of maxKeys
-    console.warn(`Cache approaching limit: ${keyCount}/1000 keys`);
+  const keyCount = store.size;
+  if (keyCount > 4000) { // 80% of maxSize
+    console.warn(`Cache approaching limit: ${keyCount}/5000 entries`);
   }
-}, 300000); // Check every 5 minutes
+}, 300000);
+
+// Support legacy cache.get(cacheKey) / cache.set(cacheKey, value, ttl)
+function getByKey(key) {
+  const entry = store.get(key);
+  if (!entry) return undefined;
+  if (entry.expireAt && Date.now() > entry.expireAt) {
+    store.delete(key);
+    return undefined;
+  }
+  stats.hits++;
+  return entry.value;
+}
+
+function setByKey(key, value, ttlSeconds = 300) {
+  try {
+    if (value == null) return false;
+    store.set(key, { value, expireAt: ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : null });
+    stats.sets++;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+const cache = { get: getByKey, set: setByKey };
 
 module.exports = { 
   cache, 
