@@ -11,7 +11,7 @@ const matchSchema = new mongoose.Schema({
   sport: {
     type: String,
     required: true,
-    enum: ['football', 'basketball', 'tennis', 'baseball', 'hockey', 'soccer'],
+    enum: ['football', 'basketball', 'tennis', 'baseball', 'hockey', 'soccer', 'mma', 'boxing'],
     index: true
   },
   homeTeam: {

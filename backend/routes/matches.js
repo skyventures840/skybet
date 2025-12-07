@@ -80,6 +80,15 @@ function computeFullLeagueTitle({ sportKeyOrName, country, leagueName, fallbackS
   return parts.join('.');
 }
 
+function normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName }) {
+  const s = String(sportDisplay || sportKeyOrName || '').toLowerCase();
+  const l = String(leagueName || '').toLowerCase();
+  if (l.includes('boxing') || s.includes('boxing')) return 'boxing';
+  if (l.includes('mma') || s.includes('mma') || l.includes('ufc')) return 'mma';
+  const token = s.split('_')[0] || s.split(' ')[0] || s;
+  return token || 'other';
+}
+
 const crypto = require('crypto');
 function computeEtag(obj) {
   try {
@@ -490,6 +499,30 @@ router.get('/league/:leagueId', cacheResponse(600), async (req, res) => {
 // Get popular matches (most bet on)
 router.get('/popular/trending', async (req, res) => {
   try {
+    const cached = cacheGet('/api/matches/popular/trending', {});
+    if (cached) {
+      const etag = computeEtag(cached);
+      res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=180');
+      if (etag) res.set('ETag', etag);
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+      return res.json(cached);
+    }
+
+    const originalJson = res.json.bind(res);
+    res.json = (data) => {
+      try {
+        cacheSet('/api/matches/popular/trending', {}, data, 120);
+        res.set('X-Cache', 'MISS');
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=180');
+        const etag = computeEtag(data);
+        if (etag) res.set('ETag', etag);
+      } catch (e) {}
+      return originalJson(data);
+    };
+
     // Get matches from both collections
     const [adminMatches, oddsData] = await Promise.all([
       // Get admin-created matches
@@ -565,7 +598,7 @@ router.get('/popular/trending', async (req, res) => {
         awayTeam: odds.away_team,
         odds: markets,
         additionalMarkets: additionalMarketsCount,
-        sport: odds.sport_key,
+        sport: normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName: odds.sport_key }),
         source: 'odds_api',
         country,
         fullLeagueTitle
@@ -627,7 +660,7 @@ router.get('/popular/trending', async (req, res) => {
         awayTeam: matchObj.awayTeam,
         odds: formattedOdds,
         additionalMarkets: (matchObj.markets || []).length,
-        sport: matchObj.sport,
+        sport: normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName: matchObj.sport }),
         sport_key: matchObj.sport,
         sport_title: leagueName,
         source: 'admin',
@@ -1576,6 +1609,30 @@ router.get('/sport/:sportKey', async (req, res) => {
 // Get live matches with real-time odds
 router.get('/live/real-time', async (req, res) => {
   try {
+    const cached = cacheGet('/api/matches/live/real-time', {});
+    if (cached) {
+      const etag = computeEtag(cached);
+      res.set('X-Cache', 'HIT');
+      res.set('Cache-Control', 'public, max-age=5, stale-while-revalidate=60');
+      if (etag) res.set('ETag', etag);
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+      return res.json(cached);
+    }
+
+    const originalJson = res.json.bind(res);
+    res.json = (data) => {
+      try {
+        cacheSet('/api/matches/live/real-time', {}, data, 30);
+        res.set('X-Cache', 'MISS');
+        res.set('Cache-Control', 'public, max-age=5, stale-while-revalidate=60');
+        const etag = computeEtag(data);
+        if (etag) res.set('ETag', etag);
+      } catch (e) {}
+      return originalJson(data);
+    };
+
     console.log('[LIVE MATCHES] Fetching real-time live matches...');
     
     // Get live matches from database
@@ -1664,7 +1721,7 @@ router.get('/live/real-time', async (req, res) => {
         awayTeamFlag: '🏳️',
         odds: oddsStructure.default?.odds || matchObj.odds || {},
         additionalMarkets: additionalMarketsCount + (matchObj.markets || []).length,
-        sport: matchObj.sport ? matchObj.sport.split('_')[0] : 'Live',
+        sport: normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName: matchObj.sport }),
         allMarkets: matchObj.markets || [],
         status: 'live',
         isLive: true,
