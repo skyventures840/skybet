@@ -2,7 +2,8 @@ const QuickLRU = require('quick-lru').default;
 const EventEmitter = require('events');
 
 // quick-lru-based cache with TTL metadata
-const store = new QuickLRU({ maxSize: 5000 });
+const MAX_SIZE = parseInt(process.env.CACHE_MAX_SIZE || '', 10);
+const store = new QuickLRU({ maxSize: Number.isFinite(MAX_SIZE) && MAX_SIZE > 0 ? MAX_SIZE : 3000 });
 
 // Event bus for invalidation and broadcast hooks
 const bus = new EventEmitter();
@@ -103,8 +104,10 @@ Object.entries(invalidationPatterns).forEach(([event, patterns]) => {
 // Memory monitoring
 setInterval(() => {
   const keyCount = store.size;
-  if (keyCount > 4000) { // 80% of maxSize
-    console.warn(`Cache approaching limit: ${keyCount}/5000 entries`);
+  const limit = Number.isFinite(MAX_SIZE) && MAX_SIZE > 0 ? MAX_SIZE : 3000;
+  const warnAt = Math.floor(limit * 0.8);
+  if (keyCount > warnAt) {
+    console.warn(`Cache approaching limit: ${keyCount}/${limit} entries`);
   }
 }, 300000);
 
