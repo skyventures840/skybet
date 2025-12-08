@@ -67,6 +67,10 @@ try {
 } catch (e) { void e; }
 
 try {
+  import(/* webpackPrefetch: true */ './pages/MatchMarkets').catch(() => {});
+} catch (e) { void e; }
+
+try {
   const user = JSON.parse(localStorage.getItem('user'));
   if (user && user.token) {
     apiService.getUserProfile().catch(err => { void err; });

@@ -18,7 +18,19 @@ import MobileBottomNav from './components/MobileBottomNav';
 
 // Lazy-loaded pages for code splitting
 import Home from './pages/Home';
-// const Home = React.lazy(() => import('./pages/Home'));
+const lazyWithRetry = (importer, key) => React.lazy(() => importer().catch(err => {
+  const isChunkError = err && (err.name === 'ChunkLoadError' || /Loading chunk/.test(String(err.message || '')));
+  if (isChunkError) {
+    const flag = `chunk_reload_${key}`;
+    const hasReloaded = sessionStorage.getItem(flag);
+    if (!hasReloaded) {
+      sessionStorage.setItem(flag, '1');
+      window.location.reload();
+      return new Promise(() => {});
+    }
+  }
+  throw err;
+}));
 const Login = React.lazy(() => import('./pages/Login'));
 const SignUp = React.lazy(() => import('./pages/SignUp'));
 const Account = React.lazy(() => import('./pages/Account'));
@@ -34,7 +46,7 @@ const LiveBetting = React.lazy(() => import('./pages/LiveBetting'));
 const OddsPage = React.lazy(() => import('./pages/OddsPage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const MatchDetail = React.lazy(() => import('./pages/MatchDetail'));
-const MatchMarkets = React.lazy(() => import('./pages/MatchMarkets'));
+const MatchMarkets = lazyWithRetry(() => import('./pages/MatchMarkets'), 'MatchMarkets');
 const SportFallback = React.lazy(() => import('./components/SportFallback'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 

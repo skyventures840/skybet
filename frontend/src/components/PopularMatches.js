@@ -7,12 +7,14 @@ import { assessOddsRisk } from '../utils/riskManagement';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
 import apiService from '../services/api';
+import enhancedCache from '../services/enhancedCache';
 
 const PopularMatches = ({ matches }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const scrollRef = useRef(null);
   const [displayedMatches, setDisplayedMatches] = useState([]);
+  const hydrated = useRef(false);
 
   // Smooth transition when matches update
   useEffect(() => {
@@ -22,6 +24,17 @@ const PopularMatches = ({ matches }) => {
       setDisplayedMatches([]);
     }
   }, [matches]);
+
+  useEffect(() => {
+    if (hydrated.current) return;
+    try {
+      const cached = enhancedCache.getCachedData('/matches/popular/trending');
+      if (cached && Array.isArray(cached.matches) && cached.matches.length > 0) {
+        setDisplayedMatches(cached.matches.filter(m => m.sport_key));
+        hydrated.current = true;
+      }
+    } catch (e) { void e; }
+  }, []);
 
   const addToBetslip = (match, betType, odds) => {
     // Prevent adding bets for matches that have already started
