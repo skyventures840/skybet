@@ -541,7 +541,7 @@ router.get('/popular/trending', async (req, res) => {
     if (cached) {
       const etag = computeEtag(cached);
       res.set('X-Cache', 'HIT');
-      res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=180');
+      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
       if (etag) res.set('ETag', etag);
       if (etag && req.headers['if-none-match'] === etag) {
         return res.status(304).end();
@@ -557,9 +557,9 @@ router.get('/popular/trending', async (req, res) => {
             res.set('X-Cache', 'SKIP');
             return originalJson(data);
           }
-          cacheSet('/api/matches/popular/trending', {}, data, 120);
+          cacheSet('/api/matches/popular/trending', {}, data, 600);
           res.set('X-Cache', 'MISS');
-          res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=180');
+          res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
           const etag = computeEtag(data);
           if (etag) res.set('ETag', etag);
         } catch (e) {}
@@ -776,6 +776,15 @@ router.get('/popular/trending', async (req, res) => {
 
   } catch (error) {
     console.error('Get popular matches error:', error);
+    // Serve stale cache if available to avoid slow loads in production
+    try {
+      const stale = cacheGet('/api/matches/popular/trending', {});
+      if (stale) {
+        res.set('X-Cache', 'STALE');
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=600');
+        return res.json(stale);
+      }
+    } catch (_) {}
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -846,7 +855,9 @@ router.get('/:matchId/markets', async (req, res) => {
     // First, try to find by MongoDB ObjectId (for admin-created matches)
     if (mongoose.Types.ObjectId.isValid(req.params.matchId)) {
       console.log('Valid ObjectId format, searching in Match collection...');
-      match = await Match.findById(req.params.matchId);
+      match = await Match.findById(req.params.matchId)
+        .select('_id homeTeam awayTeam startTime sport league status updatedAt odds')
+        .lean();
       
       if (match) {
         console.log('Match found in Match collection:', {

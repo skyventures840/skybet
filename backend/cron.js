@@ -567,6 +567,54 @@ const startCronJobs = async () => {
   });
 
   logger.info('All cron jobs scheduled with overlap prevention.');
+
+  // Watchdog: check server health every minute and mitigate pressure
+  cron.schedule('*/1 * * * *', async () => {
+    try {
+      const healthy = isServerHealthy();
+      if (!healthy) {
+        logger.warn('Watchdog detected UNHEALTHY state; clearing caches and boosting keep-alive');
+        try {
+          const { bus, clear } = require('./utils/cache');
+          clear();
+          bus.emit('system:clear-cache');
+        } catch (e) {
+          logger.warn('Watchdog cache clear failed:', e && e.message ? e.message : e);
+        }
+        try {
+          const keepAliveService = require('./services/keepAliveService');
+          keepAliveService.setPingInterval(5);
+        } catch (e) {
+          logger.warn('Watchdog keep-alive adjust failed:', e && e.message ? e.message : e);
+        }
+      }
+    } catch (e) {
+      logger.warn('Watchdog check failed:', e && e.message ? e.message : e);
+    }
+  });
+
+  // Prewarm caches every minute for instant production loads
+  cron.schedule('*/1 * * * *', async () => {
+    try {
+      const axios = require('axios');
+      const base = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT_BACKEND || process.env.PORT || 10000}`;
+      await Promise.allSettled([
+        axios.get(`${base}/api/matches/popular/trending`, { timeout: 15000 }),
+        axios.get(`${base}/api/admin/hero`, { timeout: 15000 })
+      ]);
+      // Prewarm additional markets for upcoming top matches (next 10)
+      try {
+        const upcoming = await mongoose.model('Match').find({ status: 'upcoming', startTime: { $gte: new Date() } })
+          .select('_id')
+          .sort({ startTime: 1 })
+          .limit(10)
+          .lean();
+        await Promise.allSettled(upcoming.map(m => axios.get(`${base}/api/matches/${m._id}/markets`, { timeout: 15000 })));
+      } catch (e) {}
+    } catch (e) {
+      logger.warn('Cache prewarm failed:', e && e.message ? e.message : e);
+    }
+  });
 };
 
 module.exports = startCronJobs;

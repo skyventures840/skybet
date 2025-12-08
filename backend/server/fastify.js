@@ -211,6 +211,13 @@ async function start() {
     bus.on('sports:changed', () => invalidatePrefix('/api/sports'));
     bus.on('bets:changed', () => invalidatePrefix('/api/bets'));
     bus.on('users:changed', () => invalidatePrefix('/api/users'));
+    bus.on('system:clear-cache', () => {
+      try {
+        for (const k of responseCache.keys()) responseCache.delete(k);
+        prefixMap.clear();
+        fastify.log.warn('Response cache cleared due to system pressure');
+      } catch (_) {}
+    });
 
     // API routes via Express routers
     fastify.use('/api/auth', authRoutes);
@@ -254,6 +261,7 @@ async function start() {
 
     const keepAliveBase = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     keepAliveService.initialize(keepAliveBase, true);
+    try { keepAliveService.setPingInterval(5); } catch (_) {}
 
     process.on('SIGTERM', async () => {
       keepAliveService.stop();
@@ -280,5 +288,12 @@ async function start() {
 }
 
 start();
+
+process.on('uncaughtException', (err) => {
+  try { fastify.log.error({ msg: 'Uncaught exception', err }); } catch (_) { console.error(err); }
+});
+process.on('unhandledRejection', (reason) => {
+  try { fastify.log.error({ msg: 'Unhandled rejection', reason }); } catch (_) { console.error(reason); }
+});
 
 module.exports = fastify;
