@@ -6,6 +6,7 @@ import SkeletonLoader from './SkeletonLoader';
 import { assessOddsRisk } from '../utils/riskManagement';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
+import apiService from '../services/api';
 
 const PopularMatches = ({ matches }) => {
   const dispatch = useDispatch();
@@ -127,6 +128,7 @@ const PopularMatches = ({ matches }) => {
                   tabIndex={0}
                   title="View additional markets"
                   onClick={() => navigate(`/match/${match.id || match._id}/markets`)}
+                  onMouseEnter={() => { try { apiService.getMatchMarkets(match.id || match._id); } catch (e) { void e; } }}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/match/${match.id || match._id}/markets`); }}
                 >
                   {match.homeTeam}
@@ -138,6 +140,7 @@ const PopularMatches = ({ matches }) => {
                   tabIndex={0}
                   title="View additional markets"
                   onClick={() => navigate(`/match/${match.id || match._id}/markets`)}
+                  onMouseEnter={() => { try { apiService.getMatchMarkets(match.id || match._id); } catch (e) { void e; } }}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/match/${match.id || match._id}/markets`); }}
                 >
                   {match.awayTeam}

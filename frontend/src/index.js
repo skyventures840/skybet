@@ -66,6 +66,13 @@ try {
   apiService.getHeroSlides().catch(err => { void err; });
 } catch (e) { void e; }
 
+try {
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (user && user.token) {
+    apiService.getUserProfile().catch(err => { void err; });
+  }
+} catch (e) { void e; }
+
 root.render(
   <React.StrictMode>
     <Provider store={store}>
