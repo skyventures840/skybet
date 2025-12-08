@@ -95,6 +95,11 @@ class WebSocketService {
     }, delay);
   }
   
+  // Backward-compatible reconnect alias
+  reconnect() {
+    this.scheduleReconnect();
+  }
+  
   // Handle incoming messages
   handleMessage(data) {
     const { type, payload } = data;

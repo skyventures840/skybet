@@ -875,6 +875,31 @@ const Home = () => {
   const fetchPopularMatches = async () => {
     try {
       console.log('[DEBUG] Fetching popular matches...');
+      try {
+        const cached = enhancedCache.getCachedData('/matches/popular/trending');
+        if (cached && Array.isArray(cached.matches) && cached.matches.length > 0) {
+          const now = new Date();
+          const transformedPopular = cached.matches
+            .filter(match => new Date(match.startTime) >= now)
+            .filter(match => match.sport_key)
+            .map(match => ({
+              id: match.id || match._id,
+              league: match.league || '',
+              subcategory: match.subcategory || '',
+              startTime: match.startTime,
+              time: new Date(match.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              odds: match.odds || {},
+              sport: match.sport || '',
+              sport_key: match.sport_key,
+              country: match.country || '',
+              fullLeagueTitle: match.fullLeagueTitle || ''
+            }));
+          const uniquePopularMatches = deduplicateMatches(transformedPopular);
+          setPopularMatches(uniquePopularMatches);
+        }
+      } catch (e) { void e; }
       
       const response = await apiService.getPopularMatches();
       const popularData = response.data.matches || [];

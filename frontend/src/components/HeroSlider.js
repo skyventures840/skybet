@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import enhancedCache from '../services/enhancedCache';
 import SkeletonLoader from './SkeletonLoader';
 
 const HeroSlider = () => {
@@ -10,6 +11,10 @@ const HeroSlider = () => {
   useEffect(() => {
     const fetchSlides = async () => {
       try {
+        const cached = enhancedCache.getCachedData('/admin/hero');
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+          setSlides(cached);
+        }
         const response = await apiService.getHeroSlides();
         setSlides(response.data);
       } catch (err) {

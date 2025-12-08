@@ -13,7 +13,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 0,
+  timeout: 10000,
 });
 
 // Simple in-memory cache with TTL to speed up initial loads
@@ -153,7 +153,7 @@ async function instantGet(path, ttl = 30000) {
       inflightRequests.set(path, controller);
       const etag = entry.etag || null;
       const headers = etag ? { 'If-None-Match': etag } : {};
-      api.get(path, { headers, signal: controller.signal, timeout: 0 })
+      api.get(path, { headers, signal: controller.signal, timeout: 10000 })
         .then(resp => {
           // 304 Not Modified: only bump timestamp
           if (resp && resp.status === 304) {
@@ -411,7 +411,7 @@ async function getWithRetry(path, maxAttempts = 3) {
   let lastError = null;
   while (attempt < maxAttempts) {
     try {
-      return await api.get(path, { timeout: 0 });
+      return await api.get(path, { timeout: 10000 });
     } catch (err) {
       lastError = err;
       const status = err?.response?.status;
