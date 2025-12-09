@@ -13,7 +13,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "validate-env": "node validate-env.js",
-    "debug-env": "node debug-env.js",
     "build": "echo 'No build step required for Node.js backend'",
     "postinstall": "npm run validate-env"
   },
