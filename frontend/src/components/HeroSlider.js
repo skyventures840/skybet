@@ -4,19 +4,42 @@ import enhancedCache from '../services/enhancedCache';
 import SkeletonLoader from './SkeletonLoader';
 
 const HeroSlider = () => {
-  const [slides, setSlides] = useState([]);
+  const DEFAULT_SLIDES = [
+    {
+      id: 'default-1',
+      image: 'https://via.placeholder.com/1600x500/0a3d2e/ffffff?text=Bet+Smart+Win+Big',
+      caption1: 'Bet Smart, Win Big',
+      caption2: 'Explore top matches and markets today',
+      buttonText: 'Explore Matches',
+      buttonUrl: '/'
+    },
+    {
+      id: 'default-2',
+      image: 'https://via.placeholder.com/1600x500/1f5d3a/ffffff?text=Live+Odds+Updated+Fast',
+      caption1: 'Live Odds Updated Fast',
+      caption2: 'Stay ahead with real-time updates',
+      buttonText: 'View Live',
+      buttonUrl: '/'
+    }
+  ];
+  const [slides, setSlides] = useState(DEFAULT_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSlides = async () => {
       try {
-        const cached = enhancedCache.getCachedData('/admin/hero');
-        if (cached && Array.isArray(cached) && cached.length > 0) {
-          setSlides(cached);
-        }
+        try {
+          const cached = enhancedCache.getCachedData('/admin/hero');
+          if (cached && Array.isArray(cached) && cached.length > 0) {
+            setSlides(cached);
+          } else {
+            enhancedCache.setCachedData('/admin/hero', DEFAULT_SLIDES);
+          }
+        } catch (e) { void e; }
         const response = await apiService.getHeroSlides();
-        setSlides(response.data);
+        const data = Array.isArray(response.data) ? response.data : [];
+        if (data.length > 0) setSlides(data);
       } catch (err) {
         setError('Failed to load hero slides');
       }

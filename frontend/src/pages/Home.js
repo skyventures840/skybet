@@ -898,6 +898,10 @@ const Home = () => {
             }));
           const uniquePopularMatches = deduplicateMatches(transformedPopular);
           setPopularMatches(uniquePopularMatches);
+          try {
+            const ids = uniquePopularMatches.slice(0, 6).map(m => m.id || m._id).filter(Boolean);
+            await Promise.allSettled(ids.map(id => apiService.getMatchMarkets(id)));
+          } catch (e) { void e; }
         }
       } catch (e) { void e; }
       
@@ -930,6 +934,10 @@ const Home = () => {
       
       const uniquePopularMatches = deduplicateMatches(transformedPopular);
       setPopularMatches(uniquePopularMatches);
+      try {
+        const ids = uniquePopularMatches.slice(0, 6).map(m => m.id || m._id).filter(Boolean);
+        await Promise.allSettled(ids.map(id => apiService.getMatchMarkets(id)));
+      } catch (e) { void e; }
       
     } catch (err) {
       console.error('Error fetching popular matches:', err);

@@ -2,9 +2,9 @@ import axios from 'axios';
 import QuickLRU from 'quick-lru';
 import enhancedCache from './enhancedCache';
 
-// Use environment variable for API URL, fallback to localhost for development
-const RAW_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-const CLEAN_BASE = RAW_BASE.replace(/\/+$/, ''); // remove trailing slashes
+// Use environment variable for API URL, fallback to current origin in production
+const RAW_BASE = process.env.REACT_APP_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+const CLEAN_BASE = RAW_BASE.replace(/\/+$/, '');
 const API_BASE_URL = /\/api$/.test(CLEAN_BASE) ? CLEAN_BASE : `${CLEAN_BASE}/api`;
 
 const api = axios.create({
@@ -14,6 +14,15 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+});
+
+const apiPublic = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: false,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 8000,
 });
 
 // Simple in-memory cache with TTL to speed up initial loads
@@ -186,6 +195,54 @@ async function instantGet(path, ttl = 30000) {
   return resp;
 }
 
+async function instantGetPublic(path, ttl = 30000) {
+  const memHit = responseCache.get(path);
+  if (memHit) {
+    return memHit;
+  }
+  const entry = enhancedCache.getEntry(path);
+  if (entry && entry.data) {
+    const synthetic = {
+      data: entry.data,
+      status: 200,
+      headers: {},
+      config: { url: path },
+      request: null,
+    };
+    responseCache.set(path, synthetic, ttl);
+    if (!inflightRequests.has(path)) {
+      const controller = new AbortController();
+      inflightRequests.set(path, controller);
+      const etag = entry.etag || null;
+      const headers = etag ? { 'If-None-Match': etag } : {};
+      apiPublic.get(path, { headers, signal: controller.signal, timeout: 8000 })
+        .then(resp => {
+          if (resp && resp.status === 304) {
+            enhancedCache.touch(path);
+            return;
+          }
+          const newEtag = resp.headers && (resp.headers.etag || resp.headers.ETag);
+          responseCache.set(path, resp, ttl);
+          enhancedCache.setEntry(path, resp.data, newEtag || null);
+        })
+        .catch(err => {
+          if (err && err.response && err.response.status === 304) {
+            enhancedCache.touch(path);
+          }
+        })
+        .finally(() => {
+          inflightRequests.delete(path);
+        });
+    }
+    return synthetic;
+  }
+  const resp = await apiPublic.get(path);
+  const etag = resp.headers && (resp.headers.etag || resp.headers.ETag);
+  responseCache.set(path, resp, ttl);
+  enhancedCache.setEntry(path, resp.data, etag || null);
+  return resp;
+}
+
 // Request interceptor to add the auth token to headers
 api.interceptors.request.use(
   (config) => {
@@ -318,7 +375,7 @@ const apiService = {
   // Instant load popular matches with background revalidation
   getPopularMatches: async () => {
     const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const resp = await instantGet('/matches/popular/trending', 300000);
+    const resp = await instantGetPublic('/matches/popular/trending', 300000);
     const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     try { console.log('[PERF] popular matches', Math.round(t1 - t0), 'ms'); } catch (e) { void e; }
     return resp;
@@ -361,7 +418,7 @@ const apiService = {
   // Hero Section: instant load with background revalidation
   getHeroSlides: async () => {
     const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const resp = await instantGet('/admin/hero', 300000);
+    const resp = await instantGetPublic('/admin/hero', 300000);
     const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     try { console.log('[PERF] hero slides', Math.round(t1 - t0), 'ms'); } catch (e) { void e; }
     return resp;
@@ -386,7 +443,7 @@ const apiService = {
   createLeague: (data) => api.post('/admin/leagues', data),
   // Fetch matches by sport key (public, no auth); cache briefly
   getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
-  getMatchMarkets: (matchId) => instantGet(`/matches/${matchId}/markets`, 120000),
+  getMatchMarkets: (matchId) => instantGetPublic(`/matches/${matchId}/markets`, 120000),
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>
     api.put(`/admin/matches/${matchId}/status`, { status, homeScore, awayScore }),
