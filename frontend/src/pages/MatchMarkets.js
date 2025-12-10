@@ -82,7 +82,7 @@ const MatchMarkets = () => {
                 try {
                     if (!match) setLoading(true);
                     setError(null);
-                    const response = await apiService.getMatchMarkets(matchId);
+                    const response = await apiService.getMatchMarkets(matchId, { full: true });
                     const matchData = response.data;
                     let processedMatchData = { ...matchData };
                     if (matchData.markets && Array.isArray(matchData.markets) && matchData.markets.length > 0) {
@@ -447,7 +447,7 @@ const MatchMarkets = () => {
                                     setLoading(true);
                                     setError(null);
                                     
-                                    const response = await apiService.getMatchMarkets(matchId);
+                                    const response = await apiService.getMatchMarkets(matchId, { full: true });
                                     const matchData = response.data;
                                     
                                     // Process bookmakers data to create markets structure

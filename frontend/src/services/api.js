@@ -443,7 +443,11 @@ const apiService = {
   createLeague: (data) => api.post('/admin/leagues', data),
   // Fetch matches by sport key (public, no auth); cache briefly
   getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
-  getMatchMarkets: (matchId) => instantGetPublic(`/matches/${matchId}/markets`, 120000),
+  getMatchMarkets: (matchId, opts = {}) => {
+    const full = opts.full === true;
+    const path = full ? `/matches/${matchId}/markets?full=true` : `/matches/${matchId}/markets`;
+    return instantGetPublic(path, 120000);
+  },
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>
     api.put(`/admin/matches/${matchId}/status`, { status, homeScore, awayScore }),

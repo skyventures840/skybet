@@ -933,9 +933,65 @@ const Home = () => {
       }));
       
       const uniquePopularMatches = deduplicateMatches(transformedPopular);
-      setPopularMatches(uniquePopularMatches);
+      if (uniquePopularMatches.length === 0) {
+        const now2 = new Date();
+        if (matches && matches.length > 0) {
+          const fallbackPopular = matches
+            .filter(m => new Date(m.startTime) >= now2)
+            .filter(m => m.sport_key)
+            .filter(m => Object.values(m.odds || {}).filter(odd => odd > 0).length >= 2)
+            .slice(0, 6)
+            .map(m => ({
+              id: m.id || m._id,
+              league: m.league || '',
+              subcategory: m.subcategory || '',
+              startTime: m.startTime,
+              time: new Date(m.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              homeTeam: m.homeTeam,
+              awayTeam: m.awayTeam,
+              odds: m.odds || {},
+              sport: m.sport || '',
+              sport_key: m.sport_key,
+              country: m.country || '',
+              fullLeagueTitle: m.fullLeagueTitle || ''
+            }));
+          const uniqueFallback = deduplicateMatches(fallbackPopular);
+          setPopularMatches(uniqueFallback);
+        } else {
+          try {
+            const resp = await apiService.getMatches();
+            const base = transformOddsToMatches(resp.data.matches || []);
+            const fallbackPopular = base
+              .filter(m => new Date(m.startTime) >= now2)
+              .filter(m => m.sport_key)
+              .filter(m => Object.values(m.odds || {}).filter(odd => odd > 0).length >= 2)
+              .slice(0, 6)
+              .map(m => ({
+                id: m.id || m._id,
+                league: m.league || '',
+                subcategory: m.subcategory || '',
+                startTime: m.startTime,
+                time: new Date(m.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                homeTeam: m.homeTeam,
+                awayTeam: m.awayTeam,
+                odds: m.odds || {},
+                sport: m.sport || '',
+                sport_key: m.sport_key,
+                country: m.country || '',
+                fullLeagueTitle: m.fullLeagueTitle || ''
+              }));
+            const uniqueFallback = deduplicateMatches(fallbackPopular);
+            setPopularMatches(uniqueFallback);
+          } catch (e) { void e; }
+        }
+      } else {
+        setPopularMatches(uniquePopularMatches);
+      }
       try {
-        const ids = uniquePopularMatches.slice(0, 6).map(m => m.id || m._id).filter(Boolean);
+        const ids = (uniquePopularMatches.length > 0 ? uniquePopularMatches : popularMatches)
+          .slice(0, 6)
+          .map(m => m.id || m._id)
+          .filter(Boolean);
         await Promise.allSettled(ids.map(id => apiService.getMatchMarkets(id)));
       } catch (e) { void e; }
       
