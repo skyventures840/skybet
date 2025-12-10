@@ -7,7 +7,6 @@ const HeroSlider = () => {
   const DEFAULT_SLIDES = [
     {
       id: 'default-1',
-      image: 'https://via.placeholder.com/1600x500/0a3d2e/ffffff?text=Bet+Smart+Win+Big',
       caption1: 'Bet Smart, Win Big',
       caption2: 'Explore top matches and markets today',
       buttonText: 'Explore Matches',
@@ -15,7 +14,6 @@ const HeroSlider = () => {
     },
     {
       id: 'default-2',
-      image: 'https://via.placeholder.com/1600x500/1f5d3a/ffffff?text=Live+Odds+Updated+Fast',
       caption1: 'Live Odds Updated Fast',
       caption2: 'Stay ahead with real-time updates',
       buttonText: 'View Live',
@@ -41,7 +39,7 @@ const HeroSlider = () => {
         const data = Array.isArray(response.data) ? response.data : [];
         if (data.length > 0) setSlides(data);
       } catch (err) {
-        setError('Failed to load hero slides');
+        setError('');
       }
     };
     fetchSlides();

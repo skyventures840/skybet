@@ -30,7 +30,7 @@ const PopularMatches = ({ matches }) => {
     try {
       const cached = enhancedCache.getCachedData('/matches/popular/trending');
       if (cached && Array.isArray(cached.matches) && cached.matches.length > 0) {
-        setDisplayedMatches(cached.matches.filter(m => m.sport_key));
+        setDisplayedMatches(cached.matches);
         hydrated.current = true;
       }
     } catch (e) { void e; }
@@ -101,8 +101,8 @@ const PopularMatches = ({ matches }) => {
         <button className="slider-btn prev-btn popular-slider-btn" onClick={scrollLeft} title="Scroll left">&#8249;</button>
         <button className="slider-btn next-btn popular-slider-btn" onClick={scrollRight} title="Scroll right">&#8250;</button>
         <div className="popular-matches-scroll" ref={scrollRef}>
-          {displayedMatches.filter(m => m.sport_key).map((match) => {
-            const rawSportKey = String(match.sport_key || '').toLowerCase();
+          {displayedMatches.map((match) => {
+            const rawSportKey = String(match.sport_key || match.sport || match.league || match.sport_title || '').toLowerCase();
             const hasLeagueToken = rawSportKey.split('_').length > 1;
             const computedFull = computeFullLeagueTitle({
               sportKeyOrName: rawSportKey,
