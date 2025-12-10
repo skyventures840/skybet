@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const Sport = require('../models/Sport');
 const { auth, adminAuth } = require('../middleware/auth');
-const { io } = require('../server');
 const Odds = require('../models/Odds');
 const multer = require('multer');
 const path = require('path');
@@ -181,7 +180,7 @@ router.post('/', adminAuth, async (req, res) => {
   try {
     const newMatch = new Match(req.body);
     await newMatch.save();
-    io.emit('newMatch', newMatch); // Emit new match to all connected clients
+    bus.emit('matches:new', newMatch);
     res.status(201).json(newMatch);
   } catch (error) {
     console.error('Create match error:', error);
@@ -835,6 +834,7 @@ router.get('/debug/odds/:matchId', async (req, res) => {
 // Enhanced Get match markets and odds with comprehensive additional markets
 router.get('/:matchId/markets', async (req, res) => {
   try {
+    const isFull = String(req.query.full || '').toLowerCase() === 'true';
     const cacheKeyPath = `/api/matches/${req.params.matchId}/markets`;
     const cached = cacheGet(cacheKeyPath, {});
     if (cached) {
@@ -899,7 +899,7 @@ router.get('/:matchId/markets', async (req, res) => {
           bookmakers: oddsData.bookmakers
         };
         
-        // Process bookmakers to create comprehensive markets structure
+        // Process bookmakers to create markets structure (preview-fast or full)
         if (oddsData.bookmakers && oddsData.bookmakers.length > 0) {
           // Helper to normalize market keys and titles (collapse lay/exchange variants and aliases)
           const normalizeMarketKey = (key) => {
@@ -936,29 +936,49 @@ router.get('/:matchId/markets', async (req, res) => {
           };
 
           const markets = [];
-          const processedMarkets = new Set(); // Avoid duplicates across normalized keys
+          const processedMarkets = new Set();
 
-          oddsData.bookmakers.forEach(bookmaker => {
-            bookmaker.markets.forEach(market => {
+          if (!isFull) {
+            // Fast preview: only first bookmaker and a small set of canonical markets
+            const bm = oddsData.bookmakers[0];
+            const preferred = ['h2h', 'h2h_3_way', 'totals', 'spreads', 'double_chance'];
+            (bm.markets || []).forEach(market => {
               const originalKey = market.key || '';
               const normalizedKey = normalizeMarketKey(originalKey);
-              if (processedMarkets.has(normalizedKey)) return; // Already added canonical market
+              // Only include preferred canonical markets
+              if (!preferred.includes(originalKey) && !preferred.includes(normalizedKey)) return;
+              if (processedMarkets.has(normalizedKey)) return;
               processedMarkets.add(normalizedKey);
 
               const { title: marketTitle, description: marketDescription } = normalizeTitleAndDescription(normalizedKey);
+              const outcomes = (market.outcomes || [])
+                .slice(0, 3)
+                .map(outcome => ({ name: outcome.name, price: outcome.price, point: outcome.point || null }));
+              markets.push({ key: normalizedKey, title: marketTitle, description: marketDescription, outcomes });
+            });
+          } else {
+            // Full processing: dedupe across all bookmakers
+            oddsData.bookmakers.forEach(bookmaker => {
+              (bookmaker.markets || []).forEach(market => {
+                const originalKey = market.key || '';
+                const normalizedKey = normalizeMarketKey(originalKey);
+                if (processedMarkets.has(normalizedKey)) return;
+                processedMarkets.add(normalizedKey);
 
-              markets.push({
-                key: normalizedKey,
-                title: marketTitle,
-                description: marketDescription,
-                outcomes: (market.outcomes || []).map(outcome => ({
-                  name: outcome.name,
-                  price: outcome.price,
-                  point: outcome.point || null
-                }))
+                const { title: marketTitle, description: marketDescription } = normalizeTitleAndDescription(normalizedKey);
+                markets.push({
+                  key: normalizedKey,
+                  title: marketTitle,
+                  description: marketDescription,
+                  outcomes: (market.outcomes || []).map(outcome => ({
+                    name: outcome.name,
+                    price: outcome.price,
+                    point: outcome.point || null
+                  }))
+                });
               });
             });
-          });
+          }
           
           match.markets = markets;
           console.log(`Processed ${markets.length} unique markets from ${oddsData.bookmakers.length} bookmakers`);
@@ -974,6 +994,7 @@ router.get('/:matchId/markets', async (req, res) => {
         });
         
         try {
+          // Cache under the same key for preview and full; full fetch will overwrite preview
           cacheSet(cacheKeyPath, {}, match, 180);
           res.set('X-Cache', 'MISS');
           res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300');
@@ -1246,8 +1267,7 @@ router.put('/:matchId', adminAuth, async (req, res) => {
     }
 
     res.json(updatedMatch);
-    io.emit('matchUpdate', updatedMatch); // Emit update to all connected clients
-    // Invalidate caches and broadcast via event bus for live subscribers
+    bus.emit('matches:update', updatedMatch);
     bus.emit('matches:live:update', updatedMatch);
     bus.emit('matches:changed');
   } catch (error) {
@@ -1272,7 +1292,6 @@ router.put('/:matchId/odds', adminAuth, async (req, res) => {
     }
 
     res.json(updatedMatch);
-    io.emit('oddsUpdate', updatedMatch); // Emit odds update to all connected clients
     // Broadcast odds delta via bus and invalidate cached match lists
     bus.emit('odds:update', { matchId: req.params.matchId, delta: newOdds });
     bus.emit('matches:changed');
@@ -1291,7 +1310,6 @@ router.delete('/:matchId', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
 
-    io.emit('matchDeleted', req.params.matchId); // Emit deleted match ID to all connected clients
     bus.emit('matches:deleted', req.params.matchId);
     bus.emit('matches:changed');
     res.json({ message: 'Match deleted successfully', deletedMatch });
@@ -1365,7 +1383,7 @@ router.put('/:matchId', auth, adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
     res.json(updatedMatch);
-    io.emit('matchUpdate', updatedMatch);
+    bus.emit('matches:update', updatedMatch);
     bus.emit('matches:live:update', updatedMatch);
     bus.emit('matches:changed');
   } catch (error) {
@@ -1381,7 +1399,6 @@ router.delete('/:matchId', auth, adminAuth, async (req, res) => {
     if (!deletedMatch) {
       return res.status(404).json({ error: 'Match not found' });
     }
-    io.emit('matchDeleted', req.params.matchId);
     bus.emit('matches:deleted', req.params.matchId);
     bus.emit('matches:changed');
     res.json({ message: 'Match deleted successfully' });
@@ -1886,7 +1903,6 @@ router.put('/live/:matchId/odds', adminAuth, async (req, res) => {
     }
 
     // Broadcast odds update via Socket.io + bus and invalidate caches
-    io.emit('oddsUpdate', { matchId, delta: newOdds });
     bus.emit('odds:update', { matchId, delta: newOdds });
     bus.emit('matches:changed');
 
@@ -1922,7 +1938,7 @@ router.put('/live/:matchId/score', adminAuth, async (req, res) => {
     }
 
     // Broadcast score update via Socket.io + bus and invalidate caches
-    io.emit('matchUpdate', updatedMatch);
+    bus.emit('matches:update', updatedMatch);
     bus.emit('matches:live:update', updatedMatch);
     bus.emit('matches:changed');
 

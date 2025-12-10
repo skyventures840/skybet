@@ -70,6 +70,10 @@ function createSocketIOServer(httpServer) {
     io.to('live').emit('matchUpdate', payload);
   });
 
+  bus.on('matches:update', (payload) => {
+    io.emit('matchUpdate', payload);
+  });
+
   bus.on('matches:new', (match) => io.emit('newMatch', match));
   bus.on('matches:deleted', (matchId) => io.emit('matchDeleted', matchId));
 
