@@ -145,6 +145,24 @@ const Aviator = () => {
     initData();
   }, [dispatch]);
   
+  // Sync balance when game state changes to WAITING (end of round) to ensure consistency
+  useEffect(() => {
+    if (gameState === 'WAITING') {
+        const fetchBalance = async () => {
+            try {
+                const res = await apiService.getAviatorBalance();
+                if (res.data.balance !== undefined) {
+                    dispatch(updateBalance(res.data.balance));
+                    dispatch(updateBalanceBonus(res.data.balanceBonus));
+                }
+            } catch (err) {
+                console.error('Failed to sync balance', err);
+            }
+        };
+        fetchBalance();
+    }
+  }, [gameState, dispatch]);
+
   // Dual Betting State
   // Status: 'NO_BET' | 'BETTING_NEXT' | 'BET_ACTIVE' | 'CASHED_OUT'
   const [userBets, setUserBets] = useState({
@@ -165,6 +183,7 @@ const Aviator = () => {
   // Chat (Mock)
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [error, setError] = useState(null);
 
   // Initial Chat Generator
   useEffect(() => {
@@ -224,29 +243,12 @@ const Aviator = () => {
 
   // Handlers
   const handlePlaceBet = async (panelId, amount, autoOptions = null) => {
+    setError(null);
     if (amount < MIN_BET || amount > MAX_BET) {
-        alert(`Bet must be between $${MIN_BET} and $${MAX_BET}`);
+        setError(`Bet must be between $${MIN_BET} and $${MAX_BET}`);
+        setTimeout(() => setError(null), 3000);
         return;
     }
-
-    // Optimistic Update: Deduct balance immediately
-    const previousBalance = user.balance;
-    const previousBonus = user.balanceBonus;
-
-    // Simulate backend deduction logic (Bonus First)
-    let tempBonus = previousBonus || 0;
-    let tempReal = previousBalance || 0;
-    
-    if (tempBonus >= amount) {
-        tempBonus -= amount;
-    } else {
-        const remainder = amount - tempBonus;
-        tempBonus = 0;
-        tempReal -= remainder;
-    }
-
-    dispatch(updateBalance(tempReal));
-    dispatch(updateBalanceBonus(tempBonus));
     
     try {
       const res = await apiService.placeAviatorBet({ amount, type: balanceMode });
@@ -281,10 +283,13 @@ const Aviator = () => {
       }
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.error || "Failed to place bet");
-      // Rollback on error
-      dispatch(updateBalance(previousBalance));
-      dispatch(updateBalanceBonus(previousBonus));
+      const errorMessage = err.response?.data?.error || "Failed to place bet";
+      if (errorMessage === 'Insufficient balance') {
+         setError('Insufficient balance to place bet');
+      } else {
+         setError(errorMessage);
+      }
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -981,6 +986,10 @@ const Aviator = () => {
              // Rollback on error
              dispatch(updateBalance(previousBalance));
              dispatch(updateBalanceBonus(previousBonus));
+             
+             const errorMessage = err.response?.data?.error || "Cashout failed";
+             setError(errorMessage);
+             setTimeout(() => setError(null), 3000);
           }
       }
   };
@@ -1034,6 +1043,9 @@ const Aviator = () => {
              }
           } catch (err) {
               console.error("Cancel failed", err);
+              const errorMessage = err.response?.data?.error || "Failed to cancel bet";
+              setError(errorMessage);
+              setTimeout(() => setError(null), 3000);
           }
       }
   };
@@ -1048,6 +1060,11 @@ const Aviator = () => {
 
   return (
     <div className="aviator-container">
+      {error && (
+        <div className="aviator-error-toast">
+          {error}
+        </div>
+      )}
       <button 
         className="close-game-btn"
         onClick={() => navigate('/')}
