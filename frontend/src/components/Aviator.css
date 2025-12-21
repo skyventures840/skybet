@@ -542,6 +542,19 @@ canvas {
   border-color: #e74c3c;
 }
 
+/* Balance Controls */
+.balance-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balance {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #4caf50;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .aviator-container {
@@ -549,6 +562,29 @@ canvas {
       height: 100vh;
       overflow-y: auto; /* Allow vertical scrolling */
   }
+
+  .top-bar {
+      padding: 5px 5px; /* Reduce padding to reduce height and move content closer to edges */
+  }
+
+  .top-bar-header {
+      padding-right: 0; /* Move right elements closer to edge */
+  }
+
+  .balance-controls {
+      gap: 2px; /* Reduce margins between elements */
+  }
+
+  .balance {
+      font-size: 1rem;
+      margin-right: 2px;
+  }
+
+  .hamburger-btn, .close-game-btn-inline {
+      font-size: 1.2rem; /* Slightly smaller icons */
+      padding: 0 4px;
+  }
+
 
   /* Order: 1. Game Area (with bets), 2. Left Panel (Players), 3. Right Panel (Chat) */
   .game-area {
@@ -730,6 +766,46 @@ canvas {
   .bet-row.lost {
       background-color: rgba(255, 23, 68, 0.05);
       border: 1px solid rgba(255, 23, 68, 0.1);
+  }
+
+  /* Mobile Top Bar Optimization */
+  .top-bar {
+      padding: 2px 4px; /* Reduced padding */
+      gap: 2px;
+      min-height: 40px; /* Reduced height constraint */
+  }
+
+  .top-bar-header {
+      padding-right: 0;
+  }
+  
+  .logo {
+      font-size: 1rem; /* Smaller logo */
+  }
+  
+  .balance-controls {
+      gap: 2px; /* Tighter gap */
+      margin-left: auto;
+      margin-right: 0; /* Ensure right alignment */
+  }
+
+  .balance {
+      font-size: 0.9rem;
+  }
+
+  .hamburger-menu-container {
+      margin-left: 2px; /* Closer to balance */
+  }
+  
+  .hamburger-btn {
+      font-size: 1.1rem;
+      padding: 2px;
+  }
+  
+  .close-game-btn-inline {
+      font-size: 1.2rem;
+      padding: 0 2px;
+      margin-left: 2px; /* Closer to hamburger */
   }
 }
 

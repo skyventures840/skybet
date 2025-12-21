@@ -44,7 +44,7 @@ const MobileBetslip = () => {
   };
 
   const calculateTotalOdds = () => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       const combined = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
       return combined.toFixed(2);
     }
@@ -52,7 +52,7 @@ const MobileBetslip = () => {
   };
 
   const calculatePotentialWin = () => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       const totalStake = parseFloat(activeBets[0]?.stake || 0);
       const combined = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
       return (totalStake * combined).toFixed(2);
@@ -156,7 +156,7 @@ const MobileBetslip = () => {
       if (!bet.matchId) return 'Invalid match selection';
       if (!bet.type && !bet.market) return 'Invalid bet type';
       
-      if (activeTab === 'Ordinary') {
+      if (activeTab === 'Express') {
         if (activeBets[0] && (!activeBets[0].stake || parseFloat(activeBets[0].stake) <= 0)) {
           return 'Please enter a valid stake amount';
         }
@@ -176,7 +176,7 @@ const MobileBetslip = () => {
   };
 
   const isBetslipValid = () => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       return activeBets.length >= 2;
     }
     return activeBets.length >= 1;
@@ -206,7 +206,7 @@ const MobileBetslip = () => {
     setSuccessMessage(null);
 
     try {
-      if (activeTab === 'Ordinary') {
+      if (activeTab === 'Express') {
         const totalStake = parseFloat(activeBets[0]?.stake || 0);
         const combinedOdds = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
         const parlayMatchId = `parlay:${activeBets.map(b => b.matchId).join('|')}`;
@@ -241,34 +241,24 @@ const MobileBetslip = () => {
         console.log('Multibet submitted successfully:', response.data);
         
       } else {
-        const submittedBets = [];
-        const failedBets = [];
-        
-        for (let i = 0; i < activeBets.length; i++) {
-          const bet = activeBets[i];
-          try {
-            const betData = {
-              matchId: bet.matchId,
-              market: 'Match Result',
-              selection: getSelectionLabel(bet),
-              stake: parseFloat(bet.stake),
-              odds: parseFloat(bet.odds)
-            };
-            
-            console.log(`Submitting express bet ${i + 1}:`, betData);
-            const response = await apiService.placeBet(betData);
-            console.log(`Express bet ${i + 1} submitted successfully:`, response.data);
-            submittedBets.push(i);
-          } catch (error) {
-            console.error(`Failed to submit express bet ${i + 1}:`, error);
-            failedBets.push({ index: i, error: error.message });
-          }
+        // Prepare bulk bets data
+        const betsData = activeBets.map(bet => ({
+          matchId: bet.matchId,
+          market: bet.market || 'Match Result',
+          selection: getSelectionLabel(bet),
+          stake: parseFloat(bet.stake),
+          odds: parseFloat(bet.odds)
+        }));
+
+        // Validate all bets have stakes
+        const invalidStakeIndex = betsData.findIndex(b => isNaN(b.stake) || b.stake <= 0);
+        if (invalidStakeIndex !== -1) {
+            throw new Error(`Invalid stake for bet ${invalidStakeIndex + 1}`);
         }
-        
-        if (failedBets.length > 0) {
-          const errorMessage = `Failed to submit ${failedBets.length} out of ${activeBets.length} bets. ${failedBets.map(f => `Bet ${f.index + 1}: ${f.error}`).join('; ')}`;
-          throw new Error(errorMessage);
-        }
+
+        console.log('Submitting bulk bets:', betsData);
+        const response = await apiService.placeBetsBulk({ bets: betsData });
+        console.log('Bulk bets submitted successfully:', response.data);
       }
 
       // Clear bets in reverse order to avoid index shifting issues
@@ -278,9 +268,9 @@ const MobileBetslip = () => {
       
       setShowModal(false);
 
-      const successMessage = activeTab === 'Ordinary' 
+      const successMessage = activeTab === 'Express' 
         ? `Multibet with ${activeBets.length} matches placed successfully!`
-        : `All ${activeBets.length} express bets placed successfully!`;
+        : `All ${activeBets.length} ordinary bets placed successfully!`;
       setSuccessMessage(successMessage);
 
       setTimeout(() => {
@@ -379,8 +369,8 @@ const MobileBetslip = () => {
                         </div>
                       )}
 
-                      {/* Express stake input */}
-                      {activeTab === 'Express' && (
+                      {/* Ordinary stake input */}
+                      {activeTab === 'Ordinary' && (
                         <div className="mobile-stake-section">
                           <label>Stake:</label>
                           <div className="mobile-stake-input-group">
@@ -414,8 +404,8 @@ const MobileBetslip = () => {
                 );
               })}
 
-              {/* Ordinary stake section */}
-              {activeTab === 'Ordinary' && activeBets.length > 0 && (
+              {/* Express stake section */}
+              {activeTab === 'Express' && activeBets.length > 0 && (
                 <div className="mobile-stake-section">
                   <label>Stake (applies to all bets):</label>
                   <div className="mobile-stake-input-group">

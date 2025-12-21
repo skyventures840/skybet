@@ -9,10 +9,14 @@ import lingva from '../services/lingva';
 
 const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
   const isLoggedIn = useSelector(state => state.auth?.loggedIn || false);
-  const user = useSelector(state => state.auth.user);
-  const username = user?.username;
-  const email = user?.email;
-  const balance = user?.balance || 0;
+  const authUser = useSelector(state => state.auth.user);
+  const userSlice = useSelector(state => state.user);
+  
+  // Prefer userSlice (mutable state) over authUser (session state)
+  const username = userSlice?.username || authUser?.username;
+  const email = userSlice?.email || authUser?.email;
+  const balance = userSlice?.balance !== undefined ? userSlice.balance : (authUser?.balance || 0);
+  
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [isProfileOpen, setIsProfileOpen] = useState(false);

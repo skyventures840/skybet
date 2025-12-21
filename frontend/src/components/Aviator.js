@@ -639,6 +639,28 @@ const Aviator = () => {
     
     const currentGameState = gameStateRef.current;
 
+    // Common Variables
+    // Smooth auto-scaling
+    let timeForScaling = (Date.now() - startTimeRef.current)/1000;
+    if (isCrashed) {
+        timeForScaling = (crashTimeRef.current - startTimeRef.current)/1000;
+    }
+    
+    const maxTime = Math.max(10, timeForScaling + 4); 
+    const maxMult = Math.max(2, currentMult * 1.3);
+
+    // Match CSS breakpoint for mobile/tablet
+    const isSmallScreen = width <= 1024;
+    // User requested axis closer to border. 
+    // If we use 0, it's ON the border. 
+    // If we use a small padding like 5, it's close.
+    // Let's stick to 0 or very small to maximize space.
+    const padding = isSmallScreen ? 0 : 20;
+    
+    // Axes coordinates
+    const axisX = padding;
+    const axisY = height - padding;
+
     // Clear
     ctx.clearRect(0, 0, width, height);
 
@@ -661,26 +683,27 @@ const Aviator = () => {
     ctx.strokeStyle = '#666';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(20, height - 20);
-    ctx.lineTo(width, height - 20); // X axis
-    ctx.moveTo(20, height - 20);
-    ctx.lineTo(20, 0); // Y axis
+    
+    // Adjust axis drawing to be visible even if padding is 0
+    // If padding is 0, we draw along the edges (0 and height)
+    // But lines have thickness, so we might offset slightly if we want them fully inside
+    // For simplicity, we draw exactly on the calculated axis lines
+    // If axisY is height, the line might be clipped. 
+    // If isSmallScreen, we might skip drawing axes lines if they are just the viewport edges, 
+    // or draw them at 1px offset? 
+    // Let's draw them anyway.
+    
+    ctx.moveTo(axisX, axisY);
+    ctx.lineTo(width, axisY); // X axis
+    ctx.moveTo(axisX, axisY);
+    ctx.lineTo(axisX, 0); // Y axis
     ctx.stroke();
 
-    // Common Variables
-    // Smooth auto-scaling
-    let timeForScaling = (Date.now() - startTimeRef.current)/1000;
-    if (isCrashed) {
-        timeForScaling = (crashTimeRef.current - startTimeRef.current)/1000;
-    }
-    
-    const maxTime = Math.max(10, timeForScaling + 4); 
-    const maxMult = Math.max(2, currentMult * 1.3);
-
-    // X Axis: 20px left padding, 20px right padding
-    const getX = (t) => 20 + (t / maxTime) * (width - 40);
-    // Y Axis: 20px top padding, 20px bottom padding
-    const getY = (m) => (height - 20) - ((m - 1) / (maxMult - 1)) * (height - 40);
+    // X Axis: padding left, padding right (if desktop)
+    // If mobile, we use full width
+    const getX = (t) => axisX + (t / maxTime) * (width - axisX - (isSmallScreen ? 0 : 20));
+    // Y Axis: padding top, padding bottom
+    const getY = (m) => axisY - ((m - 1) / (maxMult - 1)) * (axisY - (isSmallScreen ? 20 : 20)); // Keep top padding for labels/aircraft
 
     if (currentGameState === 'WAITING') {
       // Draw static plane at origin
@@ -690,7 +713,7 @@ const Aviator = () => {
       // Slight hover effect
       const hoverY = Math.sin(idleTime * 2) * 5;
       
-      drawPlane(ctx, 20, height - 20 + hoverY, -0.1, 1.0, Date.now());
+      drawPlane(ctx, axisX, axisY + hoverY, -0.1, 1.0, Date.now());
       return;
     }
 
@@ -701,19 +724,23 @@ const Aviator = () => {
     // Draw Axes Labels
     ctx.fillStyle = '#666';
     ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom'; // Ensure baseline is consistent (reset from 'middle' used later)
     
     // X Axis Labels (Time)
+    ctx.textAlign = isSmallScreen ? 'left' : 'center';
+    ctx.textBaseline = 'bottom'; 
+    
     for (let t = 0; t <= Math.floor(maxTime); t += 2) {
         const x = getX(t);
         if (x < width) {
-            ctx.fillText(`${t}s`, x, height - 5);
+            // On mobile, lift labels up so they are inside the graph
+            const yPos = isSmallScreen ? height - 5 : height - 5;
+            // Actually if padding is 0, height-5 is inside.
+            ctx.fillText(`${t}s`, x + (isSmallScreen ? 5 : 0), yPos);
         }
     }
     
     // Y Axis Labels (Multiplier)
-    ctx.textAlign = 'right';
+    ctx.textAlign = isSmallScreen ? 'left' : 'right';
     ctx.textBaseline = 'middle';
     // Decide step size based on maxMult
     let stepY = 0.2;
@@ -723,8 +750,11 @@ const Aviator = () => {
 
     for (let m = 1; m <= maxMult; m += stepY) {
         const y = getY(m);
-        if (y > 0 && y < height - 20) {
-            ctx.fillText(`${m.toFixed(1)}x`, 15, y);
+        // Ensure y is within bounds
+        if (y > 0 && y < axisY) {
+            // On mobile, draw labels to the right of the axis (inside)
+            const xPos = isSmallScreen ? 5 : 15;
+            ctx.fillText(`${m.toFixed(1)}x`, xPos, y);
         }
     }
 
@@ -1311,8 +1341,8 @@ const Aviator = () => {
         <div className="top-bar">
             <div className="top-bar-header">
                 <div className="logo">AVIATOR</div>
-                <div className="balance-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div className="balance" style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#4caf50' }}>
+                <div className="balance-controls">
+                    <div className="balance">
                         ${balance.toFixed(2)}
                     </div>
                     {/* Hamburger Menu */}
@@ -1322,7 +1352,7 @@ const Aviator = () => {
                             onClick={() => setShowMenu(!showMenu)}
                             aria-label="Menu"
                         >
-                            <span style={{ fontSize: '1.5rem' }}>☰</span>
+                            <span className="hamburger-icon">☰</span>
                         </button>
                         {showMenu && (
                             <div className="hamburger-dropdown">
@@ -1351,15 +1381,23 @@ const Aviator = () => {
                                             <span>Result</span>
                                         </div>
                                         {myBetHistory.length > 0 ? (
-                                            myBetHistory.map((bet, idx) => (
+                                            myBetHistory.map((bet, idx) => {
+                                                // Handle data structure differences between immediate fetch and bets.js response
+                                                const odds = bet.odds?.selected || bet.odds; // Some endpoints might flatten it
+                                                const actualWin = bet.odds?.actualWin !== undefined ? bet.odds.actualWin : (bet.actualWin !== undefined ? bet.actualWin : 0);
+                                                const stake = bet.stake || 0;
+                                                const isWin = bet.status === 'won' || actualWin > 0;
+
+                                                return (
                                                 <div key={idx} className="bet-history-item">
                                                     <span>{new Date(bet.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                                    <span>{bet.odds && bet.odds.selected ? bet.odds.selected.toFixed(2) + 'x' : '-'}</span>
-                                                    <span className={bet.status === 'won' || (bet.actualWin > 0) ? 'win' : 'loss'}>
-                                                        {bet.status === 'won' || (bet.actualWin > 0) ? `+$${bet.actualWin.toFixed(2)}` : `-$${bet.stake.toFixed(2)}`}
+                                                    <span>{typeof odds === 'number' ? odds.toFixed(2) + 'x' : '-'}</span>
+                                                    <span className={isWin ? 'win' : 'loss'}>
+                                                        {isWin ? `+$${Number(actualWin).toFixed(2)}` : `-$${Number(stake).toFixed(2)}`}
                                                     </span>
                                                 </div>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <div style={{padding: '10px', textAlign: 'center', color: '#666', fontSize: '0.8rem'}}>
                                                 No bets found

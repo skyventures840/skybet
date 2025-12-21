@@ -62,21 +62,21 @@ const Betslip = () => {
   }, [updateStakeHandler]);
 
   const totalOdds = useMemo(() => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       const combined = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
       return combined.toFixed(2);
     }
-    // Express: show sum of odds as an indicator
+    // Ordinary: show sum of odds as an indicator
     return activeBets.reduce((total, bet) => total + (parseFloat(bet.odds) || 0), 0).toFixed(2);
   }, [activeBets, activeTab]);
 
   const potentialWin = useMemo(() => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       const totalStake = parseFloat(activeBets[0]?.stake || 0);
       const combined = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
       return (totalStake * combined).toFixed(2);
     }
-    // Express: independent stakes per selection
+    // Ordinary: independent stakes per selection
     return activeBets
       .reduce((total, bet) => total + (parseFloat(bet.stake) || 0) * (parseFloat(bet.odds) || 1), 0)
       .toFixed(2);
@@ -108,14 +108,14 @@ const Betslip = () => {
       }
       
       // Validate stake based on bet type
-      if (activeTab === 'Ordinary') {
-        // For Ordinary bets, only check the first bet's stake as it applies to all
+      if (activeTab === 'Express') {
+        // For Express bets, only check the first bet's stake as it applies to all
         if (activeBets[0] && (!activeBets[0].stake || parseFloat(activeBets[0].stake) <= 0)) {
           return 'Please enter a valid stake amount';
         }
-        break; // Exit after checking first bet for Ordinary type
+        break; // Exit after checking first bet for Express type
       } else {
-        // For Express bets, check each bet's stake
+        // For Ordinary bets, check each bet's stake
         if (!bet.stake || parseFloat(bet.stake) <= 0) {
           return 'Please enter a valid stake amount for all bets';
         }
@@ -133,7 +133,7 @@ const Betslip = () => {
 
   // Check if betslip is valid for current tab
   const isBetslipValid = useMemo(() => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       return activeBets.length >= 2;
     }
     return activeBets.length >= 1;
@@ -141,15 +141,15 @@ const Betslip = () => {
 
   // Get validation message for current tab
   const validationMessage = useMemo(() => {
-    if (activeTab === 'Ordinary') {
+    if (activeTab === 'Express') {
       if (activeBets.length === 0) {
-        return 'Select at least 2 events for Ordinary bet';
+        return 'Select at least 2 events for Express bet';
       } else if (activeBets.length === 1) {
-        return 'Add 1 more event for Ordinary bet';
+        return 'Add 1 more event for Express bet';
       }
     } else {
       if (activeBets.length === 0) {
-        return 'Select at least 1 event for Express bet';
+        return 'Select at least 1 event for Ordinary bet';
       }
     }
     return null;
@@ -286,7 +286,7 @@ const Betslip = () => {
     setSuccessMessage(null);
 
     try {
-      if (activeTab === 'Ordinary') {
+      if (activeTab === 'Express') {
         // For multibets, submit all matches as a single parlay bet
         const totalStake = parseFloat(activeBets[0]?.stake || 0);
         const combinedOdds = activeBets.reduce((prod, bet) => prod * (parseFloat(bet.odds) || 1), 1);
@@ -336,43 +336,29 @@ const Betslip = () => {
         console.log('Multibet submitted successfully:', response.data);
         
       } else {
-        // For Express bets, submit each bet individually
-        const submittedBets = [];
-        const failedBets = [];
-        
-        for (let i = 0; i < activeBets.length; i++) {
-          const bet = activeBets[i];
-          try {
-            const betData = {
-              matchId: bet.matchId,
-              market: 'Match Result',
-              selection: getSelectionLabel(bet),
-              stake: parseFloat(bet.stake),
-              odds: parseFloat(bet.odds)
-            };
-            
-            // Validate bet data
-            if (!betData.matchId) throw new Error(`Missing matchId for bet ${i + 1}`);
-            if (!betData.market) throw new Error(`Missing market for bet ${i + 1}`);
-            if (!betData.selection) throw new Error(`Missing selection for bet ${i + 1}`);
-            if (isNaN(betData.stake) || betData.stake <= 0) throw new Error(`Invalid stake amount for bet ${i + 1}`);
-            if (isNaN(betData.odds) || betData.odds <= 0) throw new Error(`Invalid odds for bet ${i + 1}`);
-            
-            console.log(`Submitting express bet ${i + 1}:`, betData);
-            const response = await apiService.placeBet(betData);
-            console.log(`Express bet ${i + 1} submitted successfully:`, response.data);
-            submittedBets.push(i);
-          } catch (error) {
-            console.error(`Failed to submit express bet ${i + 1}:`, error);
-            failedBets.push({ index: i, error: error.message });
-          }
-        }
-        
-        // Check if any bets failed
-        if (failedBets.length > 0) {
-          const errorMessage = `Failed to submit ${failedBets.length} out of ${activeBets.length} bets. ${failedBets.map(f => `Bet ${f.index + 1}: ${f.error}`).join('; ')}`;
-          throw new Error(errorMessage);
-        }
+        // For Ordinary bets, submit all bets in bulk
+        const betsData = activeBets.map((bet, i) => {
+          const betData = {
+            matchId: bet.matchId,
+            market: bet.market || 'Match Result',
+            selection: getSelectionLabel(bet),
+            stake: parseFloat(bet.stake),
+            odds: parseFloat(bet.odds)
+          };
+
+           // Validate bet data
+           if (!betData.matchId) throw new Error(`Missing matchId for bet ${i + 1}`);
+           if (!betData.market) throw new Error(`Missing market for bet ${i + 1}`);
+           if (!betData.selection) throw new Error(`Missing selection for bet ${i + 1}`);
+           if (isNaN(betData.stake) || betData.stake <= 0) throw new Error(`Invalid stake amount for bet ${i + 1}`);
+           if (isNaN(betData.odds) || betData.odds <= 0) throw new Error(`Invalid odds for bet ${i + 1}`);
+
+           return betData;
+        });
+
+        console.log('Submitting bulk bets:', betsData);
+        const response = await apiService.placeBetsBulk({ bets: betsData });
+        console.log('Bulk bets submitted successfully:', response.data);
       }
 
       // Only clear betslip if ALL bets were successfully submitted
@@ -388,9 +374,9 @@ const Betslip = () => {
       setIsCollapsed(false);
 
       // Show success message
-      const successMessage = activeTab === 'Ordinary' 
+      const successMessage = activeTab === 'Express' 
         ? `Multibet with ${activeBets.length} matches placed successfully!`
-        : `All ${activeBets.length} express bets placed successfully!`;
+        : `All ${activeBets.length} ordinary bets placed successfully!`;
       setSuccessMessage(successMessage);
 
       // Clear success message after 5 seconds
@@ -448,9 +434,9 @@ const Betslip = () => {
             </div>
           </div>
         ) : (
-          <div className={`betslip-bets ${activeTab === 'Ordinary' ? 'ordinary-compact' : 'express-layout'}`}>
-            {/* Events Header for Ordinary bets */}
-            {activeTab === 'Ordinary' && activeBets.length > 0 && (
+          <div className={`betslip-bets ${activeTab === 'Express' ? 'ordinary-compact' : 'express-layout'}`}>
+            {/* Events Header for Express bets */}
+            {activeTab === 'Express' && activeBets.length > 0 && (
               <div className="events-header">
                 <div className="events-title">
                   Events (Odds {totalOdds})
@@ -475,9 +461,9 @@ const Betslip = () => {
               const isExpanded = expandedMatches[index] && !isCollapsed;
               
               return (
-                <div key={index} className={`bet-card bet-line-item ${activeTab === 'Ordinary' ? 'ordinary-bet' : 'express-bet'} ${isStarted ? 'started-bet' : ''}`}>
+                <div key={index} className={`bet-card bet-line-item ${activeTab === 'Express' ? 'ordinary-bet' : 'express-bet'} ${isStarted ? 'started-bet' : ''}`}>
                   {/* Compact Header - Always Visible */}
-                  <div className="bet-line-header" onClick={() => activeTab === 'Ordinary' && toggleMatchExpansion(index)}>
+                  <div className="bet-line-header" onClick={() => activeTab === 'Express' && toggleMatchExpansion(index)}>
                     <div className="bet-line-title">{matchTitle}</div>
                     <div className="bet-line-odds">{parseFloat(bet.odds)?.toFixed ? parseFloat(bet.odds).toFixed(2) : bet.odds}</div>
                     <button
@@ -492,8 +478,8 @@ const Betslip = () => {
                     </button>
                   </div>
                   
-                  {/* Expandable Details - Only for Ordinary bets */}
-                  {activeTab === 'Ordinary' && isExpanded && (
+                  {/* Expandable Details - Only for Express bets */}
+                  {activeTab === 'Express' && isExpanded && (
                     <div className="bet-details-expanded">
                       <div className="bet-line-sub">
                         <span className="bet-line-market">Type: {getMarketTypeDisplay(bet)}</span>
@@ -517,8 +503,8 @@ const Betslip = () => {
                     </div>
                   )}
                   
-                  {/* Express bet details - Always visible */}
-                  {activeTab === 'Express' && (
+                  {/* Ordinary bet details - Always visible */}
+                  {activeTab === 'Ordinary' && (
                     <>
                       <div className="bet-line-sub">
                         <span className="bet-line-market">Type: {getMarketTypeDisplay(bet)}</span>
@@ -536,7 +522,7 @@ const Betslip = () => {
                         </div>
                       )}
 
-                      {/* Express stake input after each selection */}
+                      {/* Ordinary stake input after each selection */}
                       <div className="bet-stake-section">
                         <label htmlFor={`stake-${index}`}>Stake:</label>
                         <div className="stake-input-group">
@@ -558,13 +544,13 @@ const Betslip = () => {
                     </>
                   )}
 
-                  {activeTab === 'Express' && <div className="bet-divider" />}
+                  {activeTab === 'Ordinary' && <div className="bet-divider" />}
                 </div>
               );
             })}
 
-            {/* Ordinary stake section after all matches */}
-            {activeTab === 'Ordinary' && activeBets.length > 0 && (
+            {/* Express stake section after all matches */}
+            {activeTab === 'Express' && activeBets.length > 0 && (
               <div className="bet-stake-section">
                 <label htmlFor="ordinary-stake">Stake (applies to all bets):</label>
                 <div className="stake-input-group">

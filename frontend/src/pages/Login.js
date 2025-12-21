@@ -1,5 +1,6 @@
 // Add this import at the top
 import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice'; // adjust path if needed
+import { setUser } from '../store/slices/userSlice';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -30,6 +31,7 @@ const Login = () => {
           
           const { token, user } = response.data;
           dispatch(loginSuccess({ token, user }));
+          dispatch(setUser(user));
           
           try {
             localStorage.setItem('user', JSON.stringify({ token, user }));

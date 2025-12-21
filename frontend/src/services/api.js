@@ -399,6 +399,7 @@ const apiService = {
 
   // Bets
   placeBet: (betData) => api.post('/bets', betData),
+  placeBetsBulk: (betsData) => api.post('/bets/bulk', betsData),
   // Use instantGet to return cached data immediately and revalidate in background
   getUserBets: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();

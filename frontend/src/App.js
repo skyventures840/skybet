@@ -3,6 +3,7 @@ import SkeletonLoader from './components/SkeletonLoader';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { loginSuccess } from './store/slices/authSlice';
+import { setUser } from './store/slices/userSlice';
 
 import io from 'socket.io-client';
 import WheelOfFortune from './components/WheelOfFortune';
@@ -72,6 +73,7 @@ function App() {
     const user = JSON.parse(localStorage.getItem('user'));
     if (user && user.token && user.user) {
       dispatch(loginSuccess(user));
+      dispatch(setUser(user.user));
     }
 
     // Guard Socket.IO connection when backend URL is missing/unavailable

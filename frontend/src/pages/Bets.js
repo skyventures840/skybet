@@ -171,7 +171,55 @@ const Bets = () => {
     };
 
     websocketService.on('matchResultUpdate', onMatchUpdate);
-    const onBetStatusUpdate = () => {
+    const onBetStatusUpdate = (payload) => {
+      if (payload && payload.betId) {
+        // Optimistically update the specific bet in the list
+        setBetHistory(prev => prev.map(bet => {
+          if (bet.id === payload.betId || bet._id === payload.betId) {
+            const updatedBet = {
+              ...bet,
+              status: payload.status,
+              settledAt: payload.timestamp
+            };
+            
+            // Apply result if available
+            if (payload.result) {
+               updatedBet.result = payload.result;
+               
+               // Also update single match result inside the bet if applicable
+               if (updatedBet.matches && updatedBet.matches.length > 0) {
+                 updatedBet.matches = updatedBet.matches.map(m => {
+                   // Ideally match the matchId, but for single bets usually 1 match
+                   return {
+                     ...m,
+                     result: {
+                       ...(m.result || {}),
+                       homeScore: payload.result.homeScore,
+                       awayScore: payload.result.awayScore,
+                       finalOutcome: payload.result.finalOutcome
+                     },
+                     outcome: payload.result.finalOutcome,
+                     status: payload.status // Propagate status to match
+                   };
+                 });
+               }
+            }
+            
+            // Recalculate derived outcome/status for UI
+            if (updatedBet.matches && updatedBet.matches.length > 0) {
+               updatedBet.matches = updatedBet.matches.map(m => ({
+                 ...m,
+                 derivedOutcome: deriveOutcome(m),
+                 derivedStatus: deriveStatus(m)
+               }));
+            }
+            
+            return updatedBet;
+          }
+          return bet;
+        }));
+      }
+      
       fetchBetHistory(false);
       fetchBetStats();
     };
