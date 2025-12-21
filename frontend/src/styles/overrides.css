@@ -1,8 +1,14 @@
+/* Force pointer to point down globally and ensure only red color */
+.wheel-of-fortune .wheel-pointer {
+  border-top: 30px solid #ff0000 !important;
+  border-bottom: none !important;
+  border-left: 15px solid transparent !important;
+  border-right: 15px solid transparent !important;
+  background-color: transparent !important;
+}
 
-/* Add any necessary CSS overrides here */
- 
- @media (max-width: 767px) {
-   /* Mobile-only: align date/time with teams in regular match cards */
+@media (max-width: 767px) {
+  /* Mobile-only: align date/time with teams in regular match cards */
    .match-card .match-date-time,
    .match-card .match-teams {
      margin-left: 0 !important;
@@ -298,6 +304,176 @@
 
 /* Mobile-specific: move odds buttons inward for regular match cards rendered with match-container */
 @media (max-width: 767px) {
+  .matches-section .match-container .odds-buttons-container {
+    padding: 0 10px !important;
+    margin-left: -2px !important;
+    width: calc(100% - 20px) !important;
+    max-width: 192px !important;
+  }
+}
+
+/* Wheel of Fortune Mobile Fixes - Expanded Width */
+@media (max-width: 767px) {
+  /* Ensure container has ample spacing and prevents overflow */
+  .wheel-of-fortune {
+    overflow: hidden !important; /* Prevent any overflow */
+    position: relative !important;
+    width: 100% !important;
+    padding: 0 !important; /* Removed padding to free up space */
+    display: auto !important;
+    margin-bottom: 0 !important;
+  }
+
+  .wheel-of-fortune .wheel-container { 
+    /* Use vmin to ensure perfect circle fitting screen */
+    width: 110vmin !important; 
+    height: 70vmin !important; 
+    
+    /* Center with added margins */
+    margin: 0 auto !important;
+    
+    /* Clean up borders/shapes */
+    border: none !important;
+    aspect-ratio: auto !important; /* Remove aspect ratio constraint on container */
+    border-radius: 0 !important; /* Remove container radius to prevent oval clipping */
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important; /* Allow wheel to spin without clipping */
+    
+    /* Ensure it stays circular and centered */
+    flex-shrink: 0 !important;
+    display: block !important;
+  }
+
+  .wheel-of-fortune .wheel-center-hub {
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -150%) !important;
+    width: 12% !important;
+    height: 10% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .wheel-of-fortune .wheel-center-hub::after {
+    /* Ensure star is visually centered */
+    display: block !important;
+    line-height: 1 !important;
+    margin-top: 0.15em !important; /* Optical alignment */
+  }
+
+  .wheel-of-fortune .wheel-pointer {
+    top: -20px !important; /* Moved up further to clear larger wheel */
+    z-index: 20 !important;
+    transform: translateX(-50%) scale(1.2) !important;
+  }
+
+  .wheel-of-fortune .wheel-border-overlay {
+    display: none !important; /* Remove oval border on small screens */
+  }
+
+  .wheel-of-fortune .wheel-segment span {
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+  }
+
+  /* Reduce inner wheel size without changing container dimensions */
+  .wheel-of-fortune .wheel {
+    width: 70vmin !important;
+    height: 70vmin !important;
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    margin-left: -40vmin !important;
+    margin-top: -35vmin !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1) !important; /* Smooth edge definition */
+    transform-origin: center center !important;
+    will-change: transform !important;
+    /* Ensure transform is not overridden by centering hack during animation */
+    z-index: 10 !important;
+    display: block !important;
+    transition: transform 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) !important;
+  }
+
+  /* Adjust pointer to sit on top of the smaller wheel */
+  .wheel-of-fortune .wheel-pointer {
+    top: calc(50% - 35vmin - 20px) !important;
+    transform: translateX(-80% ) !important;
+    z-index: 50 !important;
+    border-top: 30px solid #ff0000 !important;
+    border-bottom: none !important;
+    border-left: 15px solid transparent !important;
+    border-right: 15px solid transparent !important;
+    background-color: transparent !important;
+  }
+
+  /* Resize and center hub for smaller wheel */
+  .wheel-of-fortune .wheel-center-hub {
+    width: 12vmin !important;
+    height: 12vmin !important;
+    transform: translate(-75%, -50%) !important;
+  }
+  
+  /* Compact betting controls for mobile */
+  .wheel-of-fortune .betting-controls {
+    padding: 0 10px !important;
+    margin-top: -30px !important; /* Pull up closer to wheel */
+  }
+  
+  .wheel-of-fortune .bet-amount {
+    margin-bottom: 2px !important;
+  }
+  
+  .wheel-of-fortune .bet-amount label {
+    display: none !important; /* Hide label to save space */
+  }
+  
+  .wheel-of-fortune .bet-amount input {
+    padding: 4px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+  }
+  
+  .wheel-of-fortune .multiplier-buttons {
+    gap: 2px !important;
+    margin-bottom: 2px !important;
+  }
+  
+  .wheel-of-fortune .multiplier-btn {
+    padding: 6px 2px !important;
+    min-width: 36px !important;
+    font-size: 12px !important;
+  }
+  
+  .wheel-of-fortune .spin-btn {
+    margin-top: 2px !important;
+    padding: 8px !important;
+    font-size: 14px !important;
+    height: 36px !important;
+  }
+  
+  /* Compact header */
+  .wheel-of-fortune .wheel-header {
+    padding-top: 60px !important; /* Increased to reveal text */
+    margin-bottom: 0 !important; /* Remove negative margin to stop overlapping */
+  }
+  
+  .wheel-of-fortune .wheel-header h2 {
+    font-size: 20px !important;
+    margin-bottom: 2px !important;
+  }
+  
+  .wheel-of-fortune .wheel-header .promo-text {
+    font-size: 12px !important;
+    margin-bottom: 2px !important;
+  }
+  }
+
+@media (max-width: 767px) {
   /* Live league header: match width and padding of match cards */
   .matches-section .live-league-header {
     /* Extend slightly more on the right to match card edge */
@@ -344,7 +520,13 @@
 .match-card,
 .match-container {
   height: auto !important;
-  min-height: 120px !important; /* modest base height on larger screens */
+  min-height: 100px !important; /* aggressively reduced */
+  width: 90% !important; /* force width to be smaller than container */
+  max-width: 90% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 /* Navbar: make fixed at top and above other content */
@@ -369,10 +551,16 @@
   /* Desktop: remove extra gap below navbar for compact layout */
   @media (min-width: 1024px) {
     /* Reduce desktop top padding slightly to tighten spacing */
-    .under-navbar {
-      padding-top: 68px !important;
-    }
-    .page-content,
+  .under-navbar {
+    padding-top: 68px !important;
+    flex: 0 1 auto !important; /* Don't force fill, allow footer to rise */
+    min-height: auto !important;
+  }
+  .sidebar {
+    height: auto !important; /* Allow sidebar to shrink/grow with content */
+    min-height: auto !important;
+  }
+  .page-content,
     .main-content,
     .middle {
       padding-top: 0 !important;
@@ -416,26 +604,144 @@
   .betslip,
   .bet-slip-wrapper {
     margin-top: 24px !important;
+    height: auto !important; /* Allow natural height */
+    overflow: visible !important;
   }
 
   /* Content vs footer: add small bottom space on desktop */
   .middle,
   .main-content,
   .page-content {
-    padding-bottom: 12px !important;
-    margin-bottom: 12px !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
   }
   .matches-section {
-    margin-bottom: 8px !important;
+    margin-bottom: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    overflow: visible !important; /* Allow global scroll */
+    height: auto !important;
   }
   .matches-section .matches-container {
     flex: 1 !important;
-    min-height: calc(100vh - 300px) !important; /* extend to reduce footer gap */
+    min-height: auto !important; /* Remove fixed height to allow footer to come up */
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
   }
+  
+  /* Reduce sidebar sports spacing */
+  .sport-header {
+    padding: 2px 16px !important;
+    min-height: 24px !important;
+  }
+  
+  .sport-item {
+    margin-bottom: 0 !important;
+  }
+  
+  .sport-info {
+    gap: 6px !important;
+  }
+  
+  .sidebar-header {
+    padding: 12px 20px !important;
+  }
+  
+  .all-events {
+     margin-bottom: 8px !important;
+   }
 
-/* Mobile: enforce brand size and navbar spacing with highest specificity */
+   /* Switch to global scroll layout:
+      - Remove fixed heights/scrolls from sidebar and middle
+      - Allow page to grow with content
+      - Footer sits naturally at the bottom
+   */
+   .sidebar,
+   .side-bar-wrapper {
+     height: auto !important;
+     min-height: auto !important;
+     overflow: visible !important;
+   }
+
+   .middle {
+     height: auto !important;
+     overflow: visible !important;
+     flex: 1 !important;
+     display: flex !important;
+     flex-direction: column !important;
+   }
+
+   .under-navbar {
+     height: auto !important;
+     min-height: auto !important;
+     overflow: visible !important;
+     align-items: stretch !important; /* Ensure all columns have equal height */
+   }
+
+   /* Ensure internal containers grow to fill space */
+   .middle .main-content {
+     height: auto !important;
+     flex: 1 !important;
+     display: flex !important;
+     flex-direction: column !important;
+   }
+
+   .matches-section {
+     margin-bottom: 0 !important;
+     display: flex !important;
+     flex-direction: column !important;
+     overflow: visible !important;
+     height: auto !important;
+     flex: 1 !important; /* Grow to fill main-content */
+   }
+
+   .matches-container {
+     flex: 1 !important;
+     display: flex !important;
+     flex-direction: column !important;
+   }
+   
+   /* Distribute match cards to fill the height so the last one aligns with the bottom */
+   .matches-container > .sport-container:last-child,
+   .matches-container > .sport-container:last-child .sport-subcategories,
+   .matches-container > .sport-container:last-child .sport-subcategories .subcategory-section:last-child {
+     flex: 1 !important;
+     display: flex !important;
+     flex-direction: column !important;
+   }
+   
+   .matches-container > .sport-container:last-child .sport-subcategories .subcategory-section:last-child {
+      justify-content: flex-start !important;
+    }
+    
+    /* Push the last match card to the bottom of the container */
+    .matches-container > .sport-container:last-child .sport-subcategories .subcategory-section:last-child > :last-child {
+      margin-top: auto !important;
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      border-bottom: none !important;
+    }
+ 
+    .page-content {
+      height: auto !important;
+      min-height: 100vh !important;
+      overflow: visible !important;
+    }
+
+   /* Remove any nested scrollbars in sport/match containers to ensure a single page scroll */
+   .sport-container,
+   .sport-subcategories,
+   .subcategory-section,
+   .matches-list,
+   .matches-section,
+   .matches-container {
+     overflow: visible !important;
+     overflow-y: visible !important;
+     max-height: none !important;
+     height: auto !important;
+   }
+
+ /* Mobile: enforce brand size and navbar spacing with highest specificity */
 @media (max-width: 767px) {
   header.navbar .navbar-left .nav-brand,
   .navbar .navbar-left .nav-brand,
@@ -922,31 +1228,7 @@
 }
 
 /* Wheel of Fortune: size to ~2/3 of viewport, override fullscreen */
-@media (max-width: 767px) {
-  .wheel-of-fortune { position: static !important; width: 100% !important; max-width: 100% !important; padding: 8px !important; }
-  .wheel-of-fortune .wheel-container { width: min(86vw, 820px) !important; height: min(86vw, 820px) !important; aspect-ratio: 1 / 1 !important; margin: 16px auto !important; border-radius: 50% !important; border: 1px solid var(--border-color) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 4px 16px rgba(0,0,0,0.35) !important; overflow: hidden !important; }
-  .wheel-of-fortune .wheel { width: 100% !important; height: 100% !important; border-radius: 50% !important; aspect-ratio: 1 / 1 !important; transform-origin: 50% 50% !important; overflow: hidden !important; }
-  .wheel-of-fortune .wheel-pointer { width: 36px !important; height: 24px !important; top: 11% !important; transform: translateX(-50%) translateY(-40%) rotate(180deg) !important; }
-  .wheel-of-fortune .wheel-border-overlay { display: none !important; }
-  .wheel-of-fortune .wheel-segment span { font-size: clamp(12px, 3.2vw, 18px) !important; }
-}
-
-@media (max-width: 480px) {
-  .wheel-of-fortune .wheel-container { width: 88vw !important; height: 88vw !important; aspect-ratio: 1 / 1 !important; border-radius: 50% !important; border: 1px solid var(--border-color) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 4px 16px rgba(0,0,0,0.35) !important; overflow: hidden !important; }
-  .wheel-of-fortune .wheel { width: 100% !important; height: 100% !important; border-radius: 50% !important; aspect-ratio: 1 / 1 !important; transform-origin: 50% 50% !important; overflow: hidden !important; }
-  .wheel-of-fortune .wheel-pointer { width: 32px !important; height: 22px !important; top: 12% !important; transform: translateX(-50%) translateY(-35%) rotate(180deg) !important; }
-  .wheel-of-fortune .wheel-border-overlay { display: none !important; }
-  .wheel-of-fortune .wheel-segment span { font-size: clamp(12px, 3.6vw, 18px) !important; }
-}
-
-@media (min-width: 768px) {
-  .wheel-of-fortune { position: static !important; min-height: 60vh !important; }
-  .wheel-of-fortune .wheel-container { width: min(22vw, 260px) !important; height: min(22vw, 260px) !important; margin: 10px auto !important; border-radius: 50% !important; border: 1px solid var(--border-color) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.25) inset, 0 4px 16px rgba(0,0,0,0.35) !important; overflow: visible !important; aspect-ratio: 1 / 1 !important; }
-  .wheel-of-fortune .wheel { width: 100% !important; height: 100% !important; border-radius: 50% !important; aspect-ratio: 1 / 1 !important; transform-origin: 50% 50% !important; overflow: hidden !important; }
-  .wheel-of-fortune .wheel-pointer { width: 38px !important; height: 24px !important; top: -6% !important; transform: translateX(-50%) rotate(180deg) !important; z-index: 10 !important; }
-  .wheel-of-fortune .wheel-border-overlay { position: absolute !important; inset: 2px !important; border-radius: 50% !important; pointer-events: none !important; border: 2px solid var(--border-color) !important; box-shadow: none !important; box-sizing: border-box !important; z-index: 1000 !important; }
-  .wheel-of-fortune .wheel-segment span { font-size: clamp(11px, 1.6vw, 16px) !important; }
-}
+/* Removed duplicate and conflicting wheel media queries to prevent overrides */
 .language-selector {
   display: inline-flex !important;
   align-items: center !important;
@@ -1181,9 +1463,10 @@
   .matches-section .competition-group,
   .matches-section .match-list {
     overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-height: 72vh !important;
-    overscroll-behavior: contain !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    overscroll-behavior: auto !important;
   }
   .matches-section .match-card .team-name,
   .matches-section .match-card .team-score,
@@ -1440,3 +1723,49 @@
       display: none !important;
     }
   }
+
+/* FINAL FIXES: Reduce dimensions & Stretch Container */
+@media (min-width: 1024px) {
+  /* Reduce card width to prevent horizontal scroll */
+  .match-card, 
+  .match-container {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Ensure container stretches to push footer down */
+  .matches-section {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .matches-container {
+    height: auto !important;
+    max-height: 55vh !important; /* Adjusted to align with Live Spin border */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 4px !important; /* Prevent scrollbar overlapping content */
+    overscroll-behavior: contain !important; /* Prevent scroll chaining */
+    padding-bottom: 10px !important;
+  }
+
+  /* Custom scrollbar for matches container to ensure visibility */
+  .matches-container::-webkit-scrollbar {
+    width: 6px !important;
+    display: block !important;
+  }
+  .matches-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-radius: 3px !important;
+  }
+  .matches-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
+  }
+  .matches-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.4) !important;
+  }
+}

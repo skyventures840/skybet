@@ -18,9 +18,7 @@ class WebSocketService {
       // Construct WebSocket URL with proper protocol and path
       let wsUrl;
       const envWsUrl = process.env.REACT_APP_WS_URL;
-      
       if (envWsUrl) {
-        // Production environment - convert HTTP(S) to WS(S) and add /ws path
         if (envWsUrl.startsWith('https://')) {
           wsUrl = envWsUrl.replace('https://', 'wss://');
         } else if (envWsUrl.startsWith('http://')) {
@@ -28,16 +26,25 @@ class WebSocketService {
         } else {
           wsUrl = envWsUrl;
         }
-        
-        // Ensure /ws path is added if not present
         if (!wsUrl.endsWith('/ws') && !wsUrl.includes('/ws')) {
           wsUrl = wsUrl.replace(/\/$/, '') + '/ws';
         }
       } else {
-        // Development fallback
-        wsUrl = 'ws://localhost:5000/ws';
+        const apiBase = process.env.REACT_APP_API_URL
+          || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+        let base = String(apiBase).replace(/\/$/, '');
+        if (base.endsWith('/api')) base = base.slice(0, -4);
+        if (base.startsWith('https://')) {
+          wsUrl = base.replace('https://', 'wss://');
+        } else if (base.startsWith('http://')) {
+          wsUrl = base.replace('http://', 'ws://');
+        } else {
+          wsUrl = base;
+        }
+        if (!/\/ws\/?$/.test(wsUrl)) {
+          wsUrl = wsUrl.replace(/\/$/, '') + '/ws';
+        }
       }
-      
       this.ws = new WebSocket(`${wsUrl}?token=${token}`);
       
       this.ws.onopen = () => {

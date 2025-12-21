@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/HeroSlider';
 import MatchCard from '../components/MatchCard';
 import PopularMatches from '../components/PopularMatches';
@@ -11,6 +12,7 @@ import { getSportIcon } from '../utils/sportIcons';
 
 const Home = () => {
   console.log('🏠 Home component is rendering!');
+  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('Featured');
   const [matches, setMatches] = useState([]);
   const [filteredMatches, setFilteredMatches] = useState([]);
@@ -35,6 +37,10 @@ const Home = () => {
   const [sportsStripFilter, setSportsStripFilter] = useState(''); // Separate filter for SportsStrip
   
   const handleSelectSport = (sportKey) => {
+    if (sportKey === 'Aviator') {
+      navigate('/aviator');
+      return;
+    }
     // Toggle off if clicking the same sport; otherwise set sport and clear subcategory
     // This only affects regular match cards, not popular matches
     setSportsStripFilter(prev => (prev === sportKey ? '' : sportKey));

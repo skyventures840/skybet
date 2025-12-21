@@ -559,21 +559,91 @@
     flex-direction: column;
   }
   
-  /* Remove bottom margin from match containers */
+  /* Continuous match list on desktop */
+  .subcategory-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
   .match-container,
   .match-card {
     margin-bottom: 0;
+    margin-top: 0;
   }
 
-  .hero-slider {
-    margin-top: 0;
-    margin-bottom: 0;
+  /* Styles for continuous list appearance */
+  .subcategory-section .match-container {
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-top: -1px; /* Collapse borders */
+    position: relative;
+    z-index: 1;
   }
   
+  .subcategory-section .match-container:hover {
+    z-index: 2;
+  }
+
+  /* Handle League Header within the continuous list */
+  .subcategory-section .league-header {
+    margin: 0;
+    margin-top: -1px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  /* Apply radius to the very first and last items in the section */
+  .subcategory-section > :first-child {
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+    margin-top: 0;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .subcategory-section > :last-child {
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  /* Remove excessive spacing from the very last element in the match list to close gap with footer */
+  .matches-container .sport-container:last-child,
+  .matches-container .sport-container:last-child .sport-subcategories,
+  .matches-container .sport-container:last-child .sport-subcategories .subcategory-section:last-child,
+  .matches-container .sport-container:last-child .sport-subcategories .subcategory-section:last-child > :last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  /* Aggressively remove spacing from all containers leading to footer */
+  .under-navbar,
+  .middle,
+  .home-page,
+  .main-content,
+  .matches-section,
+  .matches-container,
+  .home-container,
+  .page-content {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
   /* Reduce footer top margin */
   .footer {
-    margin-top: 0;
-    padding-top: 10px;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 
   /* Ensure wheel modal appears properly on desktop */
@@ -647,6 +717,43 @@
   /* Bring card forward above its container */
   .match-card { z-index: var(--z-fixed); }
   .match-container { z-index: var(--z-sticky); }
+
+  /* Remove excessive spacing before footer and ensure full height */
+  .matches-container {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow flex item to shrink if needed */
+    overflow-x: hidden; /* Prevent horizontal scrollbars */
+    width: 100%;
+  }
+
+  .sport-container,
+  .sport-subcategories,
+  .subcategory-section {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .sport-container:last-child,
+  .sport-subcategories:last-child,
+  .subcategory-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    flex: 1; /* Extend to fill space if needed */
+  }
+  
+  /* Ensure the very last match card has no margin */
+  .sport-container:last-child .sport-subcategories .subcategory-section:last-child > :last-child {
+    margin-bottom: 0;
+  }
+
+  /* Force match cards to not have internal scrollbars */
+  .match-card {
+    overflow-x: hidden;
+  }
 }
 
 /* Mobile/Tablet optimizations - Only for screens below 1024px */

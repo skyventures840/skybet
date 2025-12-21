@@ -4,7 +4,7 @@ import apiService from '../services/api';
 const BalanceDisplay = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({ balance: 0, balanceReal: 0, balanceBonus: 0, wageringRequired: 0, wageringProgress: 0 });
+  const [data, setData] = useState({ balance: 0, balanceBonus: 0, wageringRequired: 0, wageringProgress: 0 });
 
   useEffect(() => {
     let mounted = true;
@@ -31,20 +31,24 @@ const BalanceDisplay = () => {
   const wrComplete = wr > 0 ? wp >= wr : true;
 
   const pct = wr > 0 ? Math.min(Math.round((wp / wr) * 100), 100) : 100;
+  
+  const realBalance = Number(data.balance || 0);
+  const bonusBalance = Number(data.balanceBonus || 0);
+  const totalBalance = realBalance + bonusBalance;
 
   return (
     <div className="wallet-card balance-display-card">
       <div className="balance-row total">
         <span className="label">Total</span>
-        <span className="value">${Number(data.balance || 0).toFixed(2)}</span>
+        <span className="value">${totalBalance.toFixed(2)}</span>
       </div>
       <div className="balance-row real">
         <span className="label">Real</span>
-        <span className="value">${Number(data.balanceReal || 0).toFixed(2)}</span>
+        <span className="value">${realBalance.toFixed(2)}</span>
       </div>
       <div className="balance-row bonus">
         <span className="label">Bonus</span>
-        <span className="value"><span className="bonus-badge">${Number(data.balanceBonus || 0).toFixed(2)}</span></span>
+        <span className="value"><span className="bonus-badge">${bonusBalance.toFixed(2)}</span></span>
       </div>
       <div className="wr-progress">
         <div className="wr-bar">

@@ -1,6 +1,32 @@
 import React from 'react';
 
 const sports = [
+  { key: 'Aviator', name: 'Aviator', icon: (
+    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true" style={{ overflow: 'visible' }}>
+      {/* Far Wing */}
+      <path d="M20 22 L10 10 L18 10 L30 22" fill="#b71c1c" />
+      
+      {/* Tail Fin */}
+      <path d="M10 24 L4 10 L10 10 L12 24" fill="#d32f2f" />
+      
+      {/* Fuselage Body */}
+      <path d="M44 28 C44 24, 40 22, 34 22 L24 20 L14 18 L6 24 L0 24 L2 28 L0 32 L6 32 C16 36, 32 34, 40 32 C44 32, 44 28, 44 28 Z" fill="#d32f2f" />
+      
+      {/* Cockpit Window */}
+      <path d="M34 22 L28 22 L26 18 L32 18 Z" fill="#cfd8dc" opacity="0.9" />
+      
+      {/* Near Wing */}
+      <path d="M30 24 L20 40 L28 40 L38 24 Z" fill="#ef5350" />
+      
+      {/* Propeller Blur */}
+      <circle cx="44" cy="28" r="6" fill="rgba(255,255,255,0.2)" />
+      <ellipse cx="44" cy="28" rx="2" ry="8" fill="rgba(50,50,50,0.5)" transform="rotate(45, 44, 28)" />
+      
+      {/* Wheels */}
+      <circle cx="26" cy="38" r="3.5" fill="#212121" />
+      <path d="M26 32 L26 38" stroke="#212121" strokeWidth="2" />
+    </svg>
+  )},
   { key: 'Soccer', name: 'Soccer', icon: (
     <svg viewBox="0 0 48 48" width="42" height="42" aria-hidden="true">
       <circle cx="24" cy="24" r="22" fill="#ffffff" stroke="#222" strokeWidth="2" />

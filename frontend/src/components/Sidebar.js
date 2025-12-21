@@ -685,12 +685,29 @@ const Sidebar = ({ closeSidebar }) => {
                 <button
                   className="wheel-item"
                   onClick={() => {
-                    handleMobileNavigation(() => navigate('/wheel'));
+                    const path = window.innerWidth <= 767 ? '/wheel?compact=1' : '/wheel';
+                    handleMobileNavigation(() => navigate(path));
                   }}
                 >
                   <div className="wheel-info">
                     <span className="wheel-icon">🎰</span>
                     <span className="wheel-name">Wheel of Fortune</span>
+                  </div>
+                </button>
+                <button
+                  className="wheel-item"
+                  onClick={() => {
+                    handleMobileNavigation(() => navigate('/aviator'));
+                  }}
+                >
+                  <div className="wheel-info">
+                    <span className="wheel-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg viewBox="0 0 48 48" width="24" height="24" aria-hidden="true">
+                        <path d="M6 30 L42 14 L18 36 L14 42 L12 34 Z" fill="#e91e63" stroke="#c2185b" strokeWidth="1" />
+                        <path d="M42 14 L12 34 L6 30 Z" fill="#f48fb1" opacity="0.5" />
+                      </svg>
+                    </span>
+                    <span className="wheel-name">Aviator</span>
                   </div>
                 </button>
               </div>

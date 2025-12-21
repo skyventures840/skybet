@@ -30,8 +30,33 @@ const Login = () => {
           
           const { token, user } = response.data;
           dispatch(loginSuccess({ token, user }));
-          localStorage.setItem('user', JSON.stringify({ token, user }));
-  
+          
+          try {
+            localStorage.setItem('user', JSON.stringify({ token, user }));
+          } catch (e) {
+            console.warn('Failed to save to localStorage:', e);
+            // If quota exceeded, try to clear and save only essential data
+            if (e.name === 'QuotaExceededError' || e.message.includes('exceeded the quota')) {
+              try {
+                // Clear old data that might be clogging up space
+                localStorage.clear(); 
+                // Try saving again
+                localStorage.setItem('user', JSON.stringify({ token, user }));
+              } catch (retryErr) {
+                 // If still failing, save minimal user data
+                 console.warn('Retrying with minimal user data');
+                 const minimalUser = {
+                   id: user.id || user._id,
+                   email: user.email,
+                   username: user.username,
+                   isAdmin: user.isAdmin,
+                   balance: user.balance
+                 };
+                 localStorage.setItem('user', JSON.stringify({ token, user: minimalUser }));
+              }
+            }
+          }
+
           if (response.data.user && response.data.user.isAdmin) {
             navigate('/admin');
           } else {

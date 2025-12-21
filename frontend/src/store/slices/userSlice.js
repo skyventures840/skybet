@@ -25,6 +25,9 @@ const userSlice = createSlice({
     updateBalance: (state, action) => {
       state.balance = action.payload;
     },
+    updateBalanceBonus: (state, action) => {
+      state.balanceBonus = action.payload;
+    },
     clearUser: (state) => {
       state.username = null;
       state.email = null;
@@ -40,5 +43,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setUser, updateUser, updateBalance, clearUser, setLoading, setError } = userSlice.actions;
+export const { setUser, updateUser, updateBalance, updateBalanceBonus, clearUser, setLoading, setError } = userSlice.actions;
 export default userSlice.reducer;

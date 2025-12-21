@@ -15,6 +15,17 @@ const LiveBetting = () => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const { user } = useSelector(state => state.auth);
 
+  // Helper: determine live status from multiple possible flags/variants
+  const isLiveStatus = (status, startTime) => {
+    const s = String(status || '').toLowerCase();
+    if (['live', 'in_play', 'inplay', 'ongoing', 'running'].includes(s)) return true;
+    if (!startTime) return false;
+    try {
+      const start = new Date(startTime);
+      return start <= new Date();
+    } catch (_) { return false; }
+  };
+
   // Fetch live matches from API (instant-friendly: no loading gate)
   const fetchLiveMatches = async (opts = {}) => {
     try {
@@ -121,7 +132,7 @@ const LiveBetting = () => {
 
             const transformed = transformOddsToLiveMatches(oddsMatches)
               // Only keep truly live matches
-              .filter(m => m.status === 'live');
+              .filter(m => isLiveStatus(m.status, m.startTime));
             console.log(`[LIVE BETTING] Fallback produced ${transformed.length} live matches from odds feed`);
             setLiveMatches(transformed);
             try { sessionStorage.setItem('live_matches_data', JSON.stringify(transformed)); } catch { void 0; }
@@ -141,8 +152,70 @@ const LiveBetting = () => {
       
     } catch (err) {
       console.error('[LIVE BETTING] Error fetching live matches:', err);
-      setError('Failed to load live matches. Please try again later.');
-      setLiveMatches([]);
+
+      // Last-chance fallback to odds feed even when live endpoint failed
+      try {
+        const oddsResp = await apiService.getOddsMatches();
+        const oddsMatches = (oddsResp?.data?.matches || []).filter(m => {
+          const ct = m.commence_time ? new Date(m.commence_time) : null;
+          return ct && ct <= new Date();
+        });
+        const transformed = oddsMatches.map(m => {
+          const bookmakers = Array.isArray(m.bookmakers) ? m.bookmakers : [];
+          const firstBm = bookmakers[0] || null;
+          const markets = firstBm?.markets || [];
+          const h2h = markets.find(x => x.key === 'h2h') || markets.find(x => x.key === 'h2h_3_way');
+          const odds = {};
+          if (h2h && Array.isArray(h2h.outcomes)) {
+            const homeOutcome = h2h.outcomes.find(o => o.name === m.home_team) || h2h.outcomes[0];
+            const awayOutcome = h2h.outcomes.find(o => o.name === m.away_team) || h2h.outcomes[1];
+            const drawOutcome = h2h.outcomes.find(o => /^(draw|tie)$/i.test(o.name));
+            if (homeOutcome?.price) odds['1'] = homeOutcome.price;
+            if (awayOutcome?.price) odds['2'] = awayOutcome.price;
+            if (drawOutcome?.price) odds['X'] = drawOutcome.price;
+          }
+          const start = m.commence_time ? new Date(m.commence_time) : new Date();
+          const sportKeyFull = (m.sport_key || '').toString();
+          const sportKey = sportKeyFull.split('_')[0] || '';
+          const fullLeagueTitle = computeFullLeagueTitle({
+            sportKeyOrName: sportKeyFull,
+            country: '',
+            leagueName: '',
+            fallbackSportTitle: ''
+          });
+          const status = 'live';
+          return {
+            id: m.id || m.gameId,
+            league: m.sport_title || m.sport_key || 'Live',
+            subcategory: m.sport_key || 'live',
+            startTime: start,
+            homeTeam: m.home_team,
+            awayTeam: m.away_team,
+            homeTeamFlag: '🏳️',
+            awayTeamFlag: '🏳️',
+            odds,
+            additionalMarkets: Math.max(0, (markets.length || 0) - (h2h ? 1 : 0)),
+            sport: sportKey || 'live',
+            sport_key: sportKeyFull,
+            allMarkets: markets,
+            status,
+            isLive: true,
+            liveTime: undefined,
+            score: null,
+            homeScore: null,
+            awayScore: null,
+            lastUpdate: new Date().toISOString(),
+            country: '',
+            fullLeagueTitle
+          };
+        }).filter(m => isLiveStatus(m.status, m.startTime));
+        setLiveMatches(transformed);
+        setError(null);
+      } catch (fallbackErr) {
+        console.error('[LIVE BETTING] Odds fallback also failed:', fallbackErr);
+        setError('Failed to load live matches. Please try again later.');
+        setLiveMatches([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -165,7 +238,7 @@ const LiveBetting = () => {
         setLiveMatches(() => {
           const next = matches.map(m => ({
             ...m,
-            isLive: m.status === 'live'
+            isLive: isLiveStatus(m.status, m.startTime)
           }));
           try { sessionStorage.setItem('live_matches_data', JSON.stringify(next)); } catch { void 0; }
           return next;

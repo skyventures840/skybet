@@ -6,6 +6,7 @@ import { loginSuccess } from './store/slices/authSlice';
 
 import io from 'socket.io-client';
 import WheelOfFortune from './components/WheelOfFortune';
+import Aviator from './components/Aviator';
 
 // Core components (loaded immediately)
 import Navbar from './components/Navbar';
@@ -156,6 +157,7 @@ function App() {
   const isAdmin = useSelector(state => state.auth?.isAdmin || false);
   
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/reset-password';
+  const isAviatorPage = location.pathname === '/aviator';
 
   const toggleSidebar = () => {
     console.log('toggleSidebar called, current state:', isSidebarOpen);
@@ -182,6 +184,14 @@ function App() {
 
   // Debug logging
   console.log('App isSidebarOpen:', isSidebarOpen);
+
+  if (isAviatorPage) {
+    return (
+      <div className="app" style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+        <Aviator />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -245,6 +255,7 @@ function App() {
                 <Route path="/match/:matchId" element={<MatchDetail />} />
                 <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
                 <Route path="/wheel" element={<WheelOfFortune />} />
+                <Route path="/aviator" element={<Aviator />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

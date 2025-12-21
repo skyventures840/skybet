@@ -102,17 +102,14 @@ const PopularMatches = ({ matches }) => {
         <button className="slider-btn next-btn popular-slider-btn" onClick={scrollRight} title="Scroll right">&#8250;</button>
         <div className="popular-matches-scroll" ref={scrollRef}>
           {displayedMatches.map((match) => {
-            const rawSportKey = String(match.sport_key || match.sport || match.league || match.sport_title || '').toLowerCase();
-            const hasLeagueToken = rawSportKey.split('_').length > 1;
+            const rawSportKey = String(match.sport_key || match.sport || '').toLowerCase();
             const computedFull = computeFullLeagueTitle({
               sportKeyOrName: rawSportKey,
               country: match.country || '',
               leagueName: match.league || match.sport_title || '',
               fallbackSportTitle: match.sport_title || ''
             });
-            const fallbackFull = String(match.fullLeagueTitle || '').trim();
-            const finalTitle = hasLeagueToken ? computedFull : (fallbackFull || computedFull);
-            const fullLeagueTitle = finalTitle
+            const fullLeagueTitle = computedFull
               .replace(/_/g, '.')
               .split('.')
               .map(s => s.trim())

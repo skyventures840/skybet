@@ -2,8 +2,19 @@ import axios from 'axios';
 import QuickLRU from 'quick-lru';
 import enhancedCache from './enhancedCache';
 
-// Use environment variable for API URL, fallback to current origin in production
-const RAW_BASE = process.env.REACT_APP_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+// Use environment variable for API URL; smart fallback for dev/prod
+let RAW_BASE = process.env.REACT_APP_API_URL || null;
+if (!RAW_BASE) {
+  const isBrowser = typeof window !== 'undefined';
+  const isDev = (process && process.env && process.env.NODE_ENV !== 'production');
+  if (isBrowser && isDev && String(window.location.port) === '3000') {
+    RAW_BASE = 'http://localhost:10000';
+  } else if (isBrowser) {
+    RAW_BASE = window.location.origin;
+  } else {
+    RAW_BASE = 'http://localhost:10000';
+  }
+}
 const CLEAN_BASE = RAW_BASE.replace(/\/+$/, '');
 const API_BASE_URL = /\/api$/.test(CLEAN_BASE) ? CLEAN_BASE : `${CLEAN_BASE}/api`;
 
@@ -460,6 +471,12 @@ const apiService = {
   // Add wheel of fortune endpoints
   spinWheel: (spinData) => api.post('/wheel/spin', spinData),
   
+  // Aviator endpoints
+  getAviatorBalance: () => api.get('/aviator/balance'),
+  placeAviatorBet: (data) => api.post('/aviator/bet', data),
+  cashOutAviator: (data) => api.post('/aviator/cashout', data),
+  cancelAviatorBet: (data) => api.post('/aviator/cancel', data),
+
   // Payment endpoints
   createPayment: (paymentData) => api.post('/payments/create', paymentData),
   // Cache management
