@@ -128,8 +128,8 @@ async function connectToMongoDB() {
     serverSelectionTimeoutMS: 5000, // Reduced from 10s for faster failover
     socketTimeoutMS: 45000,
     connectTimeoutMS: 10000,
-    maxPoolSize: 50, // Reduced from 100 to avoid connection storms on free tier
-    minPoolSize: 1, // Reduced from 2 to save resources
+    maxPoolSize: 100, // Increased to 100 to handle concurrent bet placement better
+    minPoolSize: 5, // Increased min pool for readiness
     maxIdleTimeMS: 30000,
     retryWrites: true,
     retryReads: true,

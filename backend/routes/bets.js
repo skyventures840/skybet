@@ -59,7 +59,8 @@ const cacheUserBets = (ttl = 60) => {
 const cacheUserBetStats = (ttl = 300) => {
   return async (req, res, next) => {
     const cacheKey = keyFor('user_bet_stats', {
-      userId: req.user.id
+      userId: req.user.id,
+      excludeMarket: req.query.excludeMarket
     });
 
     try {
@@ -234,21 +235,21 @@ router.post('/', auth, [
 
     const { matchId, market, selection, stake, odds } = req.body;
     const userId = req.user.id;
+    const startTime = Date.now();
 
     console.log('Processing bet with data:', { matchId, market, selection, stake, odds, userId });
 
     // Validate user and debit stake using bonus-first logic
-    console.log('Validating user balance...');
-    const user = await User.findById(userId);
-    if (!user) {
-      console.log('User not found:', userId);
-      return res.status(404).json({ error: 'User not found' });
-    }
+    // Optimized: debitForBet handles user lookup and balance validation atomically
+    console.log('Validating user and debiting balance...');
     let debit;
     try {
       debit = await User.debitForBet(userId, stake);
     } catch (e) {
       console.log('Insufficient balance or debit error:', e.message);
+      if (e.message.includes('User not found')) {
+        return res.status(404).json({ error: 'User not found' });
+      }
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
@@ -282,7 +283,7 @@ router.post('/', auth, [
       awayTeam = legs > 0 ? `${legs} selections` : 'Multiple selections';
       league = 'Parlay';
     } else {
-      const oddsDoc = await Odds.findOne({ gameId: matchId });
+      const oddsDoc = await Odds.findOne({ gameId: matchId }).lean();
       if (oddsDoc) {
         homeTeam = oddsDoc.home_team;
         awayTeam = oddsDoc.away_team;
@@ -326,7 +327,7 @@ router.post('/', auth, [
 
     console.log('Saving bet to database...');
     await bet.save();
-    console.log('Bet saved successfully:', bet._id);
+    console.log(`Bet saved successfully: ${bet._id} (took ${Date.now() - startTime}ms)`);
 
     // Balance already debited via debitForBet
 
@@ -399,10 +400,18 @@ router.get('/my-bets', auth, cacheUserBets(60), [
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const status = req.query.status; // pending, won, lost, void
+    const market = req.query.market;
+    const excludeMarket = req.query.excludeMarket;
 
     const query = { userId: req.user.id };
     if (status) {
       query.status = status;
+    }
+    if (market) {
+      query.market = market;
+    }
+    if (excludeMarket) {
+      query.market = { $ne: excludeMarket };
     }
 
     // Use Promise.all for parallel execution and lean() for better performance
@@ -616,14 +625,21 @@ router.delete('/:betId', auth, async (req, res) => {
 router.get('/stats/summary', auth, cacheUserBetStats(300), async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log(`Fetching bet stats for user: ${userId}`);
+    const excludeMarket = req.query.excludeMarket;
+    console.log(`Fetching bet stats for user: ${userId}, excludeMarket: ${excludeMarket}`);
+
+    const matchStage = { 
+      userId: new mongoose.Types.ObjectId(userId) 
+    };
+
+    if (excludeMarket) {
+      matchStage.market = { $ne: excludeMarket };
+    }
 
     // Optimized aggregation pipeline with better performance
     const stats = await Bet.aggregate([
       { 
-        $match: { 
-          userId: new mongoose.Types.ObjectId(userId) 
-        } 
+        $match: matchStage
       },
       {
         $group: {

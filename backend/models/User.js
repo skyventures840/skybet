@@ -152,10 +152,10 @@ userSchema.statics.placeBet = async function(userId, stake) {
     if (stake <= 0) throw new Error('Stake must be positive');
     
     // Retry loop for optimistic concurrency control
-    // This allows atomic mixed-balance deduction (Bonus First)
-    const MAX_RETRIES = 10;
+    // Optimized with $gte checks to reduce retries
+    const MAX_RETRIES = 5; // Reduced retries needed with smarter locking
     for (let i = 0; i < MAX_RETRIES; i++) {
-        // Use lean() to get actual DB state without hydrated defaults for accurate locking
+        // Use lean() to get actual DB state
         const user = await this.findById(userId).lean();
         if (!user) throw new Error('User not found');
 
@@ -177,21 +177,21 @@ userSchema.statics.placeBet = async function(userId, stake) {
             throw new Error('Insufficient balance');
         }
 
-        // Construct query to match only existing fields
-        const query = { _id: userId };
-        if (user.balance !== undefined) query.balance = user.balance;
-        if (user.balanceBonus !== undefined) query.balanceBonus = user.balanceBonus;
-        // If balanceBonus is undefined (missing in DB), we don't include it in query
-        // This implies we accept any balanceBonus state (likely missing) as long as balance matches.
-        // But since we are $inc-ing it, we want to ensure we don't double spend.
-        // If it's missing, $inc works from 0.
-        // If it suddenly appears as 100 (concurrent update), our query (locking only balance) would succeed,
-        // and we would decrement 0 from it (since we calculated bonusUsed=0 based on missing).
-        // This is safe: we use 0 bonus, user keeps their new 100 bonus.
-        // If we calculated bonusUsed based on it being missing (0), and it becomes 100, we just use real balance.
-        // User might prefer using bonus, but this is a rare race condition safe for the platform (user pays real money).
+        // Atomic Update with "Sufficient Funds" Locking
+        // Instead of requiring exact balance match, we just require enough funds.
+        // This allows concurrent ops (like winning another bet) to happen without failing this one.
+        const query = { 
+            _id: userId,
+            balance: { $gte: realUsed }
+        };
+        
+        // Only add bonus check if we are using bonus or if we want to ensure consistency
+        // To be safe and support "Bonus First" strictly, we check if we are draining the bonus
+        // or just using part of it.
+        if (bonusUsed > 0) {
+            query.balanceBonus = { $gte: bonusUsed };
+        }
 
-        // Atomic Update with Optimistic Locking
         const result = await this.findOneAndUpdate(
             query,
             {
@@ -208,13 +208,13 @@ userSchema.statics.placeBet = async function(userId, stake) {
             return { user: result, bonusUsed, realUsed };
         }
         
-        // If result is null, state changed concurrenty; retry with backoff
-        // Random jitter between 50ms and 150ms to reduce contention
-        const delay = Math.floor(Math.random() * 100) + 50;
+        // If result is null, it means balance dropped below required amount concurrently
+        // We retry to see if we can recalculate split (maybe bonus changed?)
+        const delay = Math.floor(Math.random() * 50) + 20;
         await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    throw new Error('Transaction failed due to concurrency. Please try again.');
+    throw new Error('Transaction failed due to high concurrency. Please try again.');
 };
 
 // 5. SETTLE BET WIN (Increase Balance)
