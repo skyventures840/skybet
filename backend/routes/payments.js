@@ -355,7 +355,7 @@ router.post('/callback', async (req, res) => {
       if (transaction) {
         if (payment_status === 'finished' || payment_status === 'confirmed') {
           // Credit real wallet
-          await User.creditReal(payment.userId, payment.amount);
+                await User.deposit(payment.userId, payment.amount);
 
           // First-deposit check and bonus
           const user = await User.findById(payment.userId);

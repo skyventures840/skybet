@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
 const MultiBet = require('../models/MultiBet');
+const User = require('../models/User');
 const { validateMultiBet } = require('../utils/Validation');
 
 
@@ -18,14 +19,16 @@ router.post('/', auth, async (req, res) => {
       });
     }
     
-    // Check if user has sufficient balance (implement balance check)
-    // const userBalance = await getUserBalance(req.user.id);
-    // if (userBalance < stake) {
-    //   return res.status(400).json({ 
-    //     success: false, 
-    //     message: 'Insufficient balance' 
-    //   });
-    // }
+    // Place bet (atomic balance deduction)
+    let betResult;
+    try {
+      betResult = await User.placeBet(req.user.id, stake);
+    } catch (err) {
+      if (err.message === 'Insufficient balance') {
+        return res.status(400).json({ success: false, message: 'Insufficient balance' });
+      }
+      throw err;
+    }
     
     // Calculate combined odds
     const oddsArray = matches.map(match => match.odds);
@@ -52,10 +55,14 @@ router.post('/', auth, async (req, res) => {
       currency
     });
     
-    await multiBet.save();
-    
-    // Deduct stake from user balance (implement balance deduction)
-    // await updateUserBalance(req.user.id, -stake);
+    try {
+      await multiBet.save();
+    } catch (saveError) {
+      // Refund if save fails
+      console.error('Failed to save multi-bet, refunding user:', saveError);
+      await User.refundBet(req.user.id, stake, { bonus: betResult.bonusUsed, real: betResult.realUsed });
+      throw saveError;
+    }
     
     res.status(201).json({
       success: true,

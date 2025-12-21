@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Bet = require('../models/Bet');
+const User = require('../models/User');
 const Results = require('../models/Results');
 const Odds = require('../models/Odds');
 const MultiBet = require('../models/MultiBet');
@@ -253,6 +254,16 @@ class BetSettlementService {
       };
 
       await Bet.findByIdAndUpdate(bet._id, update);
+      
+      // Credit user if won (Atomic operation)
+      if (won && update.actualWin > 0) {
+        await User.settleBetWin(bet.userId, update.actualWin);
+        // Update lifetime winnings
+        await User.findByIdAndUpdate(bet.userId, { 
+          $inc: { lifetimeWinnings: update.actualWin - bet.stake } 
+        });
+      }
+
       try { bus.emit('bets:changed'); } catch (e) {}
 
       // Emit event for real-time updates

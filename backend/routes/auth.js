@@ -97,6 +97,7 @@ router.post('/register', [
         username: user.username,
         email: user.email,
         balance: user.balance,
+        demoBalance: user.demoBalance,
         isAdmin: user.isAdmin,
         firstName: user.firstName,
         lastName: user.lastName
@@ -187,6 +188,8 @@ router.post('/login', [
         username: user.username,
         isAdmin: user.isAdmin,
         balance: user.balance,
+        balanceBonus: user.balanceBonus,
+        demoBalance: user.demoBalance,
         firstName: user.firstName,
         lastName: user.lastName
       }
@@ -212,6 +215,7 @@ router.post('/login', [
       phoneNumber: user.phoneNumber,
       address: user.address,
       balance: user.balance,
+      demoBalance: user.demoBalance,
       lifetimeWinnings: user.lifetimeWinnings,
       createdAt: user.createdAt
     });

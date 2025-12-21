@@ -45,8 +45,7 @@ const betSchema = new mongoose.Schema({
   },
   odds: {
     type: Number,
-    required: true,
-    min: 1.01
+    required: true
   },
   potentialWin: {
     type: Number,
@@ -132,65 +131,111 @@ betSchema.statics.getByMatch = function(matchId) {
     .sort({ createdAt: -1 });
 };
 
-// Static method to settle bets for a match
-betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
-  const Match = mongoose.model('Match');
-  const User = mongoose.model('User');
+  // Static method to settle bets for a match
+  // Consolidated method with balance updates
+  betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
+    const User = mongoose.model('User');
+    const bets = await this.find({ matchId, status: 'pending' });
   
-  const match = await Match.findById(matchId);
-  if (!match) {
-    throw new Error('Match not found');
-  }
+    for (const bet of bets) {
+      let won = false;
+  
+      switch (bet.market) {
+        case 'moneyline': 
+        case 'match_winner': {
+          if (bet.selection === 'home') {
+            won = homeScore > awayScore;
+          } else if (bet.selection === 'away') {
+            won = awayScore > homeScore;
+          } else if (bet.selection === 'draw') {
+            won = homeScore === awayScore;
+          }
+          break;
+        }
+        case 'handicap': {
+          // Handle "home_handicap" or "away_handicap" or parsed selection
+          let handicapLine = 0;
+          let isHome = false;
+          
+          if (bet.selection.includes('(')) {
+             const lineStr = bet.selection.split('(')[1] || '0)';
+             handicapLine = parseFloat(lineStr);
+             isHome = bet.selection.includes('home');
+          } else {
+             // Fallback if match has odds.handicapLine, though bet should have it frozen
+             // For now assume selection contains the line info or we need to look up match
+             // Simplest assumption based on existing code:
+             isHome = bet.selection.includes('home');
+          }
 
-  const bets = await this.find({ matchId, status: 'pending' });
+          if (isHome) {
+            won = (homeScore + handicapLine) > awayScore;
+          } else {
+            won = (awayScore + handicapLine) > homeScore;
+          }
+          break;
+        }
+        case 'totals':
+        case 'total': {
+          // Handle "over(2.5)" or similar
+          let totalLine = 0;
+          let isOver = false;
+          
+          if (bet.selection.includes('(')) {
+            const lineStr = bet.selection.split('(')[1] || '0)';
+            totalLine = parseFloat(lineStr);
+            isOver = bet.selection.includes('over');
+          }
+
+          const totalScore = homeScore + awayScore;
+          if (isOver) {
+            won = totalScore > totalLine;
+          } else {
+            won = totalScore < totalLine;
+          }
+          break;
+        }
+        default:
+          // Fallback simple winner evaluation
+          if (bet.selection === 'home') won = homeScore > awayScore;
+          if (bet.selection === 'away') won = awayScore > homeScore;
+          if (bet.selection === 'draw') won = homeScore === awayScore;
+      }
   
-  for (const bet of bets) {
-    let isWinner = false;
-    
-    // Determine if bet is a winner based on market and selection
-    switch (bet.market) {
-      case 'match_winner': {
-        if (bet.selection === 'home' && homeScore > awayScore) isWinner = true;
-        if (bet.selection === 'away' && awayScore > homeScore) isWinner = true;
-        if (bet.selection === 'draw' && homeScore === awayScore) isWinner = true;
-        break;
+      const update = {
+        status: won ? 'won' : 'lost',
+        actualWin: won ? bet.potentialWin : 0,
+        settledAt: new Date()
+      };
+  
+      await this.findByIdAndUpdate(bet._id, update);
+
+      // Update user balance if bet won
+      if (won) {
+          await User.settleBetWin(bet.userId, update.actualWin);
+          
+          // Update lifetime winnings
+          await User.findByIdAndUpdate(bet.userId, {
+              $inc: { lifetimeWinnings: update.actualWin - bet.stake }
+          });
       }
-        
-      case 'total': {
-        const totalScore = homeScore + awayScore;
-        if (bet.selection === 'over' && totalScore > match.odds.total) isWinner = true;
-        if (bet.selection === 'under' && totalScore < match.odds.total) isWinner = true;
-        break;
-      }
-        
-      case 'handicap': {
-        const homeWithHandicap = homeScore + match.odds.handicapLine;
-        if (bet.selection === 'home_handicap' && homeWithHandicap > awayScore) isWinner = true;
-        if (bet.selection === 'away_handicap' && awayScore > homeWithHandicap) isWinner = true;
-        break;
+  
+      // Emit user-scoped event for realtime UI sync
+      try {
+        bus.emit('bets:update', {
+          userId: String(bet.userId),
+          betId: String(bet._id),
+          status: update.status,
+          actualWin: update.actualWin
+        });
+      } catch (e) {
+        // Ignore bus errors
       }
     }
-    
-    // Update bet status and winnings
-    bet.status = isWinner ? 'won' : 'lost';
-    bet.actualWin = isWinner ? bet.potentialWin : 0;
-    bet.settledAt = new Date();
-    
-    await bet.save();
-    
-    // Update user balance if bet won
-    if (isWinner) {
-      await User.updateBalance(bet.userId, bet.actualWin);
-      
-      // Update lifetime winnings
-      await User.findByIdAndUpdate(bet.userId, {
-        $inc: { lifetimeWinnings: bet.actualWin - bet.stake }
-      });
-    }
-  }
-  
-  return bets.length;
-};
+
+    return bets.length;
+  };
+
 
 // Static method to get betting statistics
 betSchema.statics.getStats = async function(userId = null) {
@@ -244,71 +289,6 @@ betSchema.statics.getStats = async function(userId = null) {
   return result;
 };
 
-betSchema.statics.settleBets = async function(matchId, homeScore, awayScore) {
-  const bets = await this.find({ matchId, status: 'pending' });
 
-  for (const bet of bets) {
-    let won = false;
-
-    switch (bet.market) {
-      case 'moneyline': {
-        if (bet.selection === 'home') {
-          won = homeScore > awayScore;
-        } else if (bet.selection === 'away') {
-          won = awayScore > homeScore;
-        }
-        break;
-      }
-      case 'handicap': {
-        const lineStr = bet.selection.split('(')[1] || '0)';
-        const handicapLine = parseFloat(lineStr);
-        if (bet.selection.includes('home')) {
-          won = (homeScore + handicapLine) > awayScore;
-        } else {
-          won = (awayScore + handicapLine) > homeScore;
-        }
-        break;
-      }
-      case 'totals': {
-        const lineStr = bet.selection.split('(')[1] || '0)';
-        const totalLine = parseFloat(lineStr);
-        const totalScore = homeScore + awayScore;
-        if (bet.selection.includes('over')) {
-          won = totalScore > totalLine;
-        } else {
-          won = totalScore < totalLine;
-        }
-        break;
-      }
-      default:
-        // Fallback simple winner evaluation
-        if (bet.selection === 'home') won = homeScore > awayScore;
-        if (bet.selection === 'away') won = awayScore > homeScore;
-        if (bet.selection === 'draw') won = homeScore === awayScore;
-    }
-
-    const update = {
-      status: won ? 'won' : 'lost',
-      actualWin: won ? bet.potentialWin : 0,
-      settledAt: new Date()
-    };
-
-    await this.findByIdAndUpdate(bet._id, update);
-
-    // Emit user-scoped event for realtime UI sync
-    try {
-      bus.emit('bets:update', {
-        userId: String(bet.userId),
-        betId: String(bet._id),
-        matchId,
-        status: update.status,
-        actualWin: update.actualWin,
-        settledAt: update.settledAt
-      });
-    } catch (e) {
-      // Avoid crashing on emit errors
-    }
-  }
-};
 
 module.exports = mongoose.model('Bet', betSchema);

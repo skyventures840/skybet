@@ -35,25 +35,27 @@ router.post('/spin', auth, async (req, res) => {
         selectedMultiplier
       });
     
-      // Get user
-      const user = await User.findById(userId).select('balance');
-      if (!user) {
-        console.error('User not found for wheel spin', { requestId, userId });
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      if (user.balance < betAmount) {
-        console.log('Insufficient balance for wheel spin', {
-          requestId,
-          userId,
-          balance: user.balance,
-          betAmount
-        });
-        return res.status(400).json({ 
-          error: 'Insufficient balance',
-          balance: user.balance,
-          required: betAmount
-        });
+      // 1. Place Bet (Atomic deduction)
+      let betResult;
+      try {
+        betResult = await User.placeBet(userId, betAmount);
+      } catch (err) {
+        if (err.message === 'User not found') {
+          console.error('User not found for wheel spin', { requestId, userId });
+          return res.status(404).json({ error: 'User not found' });
+        }
+        if (err.message === 'Insufficient balance') {
+          console.log('Insufficient balance for wheel spin', {
+            requestId,
+            userId,
+            betAmount
+          });
+          return res.status(400).json({ 
+            error: 'Insufficient balance',
+            required: betAmount
+          });
+        }
+        throw err;
       }
     
       // Process result
@@ -61,18 +63,14 @@ router.post('/spin', auth, async (req, res) => {
       const winAmount = parseFloat(result.winAmount || 0);
       const netChange = won ? winAmount - betAmount : -betAmount;
     
-      // Update balance
-      const updatedUser = await User.findByIdAndUpdate(
-        userId,
-        { 
-          $inc: { balance: netChange },
-          $set: { 
-            updatedAt: new Date(),
-            lastActivity: new Date()
-          }
-        },
-        { new: true, select: 'balance' }
-      );
+      // 2. Handle Win (Atomic addition)
+      let finalUser = betResult.user;
+      if (won && winAmount > 0) {
+        finalUser = await User.settleBetWin(userId, winAmount);
+      }
+
+      // Update activity timestamp
+      await User.findByIdAndUpdate(userId, { lastActivity: new Date() });
     
       // Create bet transaction
       await Transaction.create({
@@ -117,14 +115,14 @@ router.post('/spin', auth, async (req, res) => {
         won,
         winAmount,
         netChange,
-        finalBalance: updatedUser.balance,
+        finalBalance: finalUser.balance,
         processingTime
       });
       
       res.json({
         success: true,
         requestId,
-        balance: updatedUser.balance,
+        balance: finalUser.balance,
         won,
         winAmount,
         netChange,

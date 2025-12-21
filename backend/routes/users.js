@@ -43,14 +43,13 @@ router.get('/balance', auth, async (req, res) => {
       return res.json(cached);
     }
 
-    const user = await User.findById(req.user.id).select('balance balanceReal balanceBonus wageringRequired wageringProgress');
+    const user = await User.findById(req.user.id).select('balance balanceBonus wageringRequired wageringProgress');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     const payload = {
       balance: user.balance,
-      balanceReal: user.balanceReal,
       balanceBonus: user.balanceBonus,
       wageringRequired: user.wageringRequired,
       wageringProgress: user.wageringProgress
@@ -134,7 +133,7 @@ router.post('/deposit', auth, [
       });
       await transaction.save();
 
-      await User.creditReal(userId, amount);
+      await User.deposit(userId, amount);
 
       const now = new Date();
       const isFirstDeposit = !user.hasDeposited;
@@ -281,7 +280,9 @@ router.post('/withdraw', auth, [
     if (!wageringComplete && Number(user.wageringRequired || 0) > 0) {
       return res.status(400).json({ error: 'Withdrawals blocked until wagering requirements are met' });
     }
-    if (Number(user.balanceReal || 0) < amount) {
+    
+    // Check balance before creating transaction to fail fast
+    if (Number(user.balance || 0) < amount) {
       return res.status(400).json({ error: 'Insufficient withdrawable balance' });
     }
 
@@ -298,8 +299,16 @@ router.post('/withdraw', auth, [
 
     await transaction.save();
 
-    // Deduct from real wallet immediately
-    await User.updateBalance(userId, -amount);
+    // Deduct from real wallet immediately using atomic withdraw
+    try {
+        await User.withdraw(userId, amount);
+    } catch (err) {
+        // If atomic withdrawal fails (e.g. race condition), fail the transaction
+        transaction.status = 'failed';
+        transaction.description = 'Insufficient balance during processing';
+        await transaction.save();
+        return res.status(400).json({ error: 'Insufficient withdrawable balance' });
+    }
 
     res.status(201).json({
       transactionId: transaction._id,
@@ -356,7 +365,7 @@ router.get('/transactions', auth, async (req, res) => {
     try { cacheSet('/api/users/transactions', keyParams, payload, 60); } catch (e) {}
     if (etag) res.set('ETag', etag);
     res.set('X-Cache', 'MISS');
-    res.set('Cache-Control', 'private, max-age=20, stale-while-revalidate=120');
+    res.set('Cache-Control', 'private, max-age=10, stale-while-revalidate=120');
     res.json(payload);
   } catch (error) {
     console.error('Get transactions error:', error);

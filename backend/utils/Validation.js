@@ -49,8 +49,8 @@ const validateMultiBet = (data) => {
       errors.push(`Match ${index + 1}: Valid outcome (1, X, 2) is required`);
     }
     
-    if (!match.odds || typeof match.odds !== 'number' || match.odds < 1.01) {
-      errors.push(`Match ${index + 1}: Valid odds (≥1.01) are required`);
+    if (!match.odds || typeof match.odds !== 'number' || match.odds < 1.00) {
+      errors.push(`Match ${index + 1}: Valid odds (≥1.00) are required`);
     }
     
     if (match.odds > 1000) {

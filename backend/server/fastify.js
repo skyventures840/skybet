@@ -1,6 +1,20 @@
 require('dotenv').config({ override: true });
 
-const fastify = require('fastify')({ logger: true, trustProxy: true });
+const isProduction = process.env.NODE_ENV === 'production';
+const fastify = require('fastify')({ 
+  logger: {
+    level: isProduction ? 'error' : 'info',
+    transport: isProduction ? undefined : {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'HH:MM:ss Z',
+        ignore: 'pid,hostname',
+      },
+    },
+  },
+  trustProxy: true,
+  disableRequestLogging: isProduction // Disable default request logging in production for speed
+});
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
@@ -24,6 +38,8 @@ const sportsRoutes = require('../routes/sports');
 const paymentsRoutes = require('../routes/payments');
 const adminRoutes = require('../routes/admin');
 const wheelRoutes = require('../routes/wheel');
+const aviatorRoutes = require('../routes/aviator');
+
 
 const PORT = process.env.PORT_BACKEND || process.env.PORT || 10000;
 
@@ -109,17 +125,18 @@ async function connectToMongoDB() {
   const mongoUri = process.env.MONGODB_EXTERNAL_URI || process.env.MONGODB_URI;
   if (!mongoUri) return false;
   await mongoose.connect(mongoUri, {
-    serverSelectionTimeoutMS: 10000,
-    socketTimeoutMS: 30000,
+    serverSelectionTimeoutMS: 5000, // Reduced from 10s for faster failover
+    socketTimeoutMS: 45000,
     connectTimeoutMS: 10000,
-    maxPoolSize: 100,
-    minPoolSize: 2,
+    maxPoolSize: 50, // Reduced from 100 to avoid connection storms on free tier
+    minPoolSize: 1, // Reduced from 2 to save resources
     maxIdleTimeMS: 30000,
     retryWrites: true,
     retryReads: true,
     bufferCommands: false,
     heartbeatFrequencyMS: 10000,
-    family: 4
+    family: 4,
+    autoIndex: !isProduction // Disable auto-indexing in production for faster startup
   });
   return true;
 }
@@ -151,8 +168,8 @@ async function start() {
     await fastify.register(require('@fastify/express'));
 
     // Body parsers for Express routers
-    fastify.use(express.json({ limit: '10mb' }));
-    fastify.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    fastify.use(express.json({ limit: '1mb' }));
+    fastify.use(express.urlencoded({ extended: true, limit: '1mb' }));
     fastify.use(helmet());
     fastify.use(cors(corsOptions));
 
@@ -230,6 +247,8 @@ async function start() {
     fastify.use('/api/payments', paymentsRoutes);
     fastify.use('/api/admin', adminRoutes);
     fastify.use('/api/wheel', wheelRoutes);
+    fastify.use('/api/aviator', aviatorRoutes);
+
 
     // Static uploads
     fastify.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {

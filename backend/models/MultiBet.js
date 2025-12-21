@@ -66,7 +66,7 @@ const multiBetSchema = new mongoose.Schema({
   combinedOdds: {
     type: Number,
     required: true,
-    min: 1.01
+    min: 1.00
   },
   stake: {
     type: Number,

@@ -219,7 +219,7 @@ router.post('/', auth, [
   body('market').notEmpty().trim(),
   body('selection').notEmpty().trim(),
   body('stake').isFloat({ min: 0.01 }),
-  body('odds').isFloat({ min: 1.01 })
+  body('odds').isFloat({ min: 1.00 })
 ], async (req, res) => {
   try {
     console.log('=== Bet submission request ===');

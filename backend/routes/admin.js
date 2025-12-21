@@ -1031,14 +1031,10 @@ router.put('/bets/:betId/status', adminAuth, [
 
     // If bet is won or cancelled, update user balance
     if (status === 'won' && bet.actualWin > 0) {
-      await User.findByIdAndUpdate(bet.userId, {
-        $inc: { balance: bet.actualWin }
-      });
+      await User.settleBetWin(bet.userId, bet.actualWin);
     } else if (status === 'cancelled') {
       // Refund the stake
-      await User.findByIdAndUpdate(bet.userId, {
-        $inc: { balance: bet.stake }
-      });
+      await User.refundBet(bet.userId, bet.stake);
     }
 
     // Broadcast bet status update via WebSocket
@@ -1126,13 +1122,9 @@ router.put('/bets/status/by-suffix/:suffix', adminAuth, [
       return res.status(404).json({ error: 'Bet not found' });
     }
     if (status === 'won' && typeof updateData.actualWin === 'number' && updateData.actualWin > 0) {
-      await User.findByIdAndUpdate(bet.userId, {
-        $inc: { balance: updateData.actualWin }
-      });
+      await User.settleBetWin(bet.userId, updateData.actualWin);
     } else if (status === 'cancelled') {
-      await User.findByIdAndUpdate(bet.userId, {
-        $inc: { balance: bet.stake }
-      });
+      await User.refundBet(bet.userId, bet.stake);
     }
     if (global.websocketServer) {
       global.websocketServer.broadcastBetStatusUpdate(

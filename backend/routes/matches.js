@@ -1783,7 +1783,7 @@ router.get('/live/real-time', async (req, res) => {
 
     // Transform matches to include live data and real-time odds
     const transformedLiveMatches = liveMatches.map(match => {
-      const matchObj = match.toObject();
+      const matchObj = match;
       
       // Find corresponding odds from API
       const matchOdds = liveOddsData.find(odds => 
