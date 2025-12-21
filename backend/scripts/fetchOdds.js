@@ -357,38 +357,82 @@ async function main() {
       // Get sport-specific markets to avoid API errors
       const sportSpecificMarkets = getSportSpecificMarkets(sport.key);
       
-      console.log(`Fetching ${sportSpecificMarkets.length} sport-specific markets for ${sport.key}: ${sportSpecificMarkets.join(', ')}`);
-      const games = await service._fetchAndSaveOddsForMarketsBatch(sport.key, sportSpecificMarkets);
+      console.log(`Fetching ${sportSpecificMarkets.length} sport-specific markets for ${sport.key}`);
+      
+      // Chunk markets to prevent memory issues and huge requests
+      const marketChunkSize = 5;
+      const allGamesMap = {};
+      
+      for (let i = 0; i < sportSpecificMarkets.length; i += marketChunkSize) {
+        const marketChunk = sportSpecificMarkets.slice(i, i + marketChunkSize);
+        console.log(`Fetching market chunk ${Math.floor(i/marketChunkSize) + 1}/${Math.ceil(sportSpecificMarkets.length/marketChunkSize)} for ${sport.key}: ${marketChunk.join(', ')}`);
+        
+        try {
+          const chunkGames = await service._fetchAndSaveOddsForMarketsBatch(sport.key, marketChunk);
+          
+          for (const game of chunkGames) {
+            if (!allGamesMap[game.id]) {
+              allGamesMap[game.id] = game;
+            } else {
+              // Merge bookmakers/markets
+              service._mergeMatchMarkets(allGamesMap[game.id], game);
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching market chunk for ${sport.key}: ${err.message}`);
+        }
+        
+        // Small delay between chunks to be nice to the API and memory
+        if (global.gc) {
+          try { global.gc(); } catch (e) { /* ignore */ }
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      const games = Object.values(allGamesMap);
 
       const rateInfo = service.getLastRateLimitInfo ? service.getLastRateLimitInfo() : null;
       if (rateInfo) {
         console.log('Rate limit info:', rateInfo);
       }
 
-      console.log(`Fetched ${games.length} events for ${sport.key}`);
+      console.log(`Fetched total ${games.length} unique events for ${sport.key}`);
 
       if (games.length > 0) {
         // Save to Match collection (frontend expects this format)
-        const matchBulkOps = games.map(game => ({
-          updateOne: {
-            filter: { _id: game.id },
-            update: {
-              $set: {
-                _id: game.id,
-                sport: game.sport_key,
-                league: game.sport_title,
-                homeTeam: game.home_team,
-                awayTeam: game.away_team,
-                startTime: new Date(game.commence_time),
-                odds: game.bookmakers,
-                status: 'upcoming'
-              }
-            },
-            upsert: true
+        // Batch write to prevent memory issues
+        const batchSize = 50;
+        console.log(`Saving matches to Match collection in batches of ${batchSize}...`);
+        
+        for (let i = 0; i < games.length; i += batchSize) {
+          const gamesBatch = games.slice(i, i + batchSize);
+          const matchBulkOps = gamesBatch.map(game => ({
+            updateOne: {
+              filter: { _id: game.id },
+              update: {
+                $set: {
+                  _id: game.id,
+                  sport: game.sport_key,
+                  league: game.sport_title,
+                  homeTeam: game.home_team,
+                  awayTeam: game.away_team,
+                  startTime: new Date(game.commence_time),
+                  odds: game.bookmakers,
+                  status: 'upcoming'
+                }
+              },
+              upsert: true
+            }
+          }));
+          
+          try {
+            await Match.bulkWrite(matchBulkOps, { ordered: false });
+            console.log(`Saved batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(games.length/batchSize)} for ${sport.key}`);
+          } catch (err) {
+            console.error(`Error saving match batch for ${sport.key}:`, err.message);
           }
-        }));
-        await Match.bulkWrite(matchBulkOps, { ordered: false });
-        console.log(`Saved ${games.length} match records for ${sport.key}`);
+        }
+        console.log(`Saved all match records for ${sport.key}`);
       }
 
       // Wait a moment for async storage to complete before verification

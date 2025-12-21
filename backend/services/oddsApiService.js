@@ -454,6 +454,10 @@ class OddsApiService {
       : String(marketsArray || '').trim();
 
     const params = { 
+      apiKey: config.oddsApi.apiKey,
+      regions: 'us,us2,uk,au',
+      oddsFormat: 'decimal',
+      dateFormat: 'iso',
       markets: safeMarketsCsv,
       // Enhanced parameters from Odds API documentation
       includeLinks: true,          // Include bookmaker links to events, markets, and betslips
@@ -514,6 +518,25 @@ class OddsApiService {
             }
           }
         }
+        
+        // Fallback for 401 (Quota Exceeded) or 500 errors
+        if (err.response && (err.response.status === 401 || err.response.status === 429 || err.response.status === 500)) {
+          console.warn(`Using fallback odds data for ${sportKey} due to API ${err.response.status} error`);
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const fallbackPath = path.join(__dirname, '..', 'data', 'fallbackOdds.json');
+            if (fs.existsSync(fallbackPath)) {
+              const fallbackData = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
+              games = fallbackData.filter(game => game.sport_key === sportKey);
+              console.log(`Loaded ${games.length} games from fallback data`);
+              if (games.length > 0) break; // Exit retry loop only if we found data
+            }
+          } catch (e) {
+            console.error('Failed to load fallback data:', e.message);
+          }
+        }
+
         console.warn(`Batch odds fetch failed (attempt ${attempt}/${maxRetries}) for ${sportKey}: ${err.message}`);
         if (attempt < maxRetries) {
           const backoffMs = 500 * attempt;
@@ -568,6 +591,7 @@ class OddsApiService {
     try {
       const response = await this.client.get(`/sports/${sportKey}/scores`, {
         params: {
+          apiKey: config.oddsApi.apiKey,
           daysFrom,
           dateFormat: 'iso'
         }
@@ -652,6 +676,7 @@ class OddsApiService {
     try {
       const response = await this.client.get(`/sports/${sportKey}/scores`, {
         params: {
+          apiKey: config.oddsApi.apiKey,
           daysFrom: daysBack,
           completed: true
         }
@@ -1226,6 +1251,7 @@ class OddsApiService {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const params = {
+        apiKey: config.oddsApi.apiKey,
         regions: regions.join(','),
         markets: additionalMarkets.join(','),
         oddsFormat,
@@ -1506,6 +1532,9 @@ class OddsApiService {
           }
 
           results.totalProcessed++;
+
+          // Explicitly clear large objects to help GC
+          event.bookmakers = null; 
 
         } catch (error) {
           console.error(`Error fetching additional markets for event ${eventId}:`, error.message);
