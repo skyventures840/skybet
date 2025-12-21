@@ -69,6 +69,11 @@ const betSchema = new mongoose.Schema({
     default: 'pending',
     index: true
   },
+  result: {
+    homeScore: Number,
+    awayScore: Number,
+    finalOutcome: String
+  },
   settledAt: {
     type: Date
   },

@@ -325,22 +325,36 @@ router.post('/', auth, [
 
     const bet = new Bet(betData);
 
-    console.log('Saving bet to database...');
+    // console.log('Saving bet to database...');
     await bet.save();
-    console.log(`Bet saved successfully: ${bet._id} (took ${Date.now() - startTime}ms)`);
+    // console.log(`Bet saved successfully: ${bet._id} (took ${Date.now() - startTime}ms)`);
 
     // Balance already debited via debitForBet
 
-    // Broadcast new bet via WebSocket
+    // Broadcast new bet via WebSocket (Non-blocking / Fire-and-forget)
     if (global.websocketServer) {
-      const populatedBet = await Bet.findById(bet._id).populate('userId', 'username email');
-      
-      global.websocketServer.broadcastToAll({
-        type: 'new_bet',
-        payload: {
-          bet: populatedBet,
-          betId: bet._id.toString(),
-          userId: userId.toString()
+      setImmediate(() => {
+        try {
+          // Construct payload manually to avoid extra DB query (req.user is already populated by auth middleware)
+          const payload = {
+            bet: {
+              ...bet.toObject(),
+              userId: {
+                _id: req.user._id,
+                username: req.user.username,
+                email: req.user.email
+              }
+            },
+            betId: bet._id.toString(),
+            userId: userId.toString()
+          };
+
+          global.websocketServer.broadcastToAll({
+            type: 'new_bet',
+            payload
+          });
+        } catch (wsErr) {
+          console.error('WS Broadcast error:', wsErr);
         }
       });
     }
@@ -381,6 +395,135 @@ router.post('/', auth, [
       return res.status(400).json({ error: 'Duplicate entry' });
     }
     
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+});
+
+// Place multiple bets (Bulk)
+router.post('/bulk', auth, [
+  body('bets').isArray({ min: 1 }).withMessage('Bets must be a non-empty array'),
+  body('bets.*.matchId').notEmpty(),
+  body('bets.*.market').notEmpty(),
+  body('bets.*.selection').notEmpty(),
+  body('bets.*.stake').isFloat({ min: 0.01 }),
+  body('bets.*.odds').isFloat({ min: 1.00 })
+], async (req, res) => {
+  try {
+    console.log('=== Bulk bet submission request ===');
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { bets } = req.body;
+    const userId = req.user.id;
+    
+    // Calculate total stake
+    const totalStake = bets.reduce((sum, bet) => sum + parseFloat(bet.stake), 0);
+    console.log(`Processing ${bets.length} bets with total stake: ${totalStake}`);
+
+    // Validate user and debit total stake
+    let debit;
+    try {
+      debit = await User.debitForBet(userId, totalStake);
+    } catch (e) {
+      console.log('Insufficient balance or debit error:', e.message);
+      if (e.message.includes('User not found')) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      return res.status(400).json({ error: 'Insufficient balance' });
+    }
+
+    // Calculate bonus/real ratio
+    const bonusRatio = totalStake > 0 ? debit.bonusUsed / totalStake : 0;
+    
+    const savedBets = [];
+    
+    // Create bets
+    for (const betItem of bets) {
+        const { matchId, market, selection, stake, odds } = betItem;
+        const betStake = parseFloat(stake);
+        
+        // Distribute bonus/real usage proportionally
+        const betBonusUsed = betStake * bonusRatio;
+        const betRealUsed = betStake - betBonusUsed;
+        
+        // Resolve match info
+        let homeTeam = null, awayTeam = null, league = null;
+        const oddsDoc = await Odds.findOne({ gameId: matchId }).lean();
+        if (oddsDoc) {
+            homeTeam = oddsDoc.home_team;
+            awayTeam = oddsDoc.away_team;
+            league = oddsDoc.sport_title;
+        } else if (enhancedMatchData[matchId]) {
+            homeTeam = enhancedMatchData[matchId].homeTeam;
+            awayTeam = enhancedMatchData[matchId].awayTeam;
+            league = enhancedMatchData[matchId].competition;
+        }
+
+        const betData = {
+            userId,
+            matchId: matchId.toString(),
+            homeTeam,
+            awayTeam,
+            league,
+            market,
+            selection,
+            stake: betStake,
+            odds,
+            potentialWin: betStake * odds,
+            bonusStakeUsed: betBonusUsed,
+            realStakeUsed: betRealUsed,
+            status: 'pending'
+        };
+
+        const bet = new Bet(betData);
+        await bet.save();
+        savedBets.push(bet);
+        
+        // Broadcast via WS (Non-blocking)
+        if (global.websocketServer) {
+             setImmediate(() => {
+                try {
+                    const payload = {
+                        bet: {
+                            ...bet.toObject(),
+                            userId: {
+                                _id: req.user._id,
+                                username: req.user.username,
+                                email: req.user.email
+                            }
+                        },
+                        betId: bet._id.toString(),
+                        userId: userId.toString()
+                    };
+                    
+                    global.websocketServer.broadcastToAll({
+                        type: 'new_bet',
+                        payload
+                    });
+                } catch (wsErr) {
+                    console.error('WS Broadcast error (bulk):', wsErr);
+                }
+             });
+        }
+    }
+
+    // console.log(`Successfully placed ${savedBets.length} bets`);
+    
+    res.status(201).json({
+        success: true,
+        count: savedBets.length,
+        bets: savedBets.map(b => ({
+            id: b._id,
+            match: `${b.market} bet on ${b.selection}`,
+            stake: b.stake,
+            potentialWin: b.potentialWin
+        }))
+    });
+
+  } catch (error) {
+    console.error('=== Bulk place bet error ===', error);
     res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
@@ -467,24 +610,34 @@ router.get('/my-bets', auth, cacheUserBets(60), [
 
       // Lookup completed results for this bet's main match
       let homeScore = null, awayScore = null, finalOutcome = null;
-      try {
-        const resDoc = await Results.findOne({ eventId: bet.matchId, completed: true }).lean();
-        if (resDoc && Array.isArray(resDoc.scores)) {
-          const hs = resDoc.scores.find(s => s.name === matchInfo.homeTeam) || resDoc.scores[0];
-          const as = resDoc.scores.find(s => s.name === matchInfo.awayTeam) || resDoc.scores[1];
-          homeScore = hs ? parseInt(hs.score) || 0 : null;
-          awayScore = as ? parseInt(as.score) || 0 : null;
-          if (homeScore != null && awayScore != null) {
-            finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
+      
+      // First check if result is stored in the bet document itself
+      if (bet.result && (bet.result.homeScore != null || bet.result.awayScore != null)) {
+        homeScore = bet.result.homeScore;
+        awayScore = bet.result.awayScore;
+        finalOutcome = bet.result.finalOutcome;
+      } else {
+        // Fallback to Results collection lookup
+        try {
+          const resDoc = await Results.findOne({ eventId: bet.matchId, completed: true }).lean();
+          if (resDoc && Array.isArray(resDoc.scores)) {
+            const hs = resDoc.scores.find(s => s.name === matchInfo.homeTeam) || resDoc.scores[0];
+            const as = resDoc.scores.find(s => s.name === matchInfo.awayTeam) || resDoc.scores[1];
+            homeScore = hs ? parseInt(hs.score) || 0 : null;
+            awayScore = as ? parseInt(as.score) || 0 : null;
+            if (homeScore != null && awayScore != null) {
+              finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
 
       // Inject result and outcome into matches
       matches = matches.map(m => {
         const isMain = String(m.matchId) === String(bet.matchId);
-        const result = (isMain && homeScore != null && awayScore != null) ? { homeScore, awayScore } : m.result;
-        const outcome = isMain && finalOutcome ? finalOutcome : m.outcome;
+        // Prioritize existing match result, then bet-level result, then fallback
+        const result = m.result || ((isMain && homeScore != null && awayScore != null) ? { homeScore, awayScore } : null);
+        const outcome = m.outcome || ((isMain && finalOutcome) ? finalOutcome : null);
         return { ...m, result, outcome };
       });
 

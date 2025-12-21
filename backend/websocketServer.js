@@ -636,7 +636,7 @@ class WebSocketServer {
   }
   
   // Broadcast bet status update
-  broadcastBetStatusUpdate(betId, userId, status, matches) {
+  broadcastBetStatusUpdate(betId, userId, status, matches, result) {
     const message = {
       type: 'bet_status_update',
       payload: {
@@ -644,6 +644,7 @@ class WebSocketServer {
         userId,
         status,
         matches,
+        result,
         timestamp: new Date().toISOString()
       }
     };

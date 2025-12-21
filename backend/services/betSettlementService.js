@@ -135,6 +135,17 @@ class BetSettlementService {
           }
         }
       );
+      
+      // Update Single Bets (Top level result)
+      await Bet.updateMany(
+        { matchId: match.eventId },
+        {
+           $set: {
+             result: { homeScore, awayScore, finalOutcome }
+           }
+        }
+      );
+
       await Bet.updateMany(
         { 'matches.matchId': match.eventId },
         {
@@ -247,10 +258,12 @@ class BetSettlementService {
       }
 
       // Update bet status
+      const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
       const update = {
         status: won ? 'won' : 'lost',
         actualWin: won ? bet.potentialWin : 0,
-        settledAt: new Date()
+        settledAt: new Date(),
+        result: { homeScore, awayScore, finalOutcome }
       };
 
       await Bet.findByIdAndUpdate(bet._id, update);
@@ -280,7 +293,13 @@ class BetSettlementService {
         });
         if (global.websocketServer && typeof global.websocketServer.broadcastBetStatusUpdate === 'function') {
           try {
-            global.websocketServer.broadcastBetStatusUpdate(String(bet._id), String(bet.userId), update.status, bet.matches || []);
+            global.websocketServer.broadcastBetStatusUpdate(
+              String(bet._id), 
+              String(bet.userId), 
+              update.status, 
+              bet.matches || [],
+              update.result
+            );
           } catch (wsErr) {}
         }
       } catch (emitError) {
