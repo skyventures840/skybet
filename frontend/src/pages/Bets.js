@@ -254,7 +254,11 @@ const Bets = () => {
       setError(null);
       
       console.log('Fetching bet history...');
-      const response = await apiService.getUserBets();
+      const response = await apiService.getUserBets({
+        page: 1,
+        limit: 100, // Fetch more to allow client-side filtering
+        excludeMarket: 'Aviator' // Exclude Aviator bets from normal history
+      });
       console.log('Bet history API response:', response);
       
       if (response && response.data) {
@@ -308,7 +312,8 @@ const Bets = () => {
   const fetchBetStats = async () => {
     try {
       console.log('Fetching bet stats summary from database...');
-      const response = await apiService.getBetStatsSummary();
+      // Filter out Aviator bets from normal bets stats
+      const response = await apiService.getBetStatsSummary({ excludeMarket: 'Aviator' });
       console.log('Bet stats API response:', response);
       
       if (response && response.data) {

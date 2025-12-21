@@ -56,6 +56,27 @@
   color: #888;
 }
 
+/* Close button inline version */
+.close-game-btn-inline {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-game-btn-inline:hover {
+  opacity: 1;
+  color: #ff5252;
+}
+
 .live-bets-list {
   flex: 1;
   overflow-y: auto;
@@ -537,6 +558,11 @@ canvas {
       height: auto;
   }
 
+  /* Prevent close button overlap on mobile */
+  .top-bar-header {
+      padding-right: 10px; 
+  }
+
   .left-panel {
       display: flex; /* Restore */
       order: 2;
@@ -765,6 +791,133 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+/* Hamburger Menu Styles */
+.hamburger-menu-container {
+  position: relative;
+  margin-left: 10px;
+  z-index: 1000;
+}
+
+.hamburger-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.hamburger-btn:hover {
+  transform: scale(1.1);
+}
+
+.hamburger-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0; /* Align to the right of the container */
+  width: 280px;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  margin-top: 10px;
+  animation: slideDownMenu 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideDownMenu {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.menu-profile {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background-color: #111;
+  border-bottom: 1px solid #333;
+  gap: 12px;
+}
+
+.menu-profile-icon {
+  width: 40px;
+  height: 40px;
+  background-color: #e91e63;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+}
+
+.menu-profile-name {
+  font-weight: bold;
+  color: white;
+  font-size: 1rem;
+}
+
+.menu-item {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ddd;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #222;
+  font-size: 0.9rem;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:hover {
+  background-color: #252525;
+  color: white;
+}
+
+.menu-item.active {
+  background-color: #252525;
+  color: #e91e63;
+}
+
+/* Bet History Panel inside Dropdown or separate */
+.bet-history-panel {
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: #0f0f0f;
+  border-top: 1px solid #333;
+}
+
+.bet-history-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 8px 12px;
+  border-bottom: 1px solid #222;
+  font-size: 0.8rem;
+  align-items: center;
+}
+
+.bet-history-item.header {
+  color: #888;
+  font-weight: bold;
+  background-color: #1a1a1a;
+  position: sticky;
+  top: 0;
+}
+
+.bet-history-item span.win { color: #00e676; }
+.bet-history-item span.loss { color: #ff1744; }
 
 .aviator-error-toast {
   position: absolute;

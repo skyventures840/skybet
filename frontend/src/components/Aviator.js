@@ -118,8 +118,127 @@ const Aviator = () => {
   const [balanceMode] = useState('real');
   const [username, setUsername] = useState('You');
   
+  // Hamburger Menu State
+  const [showMenu, setShowMenu] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [showBetHistory, setShowBetHistory] = useState(false);
+  const [myBetHistory, setMyBetHistory] = useState([]);
+  const menuRef = useRef(null);
+  
   // Derived active balance
   const balance = (user.balance || 0) + (user.balanceBonus || 0);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+        if (menuRef.current && !menuRef.current.contains(event.target)) {
+            setShowMenu(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Fetch Bet History
+  const fetchMyHistory = useCallback(async () => {
+      try {
+          const res = await apiService.getUserBets({ market: 'Aviator' });
+          if (res.data && res.data.bets) {
+              setMyBetHistory(res.data.bets);
+          }
+      } catch (err) {
+          console.error("Failed to fetch bet history", err);
+      }
+  }, []);
+
+  useEffect(() => {
+    if (showBetHistory) {
+        fetchMyHistory();
+    }
+  }, [showBetHistory, fetchMyHistory]);
+
+  // Sound Effect - Advanced Prop Plane Simulation
+  useEffect(() => {
+    let audioCtx;
+    let engineOsc;
+    let engineLFO;
+    let noiseNode;
+    let filterNode;
+    let masterGain;
+
+    if (gameState === 'FLYING' && soundEnabled) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        
+        audioCtx = new AudioContext();
+        masterGain = audioCtx.createGain();
+        masterGain.connect(audioCtx.destination);
+        masterGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+
+        // 1. Engine Drone (Sawtooth + Lowpass)
+        engineOsc = audioCtx.createOscillator();
+        engineOsc.type = 'sawtooth';
+        engineOsc.frequency.setValueAtTime(60, audioCtx.currentTime); // Start low rumble
+        
+        // 2. Engine Speed Modulation (LFO)
+        engineLFO = audioCtx.createOscillator();
+        engineLFO.type = 'sine';
+        engineLFO.frequency.setValueAtTime(15, audioCtx.currentTime);
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.setValueAtTime(20, audioCtx.currentTime);
+        engineLFO.connect(lfoGain);
+        lfoGain.connect(engineOsc.frequency);
+
+        // 3. Propeller Noise (Pink Noise approximation)
+        const bufferSize = 2 * audioCtx.sampleRate;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            output[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = output[i];
+            output[i] *= 3.5; 
+        }
+        
+        noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = noiseBuffer;
+        noiseNode.loop = true;
+
+        // 4. Dynamic Filter (Rising Pitch)
+        filterNode = audioCtx.createBiquadFilter();
+        filterNode.type = 'lowpass';
+        filterNode.Q.value = 1;
+        filterNode.frequency.setValueAtTime(200, audioCtx.currentTime);
+        
+        // Connect Graph
+        engineOsc.connect(filterNode);
+        noiseNode.connect(filterNode);
+        filterNode.connect(masterGain);
+
+        // Start Sources
+        engineOsc.start();
+        engineLFO.start();
+        noiseNode.start();
+
+        // Ramp Up Effect (Acceleration)
+        const rampDuration = 10; // Slow acceleration
+        engineOsc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + rampDuration);
+        filterNode.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + rampDuration);
+        masterGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 15); // Fade out eventually
+    }
+
+    return () => {
+        if (audioCtx) {
+            try { if (engineOsc) engineOsc.stop(); } catch(e) { /* ignore */ }
+            try { if (engineLFO) engineLFO.stop(); } catch(e) { /* ignore */ }
+            try { if (noiseNode) noiseNode.stop(); } catch(e) { /* ignore */ }
+            audioCtx.close().catch(() => { /* ignore */ });
+        }
+    };
+  }, [gameState, soundEnabled]);
 
   // Fetch balance and profile on mount
   useEffect(() => {
@@ -491,6 +610,13 @@ const Aviator = () => {
 
     // Start countdown for next round
     let count = 5;
+    
+    // Instant update history on crash if user had bets
+    if (showBetHistory) {
+        // Delay slightly to allow backend to process loss if any
+        setTimeout(() => fetchMyHistory(), 500);
+    }
+
     setCountdown(count);
     const interval = setInterval(() => {
       count -= 1;
@@ -980,6 +1106,11 @@ const Aviator = () => {
                  setLiveBets(prev => prev.map(b => 
                      b.id === `user-${panelId}` ? { ...b, cashedOut: true, multiplier: currentMult.toFixed(2) } : b
                  ));
+                 
+                 // Instant update history if open
+                 if (showBetHistory) {
+                     fetchMyHistory();
+                 }
              }
           } catch (err) {
              console.error("Cashout failed", err);
@@ -1065,13 +1196,7 @@ const Aviator = () => {
           {error}
         </div>
       )}
-      <button 
-        className="close-game-btn"
-        onClick={() => navigate('/')}
-        aria-label="Close Game"
-      >
-        ×
-      </button>
+      
       {/* Left Panel: Live Bets */}
       <div className="left-panel">
         <div className="panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '20px' }}>
@@ -1186,10 +1311,89 @@ const Aviator = () => {
         <div className="top-bar">
             <div className="top-bar-header">
                 <div className="logo">AVIATOR</div>
-                <div className="balance-controls" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div className="balance-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="balance" style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#4caf50' }}>
                         ${balance.toFixed(2)}
                     </div>
+                    {/* Hamburger Menu */}
+                    <div className="hamburger-menu-container" ref={menuRef}>
+                        <button 
+                            className="hamburger-btn"
+                            onClick={() => setShowMenu(!showMenu)}
+                            aria-label="Menu"
+                        >
+                            <span style={{ fontSize: '1.5rem' }}>☰</span>
+                        </button>
+                        {showMenu && (
+                            <div className="hamburger-dropdown">
+                                <div className="menu-profile">
+                                    <div className="menu-profile-icon">
+                                        {username.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="menu-profile-name">
+                                        {username}
+                                    </div>
+                                </div>
+                                
+                                <div 
+                                    className={`menu-item ${showBetHistory ? 'active' : ''}`}
+                                    onClick={() => setShowBetHistory(!showBetHistory)}
+                                >
+                                    <span>My Aviator Bet History</span>
+                                    <span style={{ fontSize: '0.8rem' }}>{showBetHistory ? '▲' : '▼'}</span>
+                                </div>
+                                
+                                {showBetHistory && (
+                                    <div className="bet-history-panel">
+                                        <div className="bet-history-item header">
+                                            <span>Time</span>
+                                            <span>Mult</span>
+                                            <span>Result</span>
+                                        </div>
+                                        {myBetHistory.length > 0 ? (
+                                            myBetHistory.map((bet, idx) => (
+                                                <div key={idx} className="bet-history-item">
+                                                    <span>{new Date(bet.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                    <span>{bet.odds && bet.odds.selected ? bet.odds.selected.toFixed(2) + 'x' : '-'}</span>
+                                                    <span className={bet.status === 'won' || (bet.actualWin > 0) ? 'win' : 'loss'}>
+                                                        {bet.status === 'won' || (bet.actualWin > 0) ? `+$${bet.actualWin.toFixed(2)}` : `-$${bet.stake.toFixed(2)}`}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div style={{padding: '10px', textAlign: 'center', color: '#666', fontSize: '0.8rem'}}>
+                                                No bets found
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="menu-item" onClick={(e) => e.stopPropagation()}>
+                                    <span>Sound</span>
+                                    <label className="switch">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={soundEnabled}
+                                            onChange={(e) => setSoundEnabled(e.target.checked)}
+                                        />
+                                        <span className="slider round"></span>
+                                    </label>
+                                </div>
+
+                                <div className="menu-item">
+                                    <span>How to Play</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        className="close-game-btn-inline"
+                        onClick={() => navigate('/')}
+                        aria-label="Close Game"
+                    >
+                        ×
+                    </button>
                 </div>
             </div>
             <div className="history-strip">

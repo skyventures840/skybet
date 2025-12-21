@@ -22,9 +22,9 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   },
-  timeout: 10000,
+  timeout: 15000, // Increased to 15s to reduce timeouts under load
 });
 
 const apiPublic = axios.create({
@@ -400,8 +400,16 @@ const apiService = {
   // Bets
   placeBet: (betData) => api.post('/bets', betData),
   // Use instantGet to return cached data immediately and revalidate in background
-  getUserBets: () => instantGet('/bets/my-bets', 120000),
-  getBetStatsSummary: () => instantGet('/bets/stats/summary', 60000),
+  getUserBets: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const path = queryString ? `/bets/my-bets?${queryString}` : '/bets/my-bets';
+    return instantGet(path, 120000);
+  },
+  getBetStatsSummary: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const path = queryString ? `/bets/stats/summary?${queryString}` : '/bets/stats/summary';
+    return instantGet(path, 60000);
+  },
   
   // Admin Bet Management
   getAdminBets: (params) => api.get(`/admin/bets?${params}`),
