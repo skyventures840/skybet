@@ -155,6 +155,7 @@ async function start() {
         }
         allowedOrigins.push('http://localhost:3000', 'https://localhost:3000');
         allowedOrigins.push('https://skybet-frontend.onrender.com');
+        allowedOrigins.push('https://www.skybetts.com', 'https://skybetts.com');
         if (origin && origin.includes('.onrender.com')) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
         callback(new Error('Not allowed by CORS'));
