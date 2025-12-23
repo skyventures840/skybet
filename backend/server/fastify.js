@@ -145,26 +145,40 @@ async function start() {
   try {
     const helmet = require('helmet');
     const cors = require('cors');
+    
+    // Define allowed origins including hardcoded production domains and environment variables
+    const allowedOrigins = [
+      'https://backend.skybetts.com',
+      'https://www.skybetts.com',
+      'https://skybetts.com'
+    ];
+
+    // Add origins from environment variables
+    if (process.env.FRONTEND_URL) {
+      process.env.FRONTEND_URL.split(',').forEach(url => {
+        const trimmed = url.trim();
+        if (trimmed && !allowedOrigins.includes(trimmed)) allowedOrigins.push(trimmed);
+      });
+    }
+    
+    // Also check ALLOWED_ORIGINS
+    if (process.env.ALLOWED_ORIGINS) {
+      process.env.ALLOWED_ORIGINS.split(',').forEach(url => {
+        const trimmed = url.trim();
+        if (trimmed && !allowedOrigins.includes(trimmed)) allowedOrigins.push(trimmed);
+      });
+    }
+
     const corsOptions = {
       origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
-        // Base allowed origins (Localhost)
-        const allowedOrigins = ['http://localhost:3000', 'https://localhost:3000'];
-        
-        // Add origins from environment variable (Comma separated)
-        if (process.env.FRONTEND_URL) {
-          const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
-          allowedOrigins.push(...envOrigins);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
         }
-
-        // Check if origin is allowed
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        
-        // Allow all .onrender.com subdomains dynamically
-        if (origin && origin.endsWith('.onrender.com')) return callback(null, true);
-
-        callback(new Error('Not allowed by CORS'));
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
