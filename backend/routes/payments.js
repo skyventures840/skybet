@@ -355,7 +355,7 @@ router.post('/callback', async (req, res) => {
       if (transaction) {
         if (payment_status === 'finished' || payment_status === 'confirmed') {
           // Credit real wallet
-                await User.deposit(payment.userId, payment.amount);
+          await User.deposit(payment.userId, payment.amount);
 
           // First-deposit check and bonus
           const user = await User.findById(payment.userId);
@@ -447,7 +447,11 @@ router.post('/callback', async (req, res) => {
             status: payment_status
           });
         }
+      } else {
+        nowpayments.logger.warn(`Transaction not found for paymentId: ${payment_id}`);
       }
+    } else {
+      nowpayments.logger.warn(`Payment not found for orderId: ${order_id}`);
     }
 
     res.status(200).send('OK');

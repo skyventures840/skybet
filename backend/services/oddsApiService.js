@@ -575,13 +575,13 @@ class OddsApiService {
   /**
    * Enhanced method to fetch scores with caching
    */
-  async getScores(sportKey, daysFrom = 0) {
+  async getScores(sportKey, daysFrom = 0, eventIds = []) {
     if (!this.isEnabled) {
       console.warn('OddsApiService is disabled due to missing configuration');
       return [];
     }
 
-    const cacheKey = `scores_${sportKey}_${daysFrom}`;
+    const cacheKey = `scores_${sportKey}_${daysFrom}_${eventIds.join(',')}`;
     const cached = scoresCache.get(cacheKey);
     if (cached) {
       console.log(`Returning cached scores for ${sportKey}`);
@@ -589,13 +589,17 @@ class OddsApiService {
     }
 
     try {
-      const response = await this.client.get(`/sports/${sportKey}/scores`, {
-        params: {
-          apiKey: config.oddsApi.apiKey,
-          daysFrom,
-          dateFormat: 'iso'
-        }
-      });
+      const params = {
+        apiKey: config.oddsApi.apiKey,
+        daysFrom,
+        dateFormat: 'iso'
+      };
+
+      if (eventIds && eventIds.length > 0) {
+        params.eventIds = eventIds.join(',');
+      }
+
+      const response = await this.client.get(`/sports/${sportKey}/scores`, { params });
       this.lastResponseHeaders = response.headers;
       
       const scores = response.data || [];
@@ -660,13 +664,13 @@ class OddsApiService {
   /**
    * Enhanced method to get results with caching
    */
-  async getResults(sportKey, daysBack = 3) {
+  async getResults(sportKey, daysBack = 3, eventIds = []) {
     if (!this.isEnabled) {
       console.warn('OddsApiService is disabled due to missing configuration');
       return [];
     }
 
-    const cacheKey = `results_${sportKey}_${daysBack}`;
+    const cacheKey = `results_${sportKey}_${daysBack}_${eventIds.join(',')}`;
     const cached = oddsCache.get(cacheKey);
     if (cached) {
       console.log(`Returning cached results for ${sportKey}`);
@@ -674,13 +678,17 @@ class OddsApiService {
     }
 
     try {
-      const response = await this.client.get(`/sports/${sportKey}/scores`, {
-        params: {
-          apiKey: config.oddsApi.apiKey,
-          daysFrom: daysBack,
-          completed: true
-        }
-      });
+      const params = {
+        apiKey: config.oddsApi.apiKey,
+        daysFrom: daysBack,
+        completed: true
+      };
+
+      if (eventIds && eventIds.length > 0) {
+        params.eventIds = eventIds.join(',');
+      }
+
+      const response = await this.client.get(`/sports/${sportKey}/scores`, { params });
       this.lastResponseHeaders = response.headers;
       
       const results = response.data || [];

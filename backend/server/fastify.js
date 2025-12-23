@@ -148,16 +148,22 @@ async function start() {
     const corsOptions = {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        const allowedOrigins = [];
+        
+        // Base allowed origins (Localhost)
+        const allowedOrigins = ['http://localhost:3000', 'https://localhost:3000'];
+        
+        // Add origins from environment variable (Comma separated)
         if (process.env.FRONTEND_URL) {
-          const frontendUrls = process.env.FRONTEND_URL.split(',').map(url => url.trim());
-          allowedOrigins.push(...frontendUrls);
+          const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+          allowedOrigins.push(...envOrigins);
         }
-        allowedOrigins.push('http://localhost:3000', 'https://localhost:3000');
-        allowedOrigins.push('https://skybet-frontend.onrender.com');
-        allowedOrigins.push('https://www.skybetts.com', 'https://skybetts.com');
-        if (origin && origin.includes('.onrender.com')) return callback(null, true);
+
+        // Check if origin is allowed
         if (allowedOrigins.includes(origin)) return callback(null, true);
+        
+        // Allow all .onrender.com subdomains dynamically
+        if (origin && origin.endsWith('.onrender.com')) return callback(null, true);
+
         callback(new Error('Not allowed by CORS'));
       },
       credentials: true,

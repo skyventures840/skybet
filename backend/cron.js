@@ -193,6 +193,98 @@ async function fetchLiveOdds() {
 }
 
 /**
+ * @function updatePendingBetsScores
+ * @description Scans pending bets and fetches targeted scores/results
+ */
+async function updatePendingBetsScores() {
+  if (!oddsApiService) return;
+  
+  try {
+    logger.info('Starting targeted pending bets update...');
+    
+    // 1. Get pending bets match IDs
+    const pendingBets = await Bet.find({ status: 'pending' }).select('matchId').lean();
+    const pendingMultiBets = await MultiBet.find({ status: 'pending' }).select('bets').lean();
+    
+    const matchIds = new Set();
+    pendingBets.forEach(b => {
+      if (b.matchId) matchIds.add(b.matchId);
+    });
+    pendingMultiBets.forEach(mb => {
+      if (Array.isArray(mb.bets)) {
+        mb.bets.forEach(b => {
+          if (b.status === 'pending' && b.matchId) matchIds.add(b.matchId);
+        });
+      }
+    });
+    
+    const uniqueMatchIds = [...matchIds];
+    if (uniqueMatchIds.length === 0) {
+      logger.info('No pending bets found, skipping targeted fetch');
+      return;
+    }
+    
+    logger.info(`Found ${uniqueMatchIds.length} pending matches to update`);
+
+    // 2. Resolve sport keys for these matches
+    // Try Odds collection first
+    const odds = await Odds.find({ gameId: { $in: uniqueMatchIds } }).select('gameId sport_key').lean();
+    const idToSport = {};
+    odds.forEach(o => idToSport[o.gameId] = o.sport_key);
+    
+    // Find missing IDs (possibly cleaned up from Odds but exist in Scores or just old)
+    const missingIds = uniqueMatchIds.filter(id => !idToSport[id]);
+    
+    if (missingIds.length > 0) {
+      // Try Scores collection
+      try {
+        const scores = await Scores.find({ eventId: { $in: missingIds } }).select('eventId sport_key').lean();
+        scores.forEach(s => idToSport[s.eventId] = s.sport_key);
+      } catch (e) {
+        logger.warn('Could not query Scores for missing IDs:', e.message);
+      }
+    }
+    
+    // Group IDs by sport
+    const idsBySport = {};
+    Object.entries(idToSport).forEach(([id, sportKey]) => {
+      if (!sportKey) return;
+      if (!idsBySport[sportKey]) idsBySport[sportKey] = [];
+      idsBySport[sportKey].push(id);
+    });
+    
+    // 3. Fetch updates for each sport group
+    const sports = Object.keys(idsBySport);
+    if (sports.length === 0) {
+      logger.info('Could not resolve sport keys for pending matches');
+      return;
+    }
+
+    logger.info(`Updating pending bets across ${sports.length} sports`);
+    
+    for (const sportKey of sports) {
+      const ids = idsBySport[sportKey];
+      try {
+        // Fetch scores (includes live and recent results)
+        // Using daysFrom=3 to catch recent finishes
+        await oddsApiService.getScores(sportKey, 3, ids);
+        logger.info(`Updated scores for ${ids.length} matches in ${sportKey}`);
+      } catch (e) {
+        logger.error(`Failed to update pending bets for ${sportKey}: ${e.message}`);
+      }
+      
+      // Rate limit delay
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    
+    logger.info('Targeted pending bets update completed');
+    
+  } catch (error) {
+    logger.error('Error updating pending bets:', error);
+  }
+}
+
+/**
  * @function startCronJobs
  * @description Initializes and starts all scheduled cron jobs for the application.
  */
@@ -288,76 +380,30 @@ const startCronJobs = async () => {
     }
   }, 15 * 60 * 1000); // 15 minutes delay
 
-  // Periodic scores fetch every 2 minutes
-  cron.schedule('*/2 * * * *', async () => {
+  // Periodic check for pending bets scores/results every 5 minutes
+  cron.schedule('*/5 * * * *', async () => {
     if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-      logger.warn('MongoDB not connected; skipping scheduled scores fetch');
+      logger.warn('MongoDB not connected; skipping pending bets update');
       return;
     }
+    
     if (isScoresFetching) {
-      logger.warn('Scores fetching already in progress, skipping...');
+      logger.warn('Pending bets update already in progress, skipping...');
       return;
     }
-    if (!oddsApiService) {
-      logger.warn('OddsApiService unavailable; skipping scores fetch');
-      return;
-    }
+
     isScoresFetching = true;
     try {
-      const sportsList = await oddsApiService.getSports();
-      const supportedSports = (sportsList || []).filter(sport => sport && sport.key && !sport.key.includes('politics') && !sport.key.includes('entertainment'));
-      for (const sport of supportedSports.slice(0, 5)) {
-        try {
-          await oddsApiService.getScores(sport.key, 0);
-        } catch (e) {
-          logger.warn(`Scores fetch failed for ${sport.key}: ${e.message}`);
-        }
-        await new Promise(r => setTimeout(r, 500));
-      }
-      logger.info('Scheduled scores fetch completed');
+      await updatePendingBetsScores();
     } catch (error) {
-      logger.error('Error during scheduled scores fetch:', error);
+      logger.error('Error during pending bets update:', error);
     } finally {
       isScoresFetching = false;
     }
   });
 
-  // Periodic results fetch every 10 minutes (past 3 days)
-  cron.schedule('*/10 * * * *', async () => {
-    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-      logger.warn('MongoDB not connected; skipping scheduled results fetch');
-      return;
-    }
-    if (isResultsFetching) {
-      logger.warn('Results fetching already in progress, skipping...');
-      return;
-    }
-    if (!oddsApiService) {
-      logger.warn('OddsApiService unavailable; skipping results fetch');
-      return;
-    }
-    isResultsFetching = true;
-    try {
-      const sportsList = await oddsApiService.getSports();
-      const supportedSports = (sportsList || []).filter(sport => sport && sport.key && !sport.key.includes('politics') && !sport.key.includes('entertainment'));
-      for (const sport of supportedSports.slice(0, 5)) {
-        try {
-          await oddsApiService.getResults(sport.key, 3);
-        } catch (e) {
-          logger.warn(`Results fetch failed for ${sport.key}: ${e.message}`);
-        }
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      logger.info('Scheduled results fetch completed');
-    } catch (error) {
-      logger.error('Error during scheduled results fetch:', error);
-    } finally {
-      isResultsFetching = false;
-    }
-  });
-
-  // Fetch upcoming odds every 30 minutes
-  cron.schedule('*/30 * * * *', async () => {
+  // Fetch upcoming odds daily at midnight
+  cron.schedule('0 0 * * *', async () => {
     // Skip if DB is not connected to avoid buffered writes that never flush
     if (!mongoose.connection || mongoose.connection.readyState !== 1) {
       logger.warn('MongoDB not connected; skipping scheduled upcoming odds fetch');
