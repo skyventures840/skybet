@@ -10,7 +10,11 @@ if (!RAW_BASE) {
   if (isBrowser && isDev && String(window.location.port) === '3000') {
     RAW_BASE = 'http://localhost:10000';
   } else if (isBrowser) {
-    RAW_BASE = window.location.origin;
+    if (window.location.hostname.includes('skybetts.com')) {
+      RAW_BASE = 'https://backend.skybetts.com';
+    } else {
+      RAW_BASE = window.location.origin;
+    }
   } else {
     RAW_BASE = 'http://localhost:10000';
   }

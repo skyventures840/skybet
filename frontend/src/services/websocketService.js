@@ -31,7 +31,9 @@ class WebSocketService {
         }
       } else {
         const apiBase = process.env.REACT_APP_API_URL
-          || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+          || (typeof window !== 'undefined' ? 
+              (window.location.hostname.includes('skybetts.com') ? 'https://backend.skybetts.com' : window.location.origin) 
+              : 'http://localhost:5000');
         let base = String(apiBase).replace(/\/$/, '');
         if (base.endsWith('/api')) base = base.slice(0, -4);
         if (base.startsWith('https://')) {

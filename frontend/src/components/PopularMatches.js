@@ -4,7 +4,10 @@ import { useDispatch } from 'react-redux';
 import LockedOdds from './LockedOdds';
 import SkeletonLoader from './SkeletonLoader';
 import { assessOddsRisk } from '../utils/riskManagement';
-import { computeFullLeagueTitle } from '../utils/leagueTitle';
+import { 
+  computeFullLeagueTitle, 
+  getLeagueDetails 
+} from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
 import apiService from '../services/api';
 import enhancedCache from '../services/enhancedCache';
@@ -103,19 +106,32 @@ const PopularMatches = ({ matches }) => {
         <div className="popular-matches-scroll" ref={scrollRef}>
           {displayedMatches.map((match) => {
             const rawSportKey = String(match.sport_key || match.sport || '').toLowerCase();
-            const computedFull = computeFullLeagueTitle({
-              sportKeyOrName: rawSportKey,
-              country: match.country || '',
-              leagueName: match.league || match.sport_title || '',
-              fallbackSportTitle: match.sport_title || ''
-            });
-            const fullLeagueTitle = computedFull
-              .replace(/_/g, '.')
-              .split('.')
-              .map(s => s.trim())
-              .filter(Boolean)
-              .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-              .join('.');
+            
+            // Generate title from sport key strictly as requested
+            const { sport, league } = getLeagueDetails(rawSportKey, match.sport_title);
+            let fullLeagueTitle = '';
+            
+            if (sport && league) {
+              fullLeagueTitle = `${sport} . ${league}`;
+            } else if (league) {
+               // Fallback if sport missing but league present (unlikely with getLeagueDetails)
+              fullLeagueTitle = league;
+            } else {
+               // Fallback to original logic if key parsing fails
+                const computedFull = computeFullLeagueTitle({
+                  sportKeyOrName: rawSportKey,
+                  country: match.country || '',
+                  leagueName: match.league || match.sport_title || '',
+                  fallbackSportTitle: match.sport_title || ''
+                });
+                fullLeagueTitle = computedFull
+                  .replace(/_/g, '.')
+                  .split('.')
+                  .map(s => s.trim())
+                  .filter(Boolean)
+                  .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+                  .join('.');
+            }
 
             return (
               <div key={match.id || match._id} className="popular-match-card">
