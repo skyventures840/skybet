@@ -105,32 +105,35 @@ const PopularMatches = ({ matches }) => {
         <button className="slider-btn next-btn popular-slider-btn" onClick={scrollRight} title="Scroll right">&#8250;</button>
         <div className="popular-matches-scroll" ref={scrollRef}>
           {displayedMatches.map((match) => {
-            const rawSportKey = String(match.sport_key || match.sport || '').toLowerCase();
-            
-            // Generate title from sport key strictly as requested
-            const { sport, league } = getLeagueDetails(rawSportKey, match.sport_title);
-            let fullLeagueTitle = '';
-            
-            if (sport && league) {
-              fullLeagueTitle = `${sport} . ${league}`;
-            } else if (league) {
-               // Fallback if sport missing but league present (unlikely with getLeagueDetails)
-              fullLeagueTitle = league;
-            } else {
-               // Fallback to original logic if key parsing fails
-                const computedFull = computeFullLeagueTitle({
-                  sportKeyOrName: rawSportKey,
-                  country: match.country || '',
-                  leagueName: match.league || match.sport_title || '',
-                  fallbackSportTitle: match.sport_title || ''
-                });
-                fullLeagueTitle = computedFull
-                  .replace(/_/g, '.')
-                  .split('.')
-                  .map(s => s.trim())
-                  .filter(Boolean)
-                  .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-                  .join('.');
+            let fullLeagueTitle = match.fullLeagueTitle || '';
+
+            if (!fullLeagueTitle) {
+              const rawSportKey = String(match.sport_key || match.sport || '').toLowerCase();
+              
+              // Generate title from sport key strictly as requested
+              const { sport, league } = getLeagueDetails(rawSportKey, match.sport_title);
+              
+              if (sport && league) {
+                fullLeagueTitle = `${sport} . ${league}`;
+              } else if (league) {
+                 // Fallback if sport missing but league present (unlikely with getLeagueDetails)
+                fullLeagueTitle = league;
+              } else {
+                 // Fallback to original logic if key parsing fails
+                  const computedFull = computeFullLeagueTitle({
+                    sportKeyOrName: rawSportKey,
+                    country: match.country || '',
+                    leagueName: match.league || match.sport_title || '',
+                    fallbackSportTitle: match.sport_title || ''
+                  });
+                  fullLeagueTitle = computedFull
+                    .replace(/_/g, '.')
+                    .split('.')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+                    .join('.');
+              }
             }
 
             return (

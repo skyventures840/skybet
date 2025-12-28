@@ -385,7 +385,8 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
         sportKeyOrName,
         country,
         leagueName,
-        fallbackSportTitle: match.sport_title || match.sport || ''
+        fallbackSportTitle: match.sport_title || match.sport || '',
+        fullLeagueTitle: match.fullLeagueTitle
     });
 
     // Removed unused formatMatchTime helper

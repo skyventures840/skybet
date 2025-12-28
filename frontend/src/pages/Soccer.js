@@ -128,6 +128,7 @@ const Soccer = () => {
           id: match.id,
           league: match.league || match.competition || match.tournament || 'Other',
           country: derivedCountry,
+          fullLeagueTitle: match.fullLeagueTitle,
           sport_key: match.sport_key || '',
           time: start.toLocaleString('en-US', {
             hour: '2-digit',

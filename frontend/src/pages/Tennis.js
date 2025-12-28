@@ -151,6 +151,9 @@ const Tennis = () => {
         return {
           id: odds.gameId,
           league: odds.sport_title,
+          fullLeagueTitle: odds.fullLeagueTitle,
+          country: odds.country,
+          sport_key: odds.sport_key,
           time: new Date(odds.commence_time).toLocaleString('en-US', {
             hour: '2-digit',
             minute: '2-digit',

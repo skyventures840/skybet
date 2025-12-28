@@ -37,6 +37,20 @@ const ManageMatches = () => {
   const [resultHomeScore, setResultHomeScore] = useState(0);
   const [resultAwayScore, setResultAwayScore] = useState(0);
   const [resultCompleted, setResultCompleted] = useState(true);
+  const [scheduledEvents, setScheduledEvents] = useState([]);
+  const [openActionId, setOpenActionId] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionId && !event.target.closest('.action-dropdown-container')) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openActionId]);
 
   useEffect(() => {
     fetchMatches();
@@ -150,6 +164,22 @@ const ManageMatches = () => {
     setFormData({ ...formData, odds: { ...formData.odds, [name]: value } });
   };
 
+  const addScheduledEvent = () => {
+    setScheduledEvents([...scheduledEvents, { minute: 0, team: 'home', player: '', type: 'goal', description: '' }]);
+  };
+
+  const removeScheduledEvent = (index) => {
+    const newEvents = [...scheduledEvents];
+    newEvents.splice(index, 1);
+    setScheduledEvents(newEvents);
+  };
+
+  const updateScheduledEvent = (index, field, value) => {
+    const newEvents = [...scheduledEvents];
+    newEvents[index] = { ...newEvents[index], [field]: value };
+    setScheduledEvents(newEvents);
+  };
+
   const handleCreateOrUpdateMatch = async (e) => {
     e.preventDefault();
     try {
@@ -167,7 +197,13 @@ const ManageMatches = () => {
         homeScore: formData.homeScore || 0,
         awayScore: formData.awayScore || 0,
         videoUrl: formData.videoUrl || undefined,
-        videoPosterUrl: formData.videoPosterUrl || undefined
+        videoPosterUrl: formData.videoPosterUrl || undefined,
+        predeterminedResult: {
+          homeScore: formData.predeterminedHomeScore !== '' ? Number(formData.predeterminedHomeScore) : null,
+          awayScore: formData.predeterminedAwayScore !== '' ? Number(formData.predeterminedAwayScore) : null,
+          shouldSettle: true
+        },
+        scheduledEvents
       };
       if (currentMatch) {
         await apiService.updateMatch(currentMatch._id, payload);
@@ -190,6 +226,7 @@ const ManageMatches = () => {
       if (showAddLeague) {
         setShowAddLeague(false);
         setNewLeagueName('');
+        apiService.invalidateCachePrefix('/admin/leagues');
         fetchLeagues();
       }
     } catch (err) {
@@ -223,8 +260,11 @@ const ManageMatches = () => {
       awayScore: null,
       odds: {},
       videoUrl: '',
-      videoPosterUrl: ''
+      videoPosterUrl: '',
+      predeterminedHomeScore: '',
+      predeterminedAwayScore: ''
     });
+    setScheduledEvents([]);
     setShowAddLeague(false);
     setNewLeagueName('');
     setIsModalOpen(true);
@@ -232,8 +272,9 @@ const ManageMatches = () => {
 
   const openEditModal = (match) => {
     setCurrentMatch(match);
+    setScheduledEvents(match.scheduledEvents || []);
     setFormData({
-      leagueName: leagues.find(l => l.leagueId === match.leagueId)?.name || '',
+      leagueName: leagues.find(l => l.leagueId === match.leagueId)?.name || match.leagueId?.name || '', // Handle populated league
       sport: match.sport,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
@@ -243,7 +284,9 @@ const ManageMatches = () => {
       awayScore: match.awayScore,
       odds: match.odds || {},
       videoUrl: match.videoUrl || '',
-      videoPosterUrl: match.videoPosterUrl || ''
+      videoPosterUrl: match.videoPosterUrl || '',
+      predeterminedHomeScore: match.predeterminedResult?.homeScore ?? '',
+      predeterminedAwayScore: match.predeterminedResult?.awayScore ?? ''
     });
     setShowAddLeague(false);
     setNewLeagueName('');
@@ -418,7 +461,7 @@ const ManageMatches = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="search-filter">
+        <div className="search-filter flex flex-wrap gap-2">
           <input
             type="text"
             placeholder="Search by team or league..."
@@ -494,109 +537,208 @@ const ManageMatches = () => {
             {!searchPerformed ? 'No matches found. Click "Show All" to view all matches.' : 'No matches found for your search.'}
           </div>
         ) : (
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={allMatchesSelected}
-                    onChange={(e) => handleSelectAllMatches(e.target.checked)}
-                  />
-                </th>
-                <th>Sport</th>
-                <th>Match</th>
-                <th>League</th>
-                <th>Start Time</th>
-                <th>Status</th>
-                <th>Score</th>
-                <th>Odds</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(!searchPerformed ? matches : filteredMatches).map((match) => (
-                <tr key={match._id}>
-                  <td>
+          <>
+            {/* Desktop Table View */}
+            <table className="admin-table hidden md:table w-full">
+              <thead>
+                <tr>
+                  <th>
                     <input
                       type="checkbox"
-                      checked={selectedMatches.includes(match._id)}
-                      onChange={(e) => handleSelectMatch(match._id, e.target.checked)}
+                      checked={allMatchesSelected}
+                      onChange={(e) => handleSelectAllMatches(e.target.checked)}
                     />
-                  </td>
-                  <td>
-                    <span className="sport-badge">{match.sport}</span>
-                  </td>
-                  <td>
-                    <div className="match-info">
-                      <div className="teams">{match.homeTeam} vs {match.awayTeam}</div>
+                  </th>
+                  <th>Sport</th>
+                  <th>Match</th>
+                  <th>League</th>
+                  <th>Start Time</th>
+                  <th>Status</th>
+                  <th>Score</th>
+                  <th>Odds</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(!searchPerformed ? matches : filteredMatches).map((match) => (
+                  <tr key={match._id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedMatches.includes(match._id)}
+                        onChange={(e) => handleSelectMatch(match._id, e.target.checked)}
+                      />
+                    </td>
+                    <td>
+                      <span className="sport-badge">{match.sport}</span>
+                    </td>
+                    <td>
+                      <div className="match-info">
+                        <div className="teams max-w-[120px] md:max-w-[180px] lg:max-w-xs truncate" title={`${match.homeTeam} vs ${match.awayTeam}`}>
+                          {match.homeTeam} vs {match.awayTeam}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="league max-w-[100px] md:max-w-[150px] lg:max-w-xs truncate" title={match.leagueId?.name || 'N/A'}>
+                        {match.leagueId?.name || 'N/A'}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="text-sm">{new Date(match.startTime).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-400">{new Date(match.startTime).toLocaleTimeString()}</div>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${match.status}`}>
+                        {match.status}
+                      </span>
+                    </td>
+                    <td>
+                      {match.homeScore != null && match.awayScore != null ? `${match.homeScore} - ${match.awayScore}` : 'N/A'}
+                    </td>
+                    <td>
+                      <div className="odds-preview">
+                        {match.odds && Object.keys(match.odds).length > 0 ? (
+                          <span className="text-green-400 text-sm">✓ Set</span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Not set</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="action-buttons relative action-dropdown-container">
+                        <button
+                          onClick={() => setOpenActionId(openActionId === match._id ? null : match._id)}
+                          className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-cyan-400 flex items-center gap-1"
+                        >
+                          Actions ▼
+                        </button>
+                        {openActionId === match._id && (
+                          <div className="absolute right-0 mt-1 w-32 bg-gray-800 border border-gray-600 rounded shadow-xl z-50">
+                            <button
+                              onClick={() => { setOpenActionId(null); openEditModal(match); }}
+                              className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-700 text-white border-b border-gray-700"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => { setOpenActionId(null); openResultModal(match); }}
+                              className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-700 text-white border-b border-gray-700"
+                            >
+                              Update Result
+                            </button>
+                            <button
+                              onClick={() => { setOpenActionId(null); handleDeleteMatch(match._id); }}
+                              className="block w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-gray-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {(!searchPerformed ? matches : filteredMatches).map((match) => (
+                <div key={match._id} className="bg-gray-800 p-4 rounded-lg shadow border border-gray-700">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedMatches.includes(match._id)}
+                        onChange={(e) => handleSelectMatch(match._id, e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <span className="sport-badge text-xs">{match.sport}</span>
+                      <span className={`status-badge ${match.status} text-xs px-2 py-0.5`}>
+                        {match.status}
+                      </span>
                     </div>
-                  </td>
-                  <td>
-                    <div className="league">{match.leagueId?.name || 'N/A'}</div>
-                  </td>
-                  <td>
-                    <div className="text-sm">{new Date(match.startTime).toLocaleDateString()}</div>
-                    <div className="text-xs text-gray-400">{new Date(match.startTime).toLocaleTimeString()}</div>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${match.status}`}>
-                      {match.status}
-                    </span>
-                  </td>
-                  <td>
-                    {match.homeScore != null && match.awayScore != null ? `${match.homeScore} - ${match.awayScore}` : 'N/A'}
-                  </td>
-                  <td>
-                    <div className="odds-preview">
-                      {match.odds && Object.keys(match.odds).length > 0 ? (
-                        <span className="text-green-400 text-sm">✓ Set</span>
-                      ) : (
-                        <span className="text-gray-400 text-sm">Not set</span>
-                      )}
+                    <div className="text-right">
+                      <div className="text-xs text-gray-400">{new Date(match.startTime).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-400">{new Date(match.startTime).toLocaleTimeString()}</div>
                     </div>
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button
-                        onClick={() => openEditModal(match)}
-                        className="btn-edit"
+                  </div>
+                  
+                  <div className="mb-3">
+                    <div className="text-lg font-bold text-white mb-1 break-words">{match.homeTeam} vs {match.awayTeam}</div>
+                    <div className="text-sm text-gray-400 break-words">{match.leagueId?.name || 'N/A'}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+                    <div className="bg-gray-700 p-2 rounded">
+                      <div className="text-gray-400 text-xs">Score</div>
+                      <div className="text-white font-mono">
+                        {match.homeScore != null && match.awayScore != null ? `${match.homeScore} - ${match.awayScore}` : 'N/A'}
+                      </div>
+                    </div>
+                    <div className="bg-gray-700 p-2 rounded">
+                      <div className="text-gray-400 text-xs">Odds</div>
+                      <div>
+                        {match.odds && Object.keys(match.odds).length > 0 ? (
+                          <span className="text-green-400">✓ Set</span>
+                        ) : (
+                          <span className="text-gray-400">Not set</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end mt-3 relative action-dropdown-container">
+                    <button 
+                    onClick={() => setOpenActionId(openActionId === match._id ? null : match._id)}
+                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-cyan-400 flex items-center justify-center gap-2"
+                  >
+                    Actions ▼
+                  </button>
+                  {openActionId === match._id && (
+                    <div className="absolute right-0 top-full mt-1 w-full bg-gray-800 border border-gray-600 rounded shadow-xl z-50">
+                      <button 
+                        onClick={() => { setOpenActionId(null); openEditModal(match); }}
+                        className="block w-full text-left px-4 py-3 text-sm hover:bg-gray-700 text-gray-200 hover:text-white border-b border-gray-700"
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => openResultModal(match)}
-                        className="btn-refresh"
+                      <button 
+                        onClick={() => { setOpenActionId(null); openResultModal(match); }}
+                        className="block w-full text-left px-4 py-3 text-sm hover:bg-gray-700 text-gray-200 hover:text-white border-b border-gray-700"
                       >
                         Update Result
                       </button>
-                      <button
-                        onClick={() => handleDeleteMatch(match._id)}
-                        className="btn-cancel"
+                      <button 
+                        onClick={() => { setOpenActionId(null); handleDeleteMatch(match._id); }}
+                        className="block w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300"
                       >
                         Delete
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  )}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Bulk Actions */}
       {selectedMatches.length > 0 && (
-        <div className="bulk-actions">
-          <div className="flex items-center justify-between">
-            <span className="text-white">
+        <div className="bulk-actions fixed bottom-4 left-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700 z-40">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <span className="text-white font-bold">
               {selectedMatches.length} match(es) selected
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
               <select
                 value={bulkAction}
                 onChange={(e) => setBulkAction(e.target.value)}
-                className="bg-gray-700 text-white px-3 py-2 rounded border border-gray-600"
+                className="bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 w-full md:w-auto"
+                style={{ color: 'white', backgroundColor: '#374151' }}
               >
                 <option value="">Select Action</option>
                 <option value="status-upcoming">Set Status: Upcoming</option>
@@ -605,41 +747,43 @@ const ManageMatches = () => {
                 <option value="status-cancelled">Set Status: Cancelled</option>
                 <option value="delete">Delete Matches</option>
               </select>
-              <button
-                onClick={handleBulkAction}
-                disabled={!bulkAction}
-                className="btn-export disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Apply Action
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedMatches([]);
-                  setAllMatchesSelected(false);
-                  setBulkAction('');
-                }}
-                className="btn-cancel"
-              >
-                Clear Selection
-              </button>
+              <div className="flex gap-2 w-full md:w-auto">
+                <button
+                  onClick={handleBulkAction}
+                  disabled={!bulkAction}
+                  className="btn-export disabled:opacity-50 disabled:cursor-not-allowed flex-1 md:flex-none justify-center"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedMatches([]);
+                    setAllMatchesSelected(false);
+                    setBulkAction('');
+                  }}
+                  className="btn-cancel flex-1 md:flex-none justify-center"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>{currentMatch ? 'Edit Match' : 'Add New Match'}</h3>
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 overflow-y-auto">
+          <div className="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto my-8 flex flex-col max-h-[90vh]">
+            <div className="modal-header p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-gray-800">{currentMatch ? 'Edit Match' : 'Add New Match'}</h3>
               <button 
-                className="modal-close"
+                className="modal-close text-gray-500 hover:text-gray-700 text-2xl font-bold"
                 onClick={closeModal}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body p-6 overflow-y-auto custom-scrollbar">
             {saveMessage && (
               <div className="mb-4 text-green-400 text-sm">{saveMessage}</div>
             )}
@@ -662,10 +806,10 @@ const ManageMatches = () => {
                       required
                     >
                       <option value="">Select League</option>
+                      <option value="__add_new__" className="font-bold text-cyan-400">+ Add New League</option>
                       {leagues.map(l => (
                         <option key={l._id} value={l.name}>{l.name}</option>
                       ))}
-                      <option value="__add_new__">+ Add New League</option>
                     </select>
                   </div>
                 ) : (
@@ -1026,6 +1170,93 @@ const ManageMatches = () => {
                       onChange={handleOddsChange}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Match Scripting Section */}
+              <div className="border-t border-gray-600 pt-4 mt-4 mb-4">
+                <h4 className="text-black text-lg font-bold mb-4">Match Scripting (Predetermined Results)</h4>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Final Home Score (Predetermined)</label>
+                    <input
+                      type="number"
+                      name="predeterminedHomeScore"
+                      value={formData.predeterminedHomeScore}
+                      onChange={handleInputChange}
+                      placeholder="Leave empty for fair play"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ color: 'black' }}>Final Away Score (Predetermined)</label>
+                    <input
+                      type="number"
+                      name="predeterminedAwayScore"
+                      value={formData.predeterminedAwayScore}
+                      onChange={handleInputChange}
+                      placeholder="Leave empty for fair play"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-black text-sm font-bold">Scheduled Events (Goals)</label>
+                    <button type="button" onClick={addScheduledEvent} className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700">+ Add Event</button>
+                  </div>
+                  
+                  {scheduledEvents.length === 0 && (
+                     <p className="text-gray-500 text-sm italic">No scheduled events added.</p>
+                  )}
+
+                  {scheduledEvents.map((event, index) => (
+                    <div key={index} className="flex gap-2 mb-2 items-center bg-gray-100 p-2 rounded border border-gray-300">
+                      <div className="w-16">
+                        <label className="text-xs text-black block">Min</label>
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          value={event.minute}
+                          onChange={(e) => updateScheduledEvent(index, 'minute', Number(e.target.value))}
+                          className="w-full p-1 text-black rounded border border-gray-400"
+                        />
+                      </div>
+                      <div className="w-24">
+                        <label className="text-xs text-black block">Type</label>
+                        <select
+                          value={event.type}
+                          onChange={(e) => updateScheduledEvent(index, 'type', e.target.value)}
+                          className="w-full p-1 text-black rounded border border-gray-400"
+                        >
+                          <option value="goal">Goal</option>
+                          <option value="card">Card</option>
+                        </select>
+                      </div>
+                      <div className="w-24">
+                         <label className="text-xs text-black block">Team</label>
+                        <select
+                          value={event.team}
+                          onChange={(e) => updateScheduledEvent(index, 'team', e.target.value)}
+                          className="w-full p-1 text-black rounded border border-gray-400"
+                        >
+                          <option value="home">Home</option>
+                          <option value="away">Away</option>
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                         <label className="text-xs text-black block">Player/Desc</label>
+                        <input
+                          type="text"
+                          placeholder="Player Name"
+                          value={event.player}
+                          onChange={(e) => updateScheduledEvent(index, 'player', e.target.value)}
+                          className="w-full p-1 text-black rounded border border-gray-400"
+                        />
+                      </div>
+                      <button type="button" onClick={() => removeScheduledEvent(index)} className="text-red-500 font-bold px-2 self-end mb-1">X</button>
+                    </div>
+                  ))}
                 </div>
               </div>
 

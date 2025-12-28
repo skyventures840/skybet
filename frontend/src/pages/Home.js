@@ -417,8 +417,9 @@ const Home = () => {
       // Handle backend database format
       return {
         id: match._id || match.id,
-        league: match.leagueId ? formatSportKey(match.leagueId) : '',
-        subcategory: match.sport ? formatSportKey(match.sport) : '',
+        // Use existing league/country/title data from backend if available
+        league: match.league || (match.leagueId ? formatSportKey(match.leagueId) : ''),
+        subcategory: match.subcategory || (match.sport ? formatSportKey(match.sport) : ''),
         startTime: new Date(match.startTime),
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
@@ -427,6 +428,10 @@ const Home = () => {
         odds: buildFlatOdds(),
         additionalMarkets: (match.markets || []).length,
         sport: match.sport ? match.sport.split('_')[0] : '',
+        sport_key: match.sport_key || match.sport,
+        sport_title: match.sport_title || match.league,
+        country: match.country || '',
+        fullLeagueTitle: match.fullLeagueTitle || '',
         allMarkets: match.markets || []
       };
     }).filter(match => match !== null);

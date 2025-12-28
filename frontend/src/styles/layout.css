@@ -274,6 +274,7 @@
   flex: 1;
   padding: var(--spacing-xl);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Main Content Area */

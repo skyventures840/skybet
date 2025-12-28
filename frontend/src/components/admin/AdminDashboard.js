@@ -74,6 +74,20 @@ const AdminDashboard = () => {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [showAllBets, setShowAllBets] = useState(false);
+  const [openActionId, setOpenActionId] = useState(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionId && !event.target.closest('.action-dropdown-container')) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openActionId]);
 
   // WebSocket connection for real-time updates
   useEffect(() => {
@@ -680,45 +694,54 @@ const AdminDashboard = () => {
 
   const renderBetManagement = () => (
     <div className="admin-table-container">
-      <div className="table-header">
-        <div className="search-filter">
-          <FontAwesomeIcon icon={faSearch} />
-          <input 
-            type="text" 
-            placeholder="Search bets..." 
-            value={betSearchQuery}
-            onChange={(e) => { setBetSearchQuery(e.target.value); setShowAllBets(false); }}
-          />
-          <FontAwesomeIcon icon={faFilter} />
-          <select 
-            value={betStatusFilter}
-            onChange={(e) => { setBetStatusFilter(e.target.value); setShowAllBets(false); }}
-          >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="won">Won</option>
-            <option value="lost">Lost</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="void">Void</option>
-          </select>
-          <button 
-            className="btn-refresh"
-            onClick={fetchBets}
-            disabled={betLoading}
-          >
-            {betLoading ? 'Loading...' : 'Refresh'}
-          </button>
-          <button 
-            className="btn-show-all"
-            onClick={handleShowAllBets}
-            disabled={betLoading}
-          >
-            Show All
-          </button>
+      <div className="table-header flex flex-col md:flex-row gap-4 items-start md:items-center">
+        <div className="search-filter flex flex-wrap gap-2 w-full md:w-auto">
+          <div className="flex items-center bg-gray-700 rounded px-2 py-1 w-full md:w-auto">
+            <FontAwesomeIcon icon={faSearch} className="text-gray-400 mr-2" />
+            <input 
+              type="text" 
+              placeholder="Search by match, bet ID..." 
+              value={betSearchQuery}
+              onChange={(e) => { setBetSearchQuery(e.target.value); setShowAllBets(false); }}
+              className="bg-transparent border-none text-white focus:outline-none w-full"
+            />
+          </div>
+          <div className="flex items-center bg-gray-700 rounded px-2 py-1 w-full md:w-auto">
+            <FontAwesomeIcon icon={faFilter} className="text-gray-400 mr-2" />
+            <select 
+              value={betStatusFilter}
+              onChange={(e) => { setBetStatusFilter(e.target.value); setShowAllBets(false); }}
+              className="bg-transparent border-none text-white focus:outline-none w-full"
+              style={{ color: 'white', backgroundColor: '#1f2937' }} // Ensure options are visible on dark background
+            >
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="void">Void</option>
+            </select>
+          </div>
+          <div className="flex gap-2 w-full md:w-auto">
+            <button 
+              className="btn-refresh flex-1 md:flex-none"
+              onClick={fetchBets}
+              disabled={betLoading}
+            >
+              {betLoading ? 'Loading...' : 'Refresh'}
+            </button>
+            <button 
+              className="btn-show-all flex-1 md:flex-none"
+              onClick={handleShowAllBets}
+              disabled={betLoading}
+            >
+              Show All
+            </button>
+          </div>
         </div>
         
         {/* Real-time data indicator */}
-        <div className="real-time-indicator">
+        <div className="real-time-indicator md:ml-auto">
           <div className="refresh-status">
             {isAutoRefreshing ? (
               <span className="refreshing">
@@ -746,7 +769,9 @@ const AdminDashboard = () => {
         </div>
       ) : (
         <>
-          <table className="admin-table">
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto">
+          <table className="admin-table hidden md:table w-full">
             <thead>
               <tr>
                 <th>
@@ -782,20 +807,20 @@ const AdminDashboard = () => {
                   <td>{bet._id.slice(-8)}</td>
                   <td>
                     {bet.userId ? (
-                      <div className="user-info">
-                        <div className="username">{bet.userId.username}</div>
-                        <div className="email">{bet.userId.email}</div>
+                      <div className="user-info max-w-[100px] md:max-w-[150px] lg:max-w-[200px]">
+                        <div className="username truncate" title={bet.userId.username}>{bet.userId.username}</div>
+                        <div className="email truncate text-xs text-gray-400" title={bet.userId.email}>{bet.userId.email}</div>
                       </div>
                     ) : 'N/A'}
                   </td>
                   <td>
-                    <div className="match-info">
-                      <div className="teams">{bet.homeTeam} vs {bet.awayTeam}</div>
-                      <div className="league">{bet.league}</div>
+                    <div className="match-info max-w-[120px] md:max-w-[180px] lg:max-w-xs">
+                      <div className="teams truncate" title={`${bet.homeTeam} vs ${bet.awayTeam}`}>{bet.homeTeam} vs {bet.awayTeam}</div>
+                      <div className="league truncate text-xs text-gray-400" title={bet.league}>{bet.league}</div>
                     </div>
                   </td>
-                  <td>{bet.market}</td>
-                  <td>{bet.selection}</td>
+                  <td><div className="max-w-[80px] md:max-w-[120px] truncate" title={bet.market}>{bet.market}</div></td>
+                  <td><div className="max-w-[80px] md:max-w-[120px] truncate" title={bet.selection}>{bet.selection}</div></td>
                   <td>${bet.stake?.toFixed(2)}</td>
                   <td>{bet.odds}</td>
                   <td>${bet.potentialWin?.toFixed(2)}</td>
@@ -808,38 +833,142 @@ const AdminDashboard = () => {
                     {new Date(bet.createdAt).toLocaleDateString()}
                   </td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons relative action-dropdown-container">
                       <button 
-                        className="btn-edit"
-                        onClick={() => openBetEditModal(bet)}
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="btn-settle"
-                        onClick={() => openBetSettleModal(bet)}
-                      >
-                        Settle
-                      </button>
-                      <button 
-                        className="btn-settle"
-                        onClick={() => openBetResultModal(bet)}
-                      >
-                        Update Result
-                      </button>
-                      <button 
-                        className="btn-cancel"
-                        onClick={() => handleBetCancel(bet._id)}
-                        disabled={bet.status !== 'pending'}
-                      >
-                        Cancel
-                      </button>
+                          onClick={() => setOpenActionId(openActionId === bet._id ? null : bet._id)}
+                          className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-cyan-400 flex items-center gap-1"
+                        >
+                          Actions ▼
+                        </button>
+                        {openActionId === bet._id && (
+                          <div className="absolute right-0 mt-1 w-32 bg-gray-800 border border-gray-600 rounded shadow-xl z-50">
+                            <button 
+                              className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-700 text-gray-200 hover:text-white border-b border-gray-700"
+                              onClick={() => { setOpenActionId(null); openBetEditModal(bet); }}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-700 text-gray-200 hover:text-white border-b border-gray-700"
+                              onClick={() => { setOpenActionId(null); openBetSettleModal(bet); }}
+                            >
+                              Settle
+                            </button>
+                            <button 
+                              className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-700 text-gray-200 hover:text-white border-b border-gray-700"
+                              onClick={() => { setOpenActionId(null); openBetResultModal(bet); }}
+                            >
+                              Update Result
+                            </button>
+                            <button 
+                              className="block w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-gray-700 hover:text-red-300 disabled:opacity-50"
+                              onClick={() => { setOpenActionId(null); handleBetCancel(bet._id); }}
+                              disabled={bet.status !== 'pending'}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {bets.map(bet => (
+              <div key={bet._id} className={`bg-gray-800 p-4 rounded-lg shadow border border-gray-700 ${selectedBets.includes(bet._id) ? 'border-blue-500 ring-1 ring-blue-500' : ''}`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedBets.includes(bet._id)}
+                      onChange={(e) => handleSelectBet(bet._id, e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-xs text-gray-400 font-mono">#{bet._id.slice(-8)}</span>
+                    <span className={`status-badge ${bet.status} text-xs px-2 py-0.5`}>
+                      {bet.status}
+                    </span>
+                  </div>
+                  <div className="text-right text-xs text-gray-400">
+                    {new Date(bet.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                   {bet.userId && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-blue-400 font-semibold">{bet.userId.username}</span>
+                        <span className="text-gray-500 text-xs">({bet.userId.email})</span>
+                      </div>
+                   )}
+                   <div className="text-white font-medium break-words">{bet.homeTeam} vs {bet.awayTeam}</div>
+                   <div className="text-gray-400 text-xs break-words">{bet.league}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mb-3 bg-gray-750 p-2 rounded">
+                  <div>
+                    <div className="text-gray-400 text-xs">Market</div>
+                    <div className="text-white text-sm break-words">{bet.market}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-xs">Selection</div>
+                    <div className="text-white text-sm break-words">{bet.selection}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-xs">Stake</div>
+                    <div className="text-white text-sm">${bet.stake?.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-xs">Pot. Win</div>
+                    <div className="text-green-400 text-sm font-bold">${bet.potentialWin?.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-3 relative action-dropdown-container">
+                  <button 
+                    onClick={() => setOpenActionId(openActionId === bet._id ? null : bet._id)}
+                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-cyan-400 flex items-center justify-center gap-2"
+                  >
+                    Actions ▼
+                  </button>
+                  {openActionId === bet._id && (
+                    <div className="absolute right-0 top-full mt-1 w-full bg-gray-800 border border-gray-600 rounded shadow-xl z-50">
+                      <button 
+                        className="block w-full text-left px-4 py-3 text-sm hover:bg-gray-700 text-white border-b border-gray-700"
+                        onClick={() => { setOpenActionId(null); openBetEditModal(bet); }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="block w-full text-left px-4 py-3 text-sm hover:bg-gray-700 text-white border-b border-gray-700"
+                        onClick={() => { setOpenActionId(null); openBetSettleModal(bet); }}
+                      >
+                        Settle
+                      </button>
+                      <button 
+                        className="block w-full text-left px-4 py-3 text-sm hover:bg-gray-700 text-white border-b border-gray-700"
+                        onClick={() => { setOpenActionId(null); openBetResultModal(bet); }}
+                      >
+                        Update Result
+                      </button>
+                      <button 
+                        className="block w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700 disabled:opacity-50"
+                        onClick={() => { setOpenActionId(null); handleBetCancel(bet._id); }}
+                        disabled={bet.status !== 'pending'}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
           
           {selectedBets.length > 0 && (
             <div className="bulk-actions">

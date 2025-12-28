@@ -465,6 +465,7 @@ const apiService = {
   // Leagues
   getLeagues: () => cachedGet('/admin/leagues', 600000),
   createLeague: (data) => api.post('/admin/leagues', data),
+
   // Fetch matches by sport key (public, no auth); cache briefly
   getMatchesByKey: (sportKey) => cachedGet(`/matches/sport/${sportKey}`, 30000),
   getMatchMarkets: (matchId, opts = {}) => {

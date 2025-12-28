@@ -200,9 +200,10 @@ export function computeLeagueTitleWithFlag({
   sportKeyOrName,
   country,
   leagueName,
-  fallbackSportTitle
+  fallbackSportTitle,
+  fullLeagueTitle
 }) {
-  const fullTitle = computeFullLeagueTitle({
+  const fullTitle = fullLeagueTitle || computeFullLeagueTitle({
     sportKeyOrName,
     country,
     leagueName,
