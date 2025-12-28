@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Bet = require('../models/Bet');
 const User = require('../models/User');
+const Match = require('../models/Match');
 const Results = require('../models/Results');
 const Odds = require('../models/Odds');
 const MultiBet = require('../models/MultiBet');
@@ -30,7 +31,10 @@ class BetSettlementService {
       logger.info('Starting automated bet settlement process...');
 
       const completedResults = await Results.find({ completed: true });
-      const completedMatches = this.combineCompletedMatches(completedResults);
+      // Fetch finished matches from DB (including custom matches)
+      const completedMatchesDB = await Match.find({ status: 'finished' });
+      
+      const completedMatches = this.combineCompletedMatches(completedResults, completedMatchesDB);
       
       logger.info(`Found ${completedMatches.length} completed matches to process`);
 
@@ -65,8 +69,10 @@ class BetSettlementService {
   /**
    * Combine completed matches from Results and Scores, avoiding duplicates
    */
-  combineCompletedMatches(results) {
+  combineCompletedMatches(results, matchesDB = []) {
     const matchMap = new Map();
+    
+    // Process Results from API
     results.forEach(result => {
       matchMap.set(result.eventId, {
         eventId: result.eventId,
@@ -77,6 +83,32 @@ class BetSettlementService {
         sport_key: result.sport_key,
         source: 'results'
       });
+    });
+
+    // Process Matches from DB (Custom/Predetermined)
+    matchesDB.forEach(match => {
+       // Use _id as eventId if not present (or match.externalId)
+       // Prefer externalId if it matches API format, otherwise use _id
+       const eventId = match.externalId || match._id.toString();
+       
+       // If not already present or if present but from 'results' (API might be delayed/incomplete), 
+       // we might want to prefer DB if it has explicit final scores. 
+       // For now, let's just add if missing.
+       if (!matchMap.has(eventId)) {
+         matchMap.set(eventId, {
+           eventId: eventId,
+           homeTeam: match.homeTeam,
+           awayTeam: match.awayTeam,
+           scores: [
+             { name: match.homeTeam, score: match.homeScore },
+             { name: match.awayTeam, score: match.awayScore }
+           ],
+           completed: true,
+           sport_key: match.sport,
+           source: 'db',
+           directScores: { home: match.homeScore, away: match.awayScore }
+         });
+       }
     });
 
     return Array.from(matchMap.values());
@@ -174,7 +206,26 @@ class BetSettlementService {
     let homeScore = null;
     let awayScore = null;
 
-    if (match.scores && Array.isArray(match.scores)) {
+    // 1. Prefer direct scores if available (common for custom matches or db sources)
+    if (match.directScores) {
+      if (match.directScores.home !== undefined && match.directScores.home !== null) {
+        homeScore = parseInt(match.directScores.home);
+      }
+      if (match.directScores.away !== undefined && match.directScores.away !== null) {
+        awayScore = parseInt(match.directScores.away);
+      }
+    }
+    
+    // 2. Fallback to top-level properties if directScores missing but props exist
+    if ((homeScore === null || awayScore === null) && 
+        match.homeScore !== undefined && match.homeScore !== null &&
+        match.awayScore !== undefined && match.awayScore !== null) {
+      homeScore = parseInt(match.homeScore);
+      awayScore = parseInt(match.awayScore);
+    }
+
+    // 3. Fallback to scores array (common for API results)
+    if ((homeScore === null || awayScore === null) && match.scores && Array.isArray(match.scores)) {
       // Find home and away team scores
       const homeScoreData = match.scores.find(s => s.name === match.homeTeam);
       const awayScoreData = match.scores.find(s => s.name === match.awayTeam);

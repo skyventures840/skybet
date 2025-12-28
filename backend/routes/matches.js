@@ -3,12 +3,14 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const Sport = require('../models/Sport');
+const League = require('../models/League');
 const { auth, adminAuth } = require('../middleware/auth');
 const Odds = require('../models/Odds');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { get: cacheGet, set: cacheSet, bus } = require('../utils/cache');
+const { computeFullLeagueTitle } = require('../utils/leagueTitle');
 
 // Ensure upload dirs exist (mirror admin route behavior)
 const videoUploadDir = path.join(__dirname, '../uploads/videos');
@@ -71,12 +73,6 @@ function extractLeagueMeta(metaMap, sportTitle) {
     if (lc.includes(key)) return val;
   }
   return null;
-}
-
-function computeFullLeagueTitle({ sportKeyOrName, country, leagueName, fallbackSportTitle }) {
-  const sportDisplay = titleCase(sportKeyOrName || fallbackSportTitle || '');
-  const parts = [sportDisplay, country, leagueName].filter(Boolean);
-  return parts.join('.');
 }
 
 function normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName }) {
@@ -435,6 +431,7 @@ router.get('/', cacheResponse(300), async (req, res) => {  // Increased cache TT
         awayTeam: match.awayTeam,
         startTime: match.startTime,
         sport: match.sport,
+        sport_title: leagueName,
         status: match.status,
         odds: formattedOdds,
         additionalMarkets: formattedOdds ? Object.keys(formattedOdds).filter(key => formattedOdds[key] && formattedOdds[key] > 0).length : 0,
@@ -651,8 +648,8 @@ router.get('/popular/trending', async (req, res) => {
     }).filter(match => match !== null);
 
     // Transform admin matches
-    const transformedAdminMatches = adminMatches.map(match => {
-      const matchObj = match.toObject();
+    const transformedAdminMatches = adminMatches.map(matchObj => {
+      // matchObj is already a plain object due to lean()
 
       // Convert odds to the expected format if needed
       let formattedOdds = matchObj.odds;

@@ -46,13 +46,27 @@ async function updateMatchStatuses() {
 
     // Update matches that should be finished (e.g., 3 hours after start time)
     const threeHoursAgo = new Date(now - 3 * 60 * 60 * 1000);
-    await Match.updateMany(
-      {
-        startTime: { $lte: threeHoursAgo },
-        status: 'live'
-      },
-      { $set: { status: 'finished', finishedAt: now } }
-    );
+    const matchesToFinish = await Match.find({
+      startTime: { $lte: threeHoursAgo },
+      status: 'live'
+    });
+
+    for (const match of matchesToFinish) {
+      match.status = 'finished';
+      match.finishedAt = now;
+      
+      // Apply predetermined result if exists and valid
+      if (match.predeterminedResult && match.predeterminedResult.shouldSettle) {
+        if (match.predeterminedResult.homeScore !== null && match.predeterminedResult.homeScore !== undefined) {
+          match.homeScore = match.predeterminedResult.homeScore;
+        }
+        if (match.predeterminedResult.awayScore !== null && match.predeterminedResult.awayScore !== undefined) {
+          match.awayScore = match.predeterminedResult.awayScore;
+        }
+      }
+      
+      await match.save();
+    }
 
     logger.info('Successfully updated match statuses');
   } catch (error) {
@@ -285,6 +299,46 @@ async function updatePendingBetsScores() {
 }
 
 /**
+ * @function processScheduledEvents
+ * @description Processes scheduled events for live matches
+ */
+async function processScheduledEvents() {
+  try {
+    const liveMatches = await Match.find({ 
+      status: 'live', 
+      'scheduledEvents.0': { $exists: true } 
+    });
+
+    for (const match of liveMatches) {
+      const start = new Date(match.startTime).getTime();
+      const now = Date.now();
+      const currentMinute = Math.floor((now - start) / 60000);
+      
+      let updated = false;
+      
+      for (const event of match.scheduledEvents) {
+        if (!event.processed && event.minute <= currentMinute) {
+          event.processed = true;
+          updated = true;
+          
+          if (event.type === 'goal') {
+            if (event.team === 'home') match.homeScore = (match.homeScore || 0) + 1;
+            if (event.team === 'away') match.awayScore = (match.awayScore || 0) + 1;
+          }
+        }
+      }
+      
+      if (updated) {
+        await match.save();
+        logger.info(`Processed scheduled events for match ${match._id}`);
+      }
+    }
+  } catch (error) {
+    logger.error('Error processing scheduled events:', error);
+  }
+}
+
+/**
  * @function startCronJobs
  * @description Initializes and starts all scheduled cron jobs for the application.
  */
@@ -299,6 +353,7 @@ const startCronJobs = async () => {
   let isLiveMatchSyncing = false;
   let isScoresFetching = false;
   let isResultsFetching = false;
+  let isEventProcessing = false;
 
   // Immediate fetch on startup to populate data
   logger.info('🚀 Starting immediate data fetch on startup...');
@@ -498,6 +553,19 @@ const startCronJobs = async () => {
       logger.error('Error in match status update cron job:', error);
     } finally {
       isStatusUpdating = false;
+    }
+  });
+
+  // Process scheduled events every minute
+  cron.schedule('*/1 * * * *', async () => {
+    if (isEventProcessing) return;
+    isEventProcessing = true;
+    try {
+      await processScheduledEvents();
+    } catch (error) {
+      logger.error('Error in scheduled events cron job:', error);
+    } finally {
+      isEventProcessing = false;
     }
   });
 

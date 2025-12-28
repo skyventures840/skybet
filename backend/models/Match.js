@@ -11,7 +11,6 @@ const matchSchema = new mongoose.Schema({
   sport: {
     type: String,
     required: true,
-    enum: ['football', 'basketball', 'tennis', 'baseball', 'hockey', 'soccer', 'mma', 'boxing'],
     index: true
   },
   homeTeam: {
@@ -55,6 +54,21 @@ const matchSchema = new mongoose.Schema({
     default: 'scheduled',
     description: 'scheduled: show countdown until start, manual: admin controls, live_only: only when match is live'
   },
+  // Predetermined results for custom matches
+  predeterminedResult: {
+    homeScore: { type: Number },
+    awayScore: { type: Number },
+    shouldSettle: { type: Boolean, default: true }
+  },
+  // Scheduled events (goals, cards, etc.)
+  scheduledEvents: [{
+    minute: Number,
+    type: { type: String, enum: ['goal', 'card', 'substitution', 'period'], default: 'goal' },
+    team: { type: String, enum: ['home', 'away'] },
+    player: String,
+    description: String,
+    processed: { type: Boolean, default: false } // Track if event has been pushed to liveData
+  }],
   markets: [{
     id: String,
     name: String,

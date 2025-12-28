@@ -1,5 +1,6 @@
 const express = require('express');
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const User = require('../models/User');
 const Bet = require('../models/Bet');
@@ -99,14 +100,20 @@ router.post('/matches', adminAuth, [
     if (!league || !league.leagueId) {
       return res.status(400).json({ error: 'Invalid or missing league. Please select or add a valid league.' });
     }
-    // Find max externalId for this league
-    const lastMatch = await Match.findOne({ leagueId: league._id }).sort({ externalId: -1 });
+    // Find max externalId for this league prefix (to avoid collisions across leagues sharing prefix)
+    const lastMatch = await Match.findOne({ externalId: new RegExp(`^${league.externalPrefix}_`) }).sort({ externalId: -1 });
     let nextNum = 1;
     if (lastMatch && lastMatch.externalId) {
       const match = lastMatch.externalId.match(/_(\d+)$/);
       if (match) nextNum = parseInt(match[1], 10) + 1;
     }
-    const externalId = `${league.externalPrefix}_${String(nextNum).padStart(3, '0')}`;
+    let externalId = `${league.externalPrefix}_${String(nextNum).padStart(3, '0')}`;
+
+    // Safety check: Loop to ensure unique ID in case of concurrency or gaps
+    while (await Match.exists({ externalId })) {
+      nextNum++;
+      externalId = `${league.externalPrefix}_${String(nextNum).padStart(3, '0')}`;
+    }
     // Creates match in Match collection
     // Coerce odds to numeric values (handle possible string inputs and optional odds)
     const homeWin = odds.homeWin !== undefined ? Number(odds.homeWin) : null;
@@ -250,6 +257,64 @@ router.post('/matches', adminAuth, [
     console.error('Create match error:', error);
     res.status(500).json({ error: 'Failed to save match: ' + error.message });
 }
+});
+
+// Update match details
+router.put('/matches/:id', adminAuth, async (req, res) => {
+  try {
+    const { leagueName, teams, startTime, sport, status, homeScore, awayScore, videoUrl, videoPosterUrl, videoDisplayControl, predeterminedResult, scheduledEvents, odds } = req.body;
+    
+    const updateData = {
+      updatedAt: new Date(),
+      updatedBy: req.user.id
+    };
+
+    if (leagueName) {
+      // Find or create league
+      let league = await League.findOne({ name: leagueName });
+      if (!league) {
+        const leagueId = leagueName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const externalPrefix = leagueName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 4);
+        league = new League({ name: leagueName, leagueId, externalPrefix });
+        await league.save();
+      }
+      if (league) {
+        updateData.leagueId = league._id;
+      }
+    }
+
+    if (teams) {
+      if (teams.home) updateData.homeTeam = teams.home;
+      if (teams.away) updateData.awayTeam = teams.away;
+    }
+    if (startTime) updateData.startTime = new Date(startTime);
+    if (sport) updateData.sport = sport;
+    if (status) updateData.status = status;
+    if (homeScore !== undefined) updateData.homeScore = homeScore;
+    if (awayScore !== undefined) updateData.awayScore = awayScore;
+    if (videoUrl !== undefined) updateData.videoUrl = videoUrl;
+    if (videoPosterUrl !== undefined) updateData.videoPosterUrl = videoPosterUrl;
+    if (videoDisplayControl) updateData.videoDisplayControl = videoDisplayControl;
+    if (predeterminedResult) updateData.predeterminedResult = predeterminedResult;
+    if (scheduledEvents) updateData.scheduledEvents = scheduledEvents;
+
+    if (odds) {
+      const oddsMap = new Map();
+      Object.keys(odds).forEach(key => {
+        const val = Number(odds[key]);
+        if (!isNaN(val)) oddsMap.set(key, val);
+      });
+      updateData.odds = oddsMap;
+    }
+
+    const match = await Match.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+    
+    res.json(match);
+  } catch (error) {
+    console.error('Update match error:', error);
+    res.status(500).json({ error: 'Failed to update match' });
+  }
 });
 
 // Update match odds and sync to Odds collection
@@ -957,6 +1022,10 @@ router.get('/bets', adminAuth, async (req, res) => {
         { market: { $regex: search, $options: 'i' } },
         { selection: { $regex: search, $options: 'i' } }
       ];
+
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        query.$or.push({ _id: search });
+      }
     }
 
     // Status filtering
