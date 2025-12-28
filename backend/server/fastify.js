@@ -124,21 +124,35 @@ fastify.get('/ping', async () => ({ pong: true, timestamp: new Date().toISOStrin
 async function connectToMongoDB() {
   const mongoUri = process.env.MONGODB_EXTERNAL_URI || process.env.MONGODB_URI;
   if (!mongoUri) return false;
-  await mongoose.connect(mongoUri, {
-    serverSelectionTimeoutMS: 5000, // Reduced from 10s for faster failover
-    socketTimeoutMS: 45000,
-    connectTimeoutMS: 10000,
-    maxPoolSize: 100, // Increased to 100 to handle concurrent bet placement better
-    minPoolSize: 5, // Increased min pool for readiness
-    maxIdleTimeMS: 30000,
-    retryWrites: true,
-    retryReads: true,
-    bufferCommands: false,
-    heartbeatFrequencyMS: 10000,
-    family: 4,
-    autoIndex: !isProduction // Disable auto-indexing in production for faster startup
-  });
-  return true;
+
+  const maskedUri = mongoUri.replace(/:([^:@]+)@/, ':****@');
+  console.log(`Attempting to connect to MongoDB: ${maskedUri}`);
+
+  try {
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 30000, // Increased to 30s to handle cold starts/network latency
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
+      maxPoolSize: 100, // Increased to 100 to handle concurrent bet placement better
+      minPoolSize: 5, // Increased min pool for readiness
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      retryReads: true,
+      bufferCommands: false,
+      heartbeatFrequencyMS: 10000,
+      // family: 4, // Commented out to allow IPv6 if needed
+      autoIndex: !isProduction // Disable auto-indexing in production for faster startup
+    });
+    console.log('MongoDB connected successfully');
+    return true;
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    // Do not throw, allow server to start but without DB (or handle elsewhere)
+    // But fastify.js seems to await it. If we throw, start() might fail.
+    // The original code didn't catch, so it crashed the process/request.
+    // We should probably throw to let the process restart if DB is critical.
+    throw err;
+  }
 }
 
 async function start() {
