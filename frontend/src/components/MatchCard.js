@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
-import { computeLeagueTitleWithFlag } from '../utils/leagueTitle';
+import { computeFullLeagueTitle } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
 
 const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
@@ -380,13 +380,12 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     const country = match.country || match.subcategory || '';
     const leagueName = league || match.league || '';
     
-    // Get league title with flag
-    const leagueTitleWithFlag = computeLeagueTitleWithFlag({
+    // Get league title without flag (Unified format: Sport.Country.League)
+    const displayLeagueTitle = match.fullLeagueTitle || computeFullLeagueTitle({
         sportKeyOrName,
         country,
         leagueName,
-        fallbackSportTitle: match.sport_title || match.sport || '',
-        fullLeagueTitle: match.fullLeagueTitle
+        fallbackSportTitle: match.sport_title || match.sport || ''
     });
 
     // Removed unused formatMatchTime helper
@@ -429,10 +428,7 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
             {showLeagueHeader && (
                 <div className="league-header">
                     <h3 className="league-title">
-                        {leagueTitleWithFlag.flag && (
-                            <span className="country-flag">{leagueTitleWithFlag.flag}</span>
-                        )}
-                        <span className="league-text">{leagueTitleWithFlag.displayTitle}</span>
+                        <span className="league-text">{displayLeagueTitle}</span>
                     </h3>
                     <div className="odds-headers">
                         {basicOddsTypes.map(oddsType => (

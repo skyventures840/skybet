@@ -28,7 +28,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 15000, // Increased to 15s to reduce timeouts under load
+  timeout: 30000, // Increased to 30s to reduce timeouts under load
 });
 
 const apiPublic = axios.create({
@@ -421,6 +421,15 @@ const apiService = {
   updateBet: (betId, betData) => api.put(`/admin/bets/${betId}`, betData),
   settleBet: (betId, settlementData) => api.put(`/admin/bets/${betId}/status`, settlementData),
   bulkUpdateBets: (bulkData) => api.put('/admin/bets/bulk/status', bulkData),
+
+  // MultiBets
+  placeMultiBet: (multiBetData) => api.post('/multibets', multiBetData),
+  getMultiBets: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const path = queryString ? `/multibets?${queryString}` : '/multibets';
+    return instantGet(path, 60000); // 60s cache
+  },
+  cancelMultiBet: (id) => api.delete(`/multibets/${id}`),
 
   // Sports
   getAllSports: () => cachedGet('/sports', 120000),

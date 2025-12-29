@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { X, Plus, Minus, Calculator, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import apiService from '../services/api';
 
 const EnhancedBetslip = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
@@ -113,18 +114,9 @@ const EnhancedBetslip = ({ isOpen, onClose }) => {
       };
       
       // Call API to submit multi-bet
-      const response = await fetch('/api/multibets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(multiBetData)
-      });
+      const response = await apiService.placeMultiBet(multiBetData);
       
-      const result = await response.json();
-      
-      if (result.success) {
+      if (response.data.success) {
         setSuccess('Multi-bet submitted successfully!');
         clearMultiBet();
         
@@ -133,12 +125,11 @@ const EnhancedBetslip = ({ isOpen, onClose }) => {
           setSuccess('');
           onClose();
         }, 3000);
-      } else {
-        setError(result.message || 'Failed to submit multi-bet');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
       console.error('Multi-bet submission error:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Failed to submit multi-bet';
+      setError(errMsg);
     } finally {
       setIsSubmitting(false);
     }

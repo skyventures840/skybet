@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import apiService from '../services/api';
 
 // Memoized BetCard component for better performance
-const BetCard = memo(({ bet, getStatusInfo, formatCurrency, formatDate }) => {
+const BetCard = memo(({ bet, getStatusInfo, formatCurrency, formatDate, onCancel }) => {
   const statusInfo = getStatusInfo(bet.status);
   
+  const canCancel = useMemo(() => {
+    return bet.matches.every(m => m.status === 'Pending');
+  }, [bet.matches]);
+
   return (
     <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${statusInfo.borderColor}`}>
       {/* Bet Header */}
@@ -28,6 +33,14 @@ const BetCard = memo(({ bet, getStatusInfo, formatCurrency, formatDate }) => {
           <div className="text-sm text-gray-500">
             {bet.totalMatches} matches
           </div>
+          {onCancel && canCancel && (
+            <button 
+              onClick={() => onCancel(bet._id)}
+              className="mt-2 text-sm text-red-600 hover:text-red-800 hover:underline font-medium transition-colors"
+            >
+              Cancel Bet
+            </button>
+          )}
         </div>
       </div>
       
@@ -112,34 +125,18 @@ const MyBets = () => {
     try {
       setLoading(true);
       setError(''); // Clear previous errors
-      const token = localStorage.getItem('token');
       
-      if (!token) {
-        setError('Authentication required');
-        return;
-      }
+      const response = await apiService.getMultiBets();
       
-      const response = await fetch('/api/multibets', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setMultiBets(result.data || []);
+      if (response.data.success) {
+        setMultiBets(response.data.data || []);
       } else {
-        setError(result.message || 'Failed to fetch multi-bets');
+        setError(response.data.message || 'Failed to fetch multi-bets');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
       console.error('Fetch multi-bets error:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to fetch multi-bets';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -149,6 +146,30 @@ const MyBets = () => {
     fetchMultiBets();
   }, []);
   
+  // Handle bet cancellation
+  const handleCancelBet = useCallback(async (betId) => {
+    if (!window.confirm('Are you sure you want to cancel this bet? The stake will be refunded to your balance.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiService.cancelMultiBet(betId);
+      if (response.data.success) {
+        // Refresh bets list
+        fetchMultiBets();
+      } else {
+        setError(response.data.message || 'Failed to cancel bet');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Cancel bet error:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to cancel bet';
+      setError(msg);
+      setLoading(false);
+    }
+  }, [fetchMultiBets]);
+
   // Memoized status info to avoid recreating objects
   const getStatusInfo = useMemo(() => {
     const statusMap = {
@@ -268,6 +289,7 @@ const MyBets = () => {
                 getStatusInfo={getStatusInfo}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
+                onCancel={handleCancelBet}
               />
             ))
           )}
