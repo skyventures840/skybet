@@ -70,12 +70,23 @@ router.get('/', async (req, res) => {
         }));
       }
 
-      // 2. Fetch API matches (limit increased to 10000 for production effectiveness)
-      const apiMatches = await Odds.find({ 'bookmakers.key': { $ne: 'default' } })
-        .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
-        .lean()
-        .sort({ commence_time: 1 })
-        .limit(10000);
+      // 2. Fetch API matches (optimized for production)
+      // Limit to 500 matches total to avoid timeouts/crashes.
+      // Filter for LIVE matches and UPCOMING matches (past 24h + future).
+      const MAX_MATCHES = 500;
+      const remainingLimit = Math.max(0, MAX_MATCHES - adminMatches.length);
+      
+      let apiMatches = [];
+      if (remainingLimit > 0) {
+        apiMatches = await Odds.find({ 
+          'bookmakers.key': { $ne: 'default' },
+          commence_time: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours (live/recent) + future
+        })
+          .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
+          .lean()
+          .sort({ commence_time: 1 })
+          .limit(remainingLimit);
+      }
 
       const oddsData = [...adminMatches, ...apiMatches];
               console.log(`[DEBUG] Found ${oddsData.length} matches in database (${adminMatches.length} admin, ${apiMatches.length} api)`);
