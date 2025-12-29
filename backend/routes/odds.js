@@ -51,12 +51,34 @@ router.get('/', async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       console.log('[DEBUG] Fetching matches from database...');
       
-      const oddsData = await Odds.find({})
+      // 1. Fetch admin-created matches (custom matches) - prioritize these
+      const adminOdds = await Odds.find({ 'bookmakers.key': 'default' })
+        .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
+        .lean()
+        .sort({ commence_time: 1 });
+
+      // Enrich with Match IDs for admin panel operations
+      let adminMatches = [];
+      if (adminOdds.length > 0) {
+        const gameIds = adminOdds.map(o => o.gameId);
+        const matchesFound = await Match.find({ externalId: { $in: gameIds } }).select('_id externalId').lean();
+        const matchMap = new Map(matchesFound.map(m => [m.externalId, m._id]));
+        
+        adminMatches = adminOdds.map(o => ({
+          ...o,
+          id: matchMap.get(o.gameId) // Add Match _id for admin operations
+        }));
+      }
+
+      // 2. Fetch API matches (limit increased to 10000 for production effectiveness)
+      const apiMatches = await Odds.find({ 'bookmakers.key': { $ne: 'default' } })
         .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
         .lean()
         .sort({ commence_time: 1 })
-        .limit(1000);
-              console.log(`[DEBUG] Found ${oddsData.length} matches in database`);
+        .limit(10000);
+
+      const oddsData = [...adminMatches, ...apiMatches];
+              console.log(`[DEBUG] Found ${oddsData.length} matches in database (${adminMatches.length} admin, ${apiMatches.length} api)`);
       
       if (oddsData.length > 0) {
         // Transform database format to frontend format

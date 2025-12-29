@@ -226,8 +226,8 @@ router.delete('/:id', auth, async (req, res) => {
       });
     }
     
-    // Refund stake to user balance (implement balance refund)
-    // await updateUserBalance(req.user.id, multiBet.stake);
+    // Refund stake to user balance
+    await User.refundBet(req.user.id, multiBet.stake);
     
     await multiBet.remove();
     
