@@ -95,24 +95,32 @@ const ManageMatches = () => {
       const response = await apiService.getOddsMatches();
       const oddsMatches = response.data?.matches || [];
       // Normalize odds format to the admin UI shape
-      const normalized = oddsMatches.map(odds => ({
-        _id: odds.id || odds.gameId,
-        externalId: odds.id || odds.gameId,
-        sport: inferSportToken(odds),
-        sportTitle: odds.sport_title || '',
-        homeTeam: odds.home_team,
-        awayTeam: odds.away_team,
-        startTime: odds.commence_time,
-        status: 'upcoming',
-        // initialize score fields explicitly to avoid undefined in UI
-        homeScore: null,
-        awayScore: null,
-        odds: odds.bookmakers || {},
-      }));
+      const normalized = oddsMatches.map(odds => {
+        try {
+          return {
+            _id: odds.id || odds.gameId,
+            externalId: odds.id || odds.gameId,
+            sport: inferSportToken(odds),
+            sportTitle: odds.sport_title || '',
+            homeTeam: odds.home_team,
+            awayTeam: odds.away_team,
+            startTime: odds.commence_time,
+            status: 'upcoming',
+            // initialize score fields explicitly to avoid undefined in UI
+            homeScore: null,
+            awayScore: null,
+            odds: odds.bookmakers || {},
+          };
+        } catch (e) {
+          console.error('Error normalizing match:', odds, e);
+          return null;
+        }
+      }).filter(m => m !== null);
+      
       setMatches(normalized);
     } catch (err) {
-      setError('Failed to fetch matches.');
-      console.error(err);
+      console.error('Fetch matches error:', err);
+      setError('Failed to fetch matches: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -444,9 +452,6 @@ const ManageMatches = () => {
     }
   };
 
-  if (loading) return <div className="text-white">Loading matches...</div>;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
-
   return (
     <div className="admin-table-container">
       <div className="table-header">
@@ -508,35 +513,45 @@ const ManageMatches = () => {
         </div>
       </div>
 
-      {/* Match Statistics */}
-      <div className="mb-4 p-4 bg-gray-800 rounded-lg">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-green-400">{matches.length}</div>
-            <div className="text-sm text-gray-300">Total Matches</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-blue-400">{matches.filter(m => m.status === 'upcoming').length}</div>
-            <div className="text-sm text-gray-300">Upcoming</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-yellow-400">{matches.filter(m => m.status === 'live').length}</div>
-            <div className="text-sm text-gray-300">Live</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-400">{matches.filter(m => m.status === 'finished').length}</div>
-            <div className="text-sm text-gray-300">Finished</div>
-          </div>
+      {loading ? (
+        <div className="text-white text-center py-8">Loading matches...</div>
+      ) : error ? (
+        <div className="text-red-500 text-center py-8">
+          <div className="mb-2">Error: {error}</div>
+          <button onClick={fetchMatches} className="btn-refresh">Retry</button>
         </div>
-      </div>
-
-      {/* Show table always, but with different data sources */}
-      <div className="overflow-x-auto">
-        {(!searchPerformed ? matches : filteredMatches).length === 0 ? (
-          <div className="text-center py-8 text-gray-300">
-            {!searchPerformed ? 'No matches found. Click "Show All" to view all matches.' : 'No matches found for your search.'}
+      ) : (
+        <>
+          {/* Match Statistics */}
+          <div className="mb-4 p-4 bg-gray-800 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-green-400">{matches.length}</div>
+                <div className="text-sm text-gray-300">Total Matches</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-blue-400">{matches.filter(m => m.status === 'upcoming').length}</div>
+                <div className="text-sm text-gray-300">Upcoming</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-yellow-400">{matches.filter(m => m.status === 'live').length}</div>
+                <div className="text-sm text-gray-300">Live</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-red-400">{matches.filter(m => m.status === 'finished').length}</div>
+                <div className="text-sm text-gray-300">Finished</div>
+              </div>
+            </div>
           </div>
-        ) : (
+
+          {/* Show table always, but with different data sources */}
+          <div className="overflow-x-auto">
+            {(!searchPerformed ? matches : filteredMatches).length === 0 ? (
+              <div className="text-center py-8 text-gray-300">
+                {!searchPerformed ? 'No matches found. Click "Show All" to view all matches.' : 'No matches found for your search.'}
+              </div>
+            ) : (
+
           <>
             {/* Desktop Table View */}
             <table className="admin-table hidden md:table w-full">
@@ -725,6 +740,8 @@ const ManageMatches = () => {
           </>
         )}
       </div>
+      </>
+      )}
 
       {/* Bulk Actions */}
       {selectedMatches.length > 0 && (

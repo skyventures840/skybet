@@ -512,7 +512,8 @@ async function getWithRetry(path, maxAttempts = 3) {
   let lastError = null;
   while (attempt < maxAttempts) {
     try {
-      return await api.get(path, { timeout: 10000 });
+      // Use default timeout (30s) or extended if needed, 10s is too short for large payloads
+      return await api.get(path);
     } catch (err) {
       lastError = err;
       const status = err?.response?.status;
