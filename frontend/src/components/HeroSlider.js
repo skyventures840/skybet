@@ -4,25 +4,10 @@ import enhancedCache from '../services/enhancedCache';
 import SkeletonLoader from './SkeletonLoader';
 
 const HeroSlider = () => {
-  const DEFAULT_SLIDES = [
-    {
-      id: 'default-1',
-      caption1: 'Bet Smart, Win Big',
-      caption2: 'Explore top matches and markets today',
-      buttonText: 'Explore Matches',
-      buttonUrl: '/'
-    },
-    {
-      id: 'default-2',
-      caption1: 'Live Odds Updated Fast',
-      caption2: 'Stay ahead with real-time updates',
-      buttonText: 'View Live',
-      buttonUrl: '/'
-    }
-  ];
-  const [slides, setSlides] = useState(DEFAULT_SLIDES);
+  const [slides, setSlides] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSlides = async () => {
@@ -31,8 +16,7 @@ const HeroSlider = () => {
           const cached = enhancedCache.getCachedData('/admin/hero');
           if (cached && Array.isArray(cached) && cached.length > 0) {
             setSlides(cached);
-          } else {
-            enhancedCache.setCachedData('/admin/hero', DEFAULT_SLIDES);
+            setLoading(false);
           }
         } catch (e) { void e; }
         const response = await apiService.getHeroSlides();
@@ -40,6 +24,8 @@ const HeroSlider = () => {
         if (data.length > 0) setSlides(data);
       } catch (err) {
         setError('');
+      } finally {
+        setLoading(false);
       }
     };
     fetchSlides();
@@ -68,7 +54,7 @@ const HeroSlider = () => {
   if (error) {
     return <div className="hero-slider"><div className="slider-container"><p>{error}</p></div></div>;
   }
-  if (slides.length === 0) {
+  if (loading && slides.length === 0) {
     return (
       <div className="hero-slider">
         <div className="slider-container">
@@ -76,6 +62,10 @@ const HeroSlider = () => {
         </div>
       </div>
     );
+  }
+
+  if (slides.length === 0) {
+    return null;
   }
 
   return (

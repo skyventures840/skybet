@@ -127,12 +127,167 @@ const MatchDetail = () => {
                 
                 // Handicap market - removed as separate market, handicap line will be shown in team names with brackets
                 
-                // Add any other odds fields as individual markets
-                // Exclude line values that are not bettable odds (handicapLine, total, etc.)
-                const excludedKeys = ['homeWin', 'awayWin', 'draw', 'over', 'under', 'total', 'homeHandicap', 'awayHandicap', 'handicapLine', 'handicap_line', 'Total', 'Over', 'Under'];
-                Object.entries(oddsData).forEach(([key, value]) => {
-                    if (!excludedKeys.includes(key) && value && value > 0) {
-                        const marketKey = `market_${marketIndex}`;
+                // NEW: Handle Dynamic Handicaps (Array)
+                if (Array.isArray(oddsData.handicaps) && oddsData.handicaps.length > 0) {
+                    const marketKey = `market_${marketIndex}`;
+                    const options = [];
+                    
+                    oddsData.handicaps.forEach(item => {
+                         if (item.line && item.homeOdds && item.awayOdds) {
+                             const line = parseFloat(item.line);
+                             const homeLine = line > 0 ? `+${line}` : `${line}`;
+                             const awayLine = -line > 0 ? `+${-line}` : `${-line}`;
+                             
+                             options.push({ name: `${matchData.homeTeam} (${homeLine})`, odds: item.homeOdds });
+                             options.push({ name: `${matchData.awayTeam} (${awayLine})`, odds: item.awayOdds });
+                         }
+                    });
+
+                    if (options.length > 0) {
+                        markets[marketKey] = {
+                            name: 'Handicap',
+                            options: options
+                        };
+                        marketIndex++;
+                    }
+                }
+
+                // NEW: Correct Score Market
+                if (Array.isArray(oddsData.correctScore) && oddsData.correctScore.length > 0) {
+                     const marketKey = `market_${marketIndex}`;
+                     const options = oddsData.correctScore
+                        .filter(item => item.score && item.odds)
+                        .map(item => ({ name: item.score, odds: item.odds }));
+
+                     if (options.length > 0) {
+                         markets[marketKey] = { name: 'Correct Score', options };
+                         marketIndex++;
+                     }
+                }
+
+                // NEW: Multi Goals Market
+                if (Array.isArray(oddsData.multiGoals) && oddsData.multiGoals.length > 0) {
+                     const marketKey = `market_${marketIndex}`;
+                     const options = oddsData.multiGoals
+                        .filter(item => item.range && item.odds)
+                        .map(item => ({ name: item.range, odds: item.odds }));
+
+                     if (options.length > 0) {
+                         markets[marketKey] = { name: 'Multi Goals', options };
+                         marketIndex++;
+                     }
+                }
+                
+                // NEW: Winning Margin Market
+                if (Array.isArray(oddsData.winningMargin) && oddsData.winningMargin.length > 0) {
+                     const marketKey = `market_${marketIndex}`;
+                     const options = oddsData.winningMargin
+                        .filter(item => item.margin && item.odds)
+                        .map(item => ({ name: item.margin, odds: item.odds }));
+
+                     if (options.length > 0) {
+                         markets[marketKey] = { name: 'Winning Margin', options };
+                         marketIndex++;
+                     }
+                }
+
+                // NEW: Goalscorers Market
+                if (Array.isArray(oddsData.goalScorers) && oddsData.goalScorers.length > 0) {
+                     const types = ['First', 'Anytime', 'Last'];
+                     types.forEach(type => {
+                         const options = oddsData.goalScorers
+                            .filter(item => item.type && item.type.toLowerCase() === type.toLowerCase() && item.player && item.odds)
+                            .map(item => ({ name: `${item.player} (${type})`, odds: item.odds }));
+                         
+                         if (options.length > 0) {
+                             const marketKey = `market_${marketIndex}`;
+                             markets[marketKey] = { name: `${type} Goalscorer`, options };
+                             marketIndex++;
+                         }
+                     });
+                }
+                
+                // NEW: Odd/Even Market
+                if (oddsData.oddEven_Odd || oddsData.oddEven_Even) {
+                    const marketKey = `market_${marketIndex}`;
+                    const options = [];
+                    if (oddsData.oddEven_Odd) options.push({ name: 'Odd', odds: oddsData.oddEven_Odd });
+                    if (oddsData.oddEven_Even) options.push({ name: 'Even', odds: oddsData.oddEven_Even });
+                    
+                    if (options.length > 0) {
+                        markets[marketKey] = { name: 'Odd/Even Goals', options };
+                        marketIndex++;
+                    }
+                }
+
+                // NEW: HT/FT Market
+                const htFtKeys = Object.keys(oddsData).filter(k => k.startsWith('htFt_'));
+                if (htFtKeys.length > 0) {
+                     const marketKey = `market_${marketIndex}`;
+                     const options = [];
+                     const mapCode = { 'HH': 'Home/Home', 'HD': 'Home/Draw', 'HA': 'Home/Away', 'DH': 'Draw/Home', 'DD': 'Draw/Draw', 'DA': 'Draw/Away', 'AH': 'Away/Home', 'AD': 'Away/Draw', 'AA': 'Away/Away' };
+                     
+                     htFtKeys.forEach(key => {
+                         const code = key.replace('htFt_', '');
+                         const name = mapCode[code] || code;
+                         if (oddsData[key]) {
+                             options.push({ name: name, odds: oddsData[key] });
+                         }
+                     });
+                     
+                     if (options.length > 0) {
+                          markets[marketKey] = { name: 'Half-Time/Full-Time', options };
+                          marketIndex++;
+                      }
+                 }
+ 
+                 // NEW: Corners Market
+                 if (oddsData.corners_over && oddsData.corners_under && oddsData.corners_line) {
+                      const marketKey = `market_${marketIndex}`;
+                      const line = oddsData.corners_line;
+                      const options = [
+                          { name: `Over ${line}`, odds: oddsData.corners_over },
+                          { name: `Under ${line}`, odds: oddsData.corners_under }
+                      ];
+                      markets[marketKey] = { name: 'Corners Over/Under', options };
+                      marketIndex++;
+                 }
+
+                 // NEW: Cards Market
+                 if (oddsData.cards_over && oddsData.cards_under && oddsData.cards_line) {
+                      const marketKey = `market_${marketIndex}`;
+                      const line = oddsData.cards_line;
+                      const options = [
+                          { name: `Over ${line}`, odds: oddsData.cards_over },
+                          { name: `Under ${line}`, odds: oddsData.cards_under }
+                      ];
+                      markets[marketKey] = { name: 'Cards Over/Under', options };
+                      marketIndex++;
+                 }
+
+                 // NEW: Custom Markets (Generic Builder)
+                 if (Array.isArray(oddsData.customMarkets) && oddsData.customMarkets.length > 0) {
+                      oddsData.customMarkets.forEach(customMarket => {
+                          if (customMarket.name && Array.isArray(customMarket.options) && customMarket.options.length > 0) {
+                              const validOptions = customMarket.options
+                                  .filter(opt => opt.name && opt.odds)
+                                  .map(opt => ({ name: opt.name, odds: opt.odds }));
+                              
+                              if (validOptions.length > 0) {
+                                  const marketKey = `market_${marketIndex}`;
+                                  markets[marketKey] = { name: customMarket.name, options: validOptions };
+                                  marketIndex++;
+                              }
+                          }
+                      });
+                 }
+
+                 // Add any other odds fields as individual markets
+                 // Exclude line values that are not bettable odds (handicapLine, total, etc.)
+                 const excludedKeys = ['homeWin', 'awayWin', 'draw', 'over', 'under', 'total', 'homeHandicap', 'awayHandicap', 'handicapLine', 'handicap_line', 'Total', 'Over', 'Under', 'handicaps', 'correctScore', 'multiGoals', 'winningMargin', 'goalScorers', 'corners_line', 'corners_over', 'corners_under', 'cards_line', 'cards_over', 'cards_under', 'customMarkets'];
+                 Object.entries(oddsData).forEach(([key, value]) => {
+                     if (!excludedKeys.includes(key) && !key.startsWith('htFt_') && !key.startsWith('oddEven_') && value && value > 0) {
+                         const marketKey = `market_${marketIndex}`;
                         markets[marketKey] = {
                             name: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
                             options: [{ name: key, odds: value }]

@@ -1,0 +1,72 @@
+{
+  "en": {
+    "Logout": "Logout",
+    "My Account": "My Account",
+    "My Bets": "My Bets",
+    "Log In": "Log In",
+    "Sign Up": "Sign Up",
+    "Prematch": "Prematch",
+    "Live": "Live",
+    "Check Bets": "Check Bets",
+    "Home": "Home",
+    "Sports": "Sports",
+    "Casino": "Casino",
+    "Search": "Search"
+  },
+  "es": {
+    "Logout": "Cerrar sesión",
+    "My Account": "Mi cuenta",
+    "My Bets": "Mis apuestas",
+    "Log In": "Iniciar sesión",
+    "Sign Up": "Registrarse",
+    "Prematch": "Prematch",
+    "Live": "En vivo",
+    "Check Bets": "Ver apuestas",
+    "Home": "Inicio",
+    "Sports": "Deportes",
+    "Casino": "Casino",
+    "Search": "Buscar"
+  },
+  "fr": {
+    "Logout": "Déconnexion",
+    "My Account": "Mon compte",
+    "My Bets": "Mes paris",
+    "Log In": "Connexion",
+    "Sign Up": "S'inscrire",
+    "Prematch": "D'avant-match",
+    "Live": "En direct",
+    "Check Bets": "Vérifier les paris",
+    "Home": "Accueil",
+    "Sports": "Sports",
+    "Casino": "Casino",
+    "Search": "Rechercher"
+  },
+  "de": {
+    "Logout": "Abmelden",
+    "My Account": "Mein Konto",
+    "My Bets": "Meine Wetten",
+    "Log In": "Anmelden",
+    "Sign Up": "Registrieren",
+    "Prematch": "Vor dem Spiel",
+    "Live": "Live",
+    "Check Bets": "Wetten prüfen",
+    "Home": "Startseite",
+    "Sports": "Sport",
+    "Casino": "Casino",
+    "Search": "Suche"
+  },
+  "pt": {
+    "Logout": "Sair",
+    "My Account": "Minha Conta",
+    "My Bets": "Minhas Apostas",
+    "Log In": "Entrar",
+    "Sign Up": "Inscrever-se",
+    "Prematch": "Pré-jogo",
+    "Live": "Ao Vivo",
+    "Check Bets": "Verificar Apostas",
+    "Home": "Início",
+    "Sports": "Esportes",
+    "Casino": "Cassino",
+    "Search": "Pesquisar"
+  }
+}

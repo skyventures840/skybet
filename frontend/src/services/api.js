@@ -8,15 +8,22 @@ if (!RAW_BASE) {
   const isBrowser = typeof window !== 'undefined';
   const isDev = (process && process.env && process.env.NODE_ENV !== 'production');
   if (isBrowser && isDev && String(window.location.port) === '3000') {
-    RAW_BASE = 'http://localhost:10000';
+    RAW_BASE = 'http://localhost:5000';
   } else if (isBrowser) {
     if (window.location.hostname.includes('skybetts.com')) {
       RAW_BASE = 'https://backend.skybetts.com';
     } else {
-      RAW_BASE = window.location.origin;
+       // If running on a different port (e.g. 3006), default to 5000 for localhost
+       // unless proxy is used (which makes origin valid).
+       // But without proxy, we need absolute URL.
+       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          RAW_BASE = 'http://localhost:5000';
+       } else {
+          RAW_BASE = window.location.origin;
+       }
     }
   } else {
-    RAW_BASE = 'http://localhost:10000';
+    RAW_BASE = 'http://localhost:5000';
   }
 }
 const CLEAN_BASE = RAW_BASE.replace(/\/+$/, '');

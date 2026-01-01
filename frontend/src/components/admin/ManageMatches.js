@@ -37,8 +37,87 @@ const ManageMatches = () => {
   const [resultHomeScore, setResultHomeScore] = useState(0);
   const [resultAwayScore, setResultAwayScore] = useState(0);
   const [resultCompleted, setResultCompleted] = useState(true);
+  // Extended result state
+  const [resultHomeScoreHT, setResultHomeScoreHT] = useState('');
+  const [resultAwayScoreHT, setResultAwayScoreHT] = useState('');
+  const [resultHomeCorners, setResultHomeCorners] = useState('');
+  const [resultAwayCorners, setResultAwayCorners] = useState('');
+  const [resultHomeCards, setResultHomeCards] = useState('');
+  const [resultAwayCards, setResultAwayCards] = useState('');
+  const [resultPenaltyAwarded, setResultPenaltyAwarded] = useState(false);
+  const [resultFirstGoalscorer, setResultFirstGoalscorer] = useState('');
+  const [resultAnytimeGoalscorers, setResultAnytimeGoalscorers] = useState('');
+  const [resultLastGoalscorer, setResultLastGoalscorer] = useState('');
+  
   const [scheduledEvents, setScheduledEvents] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
+  const [activeOddsTab, setActiveOddsTab] = useState('main');
+
+  // Helper for dynamic odds lists (e.g. Correct Score)
+  const handleDynamicOddsChange = (marketKey, index, field, value) => {
+    const currentList = Array.isArray(formData.odds[marketKey]) ? formData.odds[marketKey] : [];
+    const newList = [...currentList];
+    if (!newList[index]) newList[index] = {};
+    newList[index][field] = value;
+    setFormData({ ...formData, odds: { ...formData.odds, [marketKey]: newList } });
+  };
+
+  const addDynamicOddItem = (marketKey, defaultItem = {}) => {
+    const currentList = Array.isArray(formData.odds[marketKey]) ? formData.odds[marketKey] : [];
+    setFormData({ ...formData, odds: { ...formData.odds, [marketKey]: [...currentList, defaultItem] } });
+  };
+
+  const removeDynamicOddItem = (marketKey, index) => {
+    const currentList = Array.isArray(formData.odds[marketKey]) ? formData.odds[marketKey] : [];
+    const newList = currentList.filter((_, i) => i !== index);
+    setFormData({ ...formData, odds: { ...formData.odds, [marketKey]: newList } });
+  };
+
+  // Custom Markets Handlers
+  const addCustomMarket = () => {
+    const currentList = Array.isArray(formData.odds.customMarkets) ? formData.odds.customMarkets : [];
+    const newMarket = { id: Date.now(), name: '', options: [] };
+    setFormData({ ...formData, odds: { ...formData.odds, customMarkets: [...currentList, newMarket] } });
+  };
+
+  const removeCustomMarket = (index) => {
+    const currentList = Array.isArray(formData.odds.customMarkets) ? formData.odds.customMarkets : [];
+    const newList = currentList.filter((_, i) => i !== index);
+    setFormData({ ...formData, odds: { ...formData.odds, customMarkets: newList } });
+  };
+
+  const updateCustomMarketName = (index, name) => {
+    const currentList = Array.isArray(formData.odds.customMarkets) ? formData.odds.customMarkets : [];
+    const newList = [...currentList];
+    newList[index] = { ...newList[index], name };
+    setFormData({ ...formData, odds: { ...formData.odds, customMarkets: newList } });
+  };
+
+  const addCustomMarketOption = (marketIndex) => {
+    const currentList = Array.isArray(formData.odds.customMarkets) ? formData.odds.customMarkets : [];
+    const newList = [...currentList];
+    const currentOptions = Array.isArray(newList[marketIndex].options) ? newList[marketIndex].options : [];
+    newList[marketIndex] = { ...newList[marketIndex], options: [...currentOptions, { name: '', odds: '' }] };
+    setFormData({ ...formData, odds: { ...formData.odds, customMarkets: newList } });
+  };
+
+  const removeCustomMarketOption = (marketIndex, optionIndex) => {
+    const currentList = Array.isArray(formData.odds.customMarkets) ? formData.odds.customMarkets : [];
+    const newList = [...currentList];
+    const currentOptions = Array.isArray(newList[marketIndex].options) ? newList[marketIndex].options : [];
+    newList[marketIndex] = { ...newList[marketIndex], options: currentOptions.filter((_, i) => i !== optionIndex) };
+    setFormData({ ...formData, odds: { ...formData.odds, customMarkets: newList } });
+  };
+
+  const updateCustomMarketOption = (marketIndex, optionIndex, field, value) => {
+    const currentList = Array.isArray(formData.odds.customMarkets) ? formData.odds.customMarkets : [];
+    const newList = [...currentList];
+    const currentOptions = Array.isArray(newList[marketIndex].options) ? newList[marketIndex].options : [];
+    const newOptions = [...currentOptions];
+    newOptions[optionIndex] = { ...newOptions[optionIndex], [field]: value };
+    newList[marketIndex] = { ...newList[marketIndex], options: newOptions };
+    setFormData({ ...formData, odds: { ...formData.odds, customMarkets: newList } });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -57,62 +136,35 @@ const ManageMatches = () => {
     fetchLeagues();
   }, []);
 
-  // Infer a normalized sport token from odds data
-  // Prefers `sport_key` first token; otherwise derives from `sport_title`
-  const inferSportToken = (odds) => {
-    const rawKey = String(odds?.sport_key || '').toLowerCase();
-    if (rawKey) {
-      const token = rawKey.split('_')[0];
-      if (token) return token;
-    }
-
-    const title = String(odds?.sport_title || '').toLowerCase();
-    if (!title) return 'unknown';
-
-    const mappings = [
-      { re: /(mma|mixed\s*martial\s*arts)/i, token: 'mma' },
-      { re: /boxing/i, token: 'boxing' },
-      { re: /(american\s*football|\bnfl\b|\bncaaf\b|college\s*football|\bcfl\b)/i, token: 'americanfootball' },
-      { re: /basketball|\bnba\b|euroleague/i, token: 'basketball' },
-      { re: /baseball|\bmlb\b/i, token: 'baseball' },
-      { re: /(ice\s*hockey|\bnhl\b|\bkhl\b|\bahl\b|\bshl\b|\bliiga\b|\bdel\b|\bnla\b)/i, token: 'icehockey' },
-      { re: /tennis|\batp\b|\bwta\b|wimbledon|us\s*open|french\s*open|roland\s*garros/i, token: 'tennis' },
-      { re: /volleyball/i, token: 'volleyball' },
-      { re: /cricket/i, token: 'cricket' },
-      { re: /(soccer\b|football(?!.*american))/i, token: 'soccer' }
-    ];
-
-    for (const m of mappings) {
-      if (m.re.test(title)) return m.token;
-    }
-    return 'unknown';
-  };
 
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      // Fetch from odds collection for admin management
-      const response = await apiService.getOddsMatches();
-      const oddsMatches = response.data?.matches || [];
-      // Normalize odds format to the admin UI shape
-      const normalized = oddsMatches.map(odds => {
+      // Fetch from matches collection for admin management (includes odds and predetermined results)
+      const response = await apiService.getAllMatches();
+      const allMatches = response.data?.matches || [];
+      
+      // Normalize match format
+      const normalized = allMatches.map(match => {
         try {
           return {
-            _id: odds.id || odds.gameId,
-            externalId: odds.id || odds.gameId,
-            sport: inferSportToken(odds),
-            sportTitle: odds.sport_title || '',
-            homeTeam: odds.home_team,
-            awayTeam: odds.away_team,
-            startTime: odds.commence_time,
-            status: 'upcoming',
-            // initialize score fields explicitly to avoid undefined in UI
-            homeScore: null,
-            awayScore: null,
-            odds: odds.bookmakers || {},
+            _id: match._id,
+            externalId: match.externalId,
+            sport: match.sport || 'football',
+            sportTitle: match.leagueId?.name || match.sport || '',
+            homeTeam: match.homeTeam,
+            awayTeam: match.awayTeam,
+            startTime: match.startTime,
+            status: match.status,
+            homeScore: match.homeScore,
+            awayScore: match.awayScore,
+            odds: match.odds || {},
+            videoUrl: match.videoUrl,
+            videoPosterUrl: match.videoPosterUrl,
+            predeterminedResult: match.predeterminedResult || {}
           };
         } catch (e) {
-          console.error('Error normalizing match:', odds, e);
+          console.error('Error normalizing match:', match, e);
           return null;
         }
       }).filter(m => m !== null);
@@ -167,6 +219,17 @@ const ManageMatches = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleResultChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      predeterminedResult: {
+        ...(prev.predeterminedResult || {}),
+        [name]: value
+      }
+    }));
+  };
+
   const handleOddsChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, odds: { ...formData.odds, [name]: value } });
@@ -207,8 +270,7 @@ const ManageMatches = () => {
         videoUrl: formData.videoUrl || undefined,
         videoPosterUrl: formData.videoPosterUrl || undefined,
         predeterminedResult: {
-          homeScore: formData.predeterminedHomeScore !== '' ? Number(formData.predeterminedHomeScore) : null,
-          awayScore: formData.predeterminedAwayScore !== '' ? Number(formData.predeterminedAwayScore) : null,
+          ...formData.predeterminedResult,
           shouldSettle: true
         },
         scheduledEvents
@@ -266,15 +328,29 @@ const ManageMatches = () => {
       status: 'upcoming',
       homeScore: null,
       awayScore: null,
-      odds: {},
+      odds: {
+        // Pre-populate dynamic markets with one empty row for visibility
+        handicaps: [{ line: '', homeOdds: '', awayOdds: '' }],
+        correctScore: [{ score: '', odds: '' }],
+        multiGoals: [{ range: '', odds: '' }],
+        winningMargin: [{ margin: '', odds: '' }],
+        goalScorers: [{ player: '', type: 'anytime', odds: '' }]
+      },
       videoUrl: '',
       videoPosterUrl: '',
-      predeterminedHomeScore: '',
-      predeterminedAwayScore: ''
+      predeterminedResult: {
+        homeScore: '',
+        awayScore: '',
+        homeCorners: '',
+        awayCorners: '',
+        homeCards: '',
+        awayCards: ''
+      }
     });
     setScheduledEvents([]);
     setShowAddLeague(false);
     setNewLeagueName('');
+    setActiveOddsTab('main'); // Reset tab
     setIsModalOpen(true);
   };
 
@@ -282,7 +358,7 @@ const ManageMatches = () => {
     setCurrentMatch(match);
     setScheduledEvents(match.scheduledEvents || []);
     setFormData({
-      leagueName: leagues.find(l => l.leagueId === match.leagueId)?.name || match.leagueId?.name || '', // Handle populated league
+      leagueName: leagues.find(l => l.leagueId === match.leagueId)?.name || match.leagueId?.name || match.leagueId || '',
       sport: match.sport,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
@@ -293,11 +369,11 @@ const ManageMatches = () => {
       odds: match.odds || {},
       videoUrl: match.videoUrl || '',
       videoPosterUrl: match.videoPosterUrl || '',
-      predeterminedHomeScore: match.predeterminedResult?.homeScore ?? '',
-      predeterminedAwayScore: match.predeterminedResult?.awayScore ?? ''
+      predeterminedResult: match.predeterminedResult || {}
     });
     setShowAddLeague(false);
     setNewLeagueName('');
+    setActiveOddsTab('main'); // Reset tab
     setIsModalOpen(true);
   };
 
@@ -306,6 +382,20 @@ const ManageMatches = () => {
     setResultHomeScore(Number(match.homeScore ?? 0));
     setResultAwayScore(Number(match.awayScore ?? 0));
     setResultCompleted(true);
+    
+    // Pre-populate if available in predeterminedResult
+    const pr = match.predeterminedResult || {};
+    setResultHomeScoreHT(pr.homeScoreHT || '');
+    setResultAwayScoreHT(pr.awayScoreHT || '');
+    setResultHomeCorners(pr.homeCorners || '');
+    setResultAwayCorners(pr.awayCorners || '');
+    setResultHomeCards(pr.homeCards || '');
+    setResultAwayCards(pr.awayCards || '');
+    setResultPenaltyAwarded(!!pr.penaltyAwarded);
+    setResultFirstGoalscorer(pr.firstGoalscorer || '');
+    setResultAnytimeGoalscorers(pr.anytimeGoalscorers || '');
+    setResultLastGoalscorer(pr.lastGoalscorer || '');
+
     setIsResultModalOpen(true);
   };
 
@@ -327,7 +417,18 @@ const ManageMatches = () => {
       const resp = await apiService.updateOddsResult(currentMatch._id, {
         homeScore: Number(resultHomeScore),
         awayScore: Number(resultAwayScore),
-        completed: Boolean(resultCompleted)
+        completed: Boolean(resultCompleted),
+        // Extended fields
+        homeScoreHT: resultHomeScoreHT ? Number(resultHomeScoreHT) : undefined,
+        awayScoreHT: resultAwayScoreHT ? Number(resultAwayScoreHT) : undefined,
+        homeCorners: resultHomeCorners ? Number(resultHomeCorners) : undefined,
+        awayCorners: resultAwayCorners ? Number(resultAwayCorners) : undefined,
+        homeCards: resultHomeCards ? Number(resultHomeCards) : undefined,
+        awayCards: resultAwayCards ? Number(resultAwayCards) : undefined,
+        penaltyAwarded: Boolean(resultPenaltyAwarded),
+        firstGoalscorer: resultFirstGoalscorer || undefined,
+        anytimeGoalscorers: resultAnytimeGoalscorers || undefined,
+        lastGoalscorer: resultLastGoalscorer || undefined
       });
       const settled = resp?.data?.settlement;
       const msg = settled ? `Result saved. Settled ${settled.settledBets || 0} bets across ${settled.processedMatches || 0} matches.` : 'Result saved.';
@@ -790,11 +891,11 @@ const ManageMatches = () => {
 
       {isModalOpen && (
         <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 overflow-y-auto">
-          <div className="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto my-8 flex flex-col max-h-[90vh]">
-            <div className="modal-header p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
-              <h3 className="text-xl font-bold text-gray-800">{currentMatch ? 'Edit Match' : 'Add New Match'}</h3>
+          <div className="modal-content bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl mx-auto my-8 flex flex-col max-h-[90vh]">
+            <div className="modal-header p-4 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-900 z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-white">{currentMatch ? 'Edit Match' : 'Add New Match'}</h3>
               <button 
-                className="modal-close text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                className="modal-close text-gray-400 hover:text-gray-200 text-2xl font-bold"
                 onClick={closeModal}
               >
                 ×
@@ -806,7 +907,7 @@ const ManageMatches = () => {
             )}
             <form onSubmit={handleCreateOrUpdateMatch} className="space-y-4">
               <div className="form-group">
-                <label style={{ color: 'black' }}>League:</label>
+                <label style={{ color: 'white' }}>League:</label>
                 {!showAddLeague ? (
                   <div className="flex gap-2">
                     <select
@@ -853,10 +954,10 @@ const ManageMatches = () => {
               </div>
               {/* Video URL */}
               <div className="form-group">
-                <label style={{ color: 'black' }}>Match Video (MP4/WebM)</label>
+                <label style={{ color: 'white' }}>Match Video (MP4/WebM)</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="form-group">
-                    <label style={{ color: 'black' }}>Video URL:</label>
+                    <label style={{ color: 'white' }}>Video URL:</label>
                     <input
                       type="url"
                       name="videoUrl"
@@ -866,10 +967,10 @@ const ManageMatches = () => {
                     />
                   </div>
                   <div className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <label className="block text-white text-sm font-bold mb-2">Or upload video file:</label>
-                      <input
-                        type="file"
+                <div className="flex-1">
+                  <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>Or upload video file:</label>
+                  <input
+                    type="file"
                         accept="video/mp4,video/webm,video/ogg"
                         disabled={false}
                         onChange={async (e) => {
@@ -931,19 +1032,19 @@ const ManageMatches = () => {
               <div className="md:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-white text-sm font-bold mb-2">Poster URL (thumbnail):</label>
-                    <input
-                      type="url"
+                <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>Poster URL (thumbnail):</label>
+                <input
+                  type="url"
                       name="videoPosterUrl"
                       placeholder="https://your-backend-url.onrender.com/uploads/posters/poster.jpg"
                       value={formData.videoPosterUrl}
                       onChange={handleInputChange}
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-black"
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-white leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
                     />
                   </div>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
-                      <label className="block text-white text-sm font-bold mb-2">Or upload poster image:</label>
+                      <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>Or upload poster image:</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -1004,25 +1105,25 @@ const ManageMatches = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-white text-sm font-bold mb-2">League ID (auto):</label>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>League ID (auto):</label>
                 <input
                   type="text"
                   value={autoLeagueId}
                   readOnly
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-black"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-white leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-white text-sm font-bold mb-2">External ID (auto):</label>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>External ID (auto):</label>
                 <input
                   type="text"
                   value={autoExternalId}
                   readOnly
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-black"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-white leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Sport:</label>
+                <label style={{ color: 'white' }}>Sport:</label>
                 <input
                   type="text"
                   name="sport"
@@ -1032,7 +1133,7 @@ const ManageMatches = () => {
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Home Team:</label>
+                <label style={{ color: 'white' }}>Home Team:</label>
                 <input
                   type="text"
                   name="homeTeam"
@@ -1042,7 +1143,7 @@ const ManageMatches = () => {
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Away Team:</label>
+                <label style={{ color: 'white' }}>Away Team:</label>
                 <input
                   type="text"
                   name="awayTeam"
@@ -1052,7 +1153,7 @@ const ManageMatches = () => {
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Start Time:</label>
+                <label style={{ color: 'white' }}>Start Time:</label>
                 <input
                   type="datetime-local"
                   name="startTime"
@@ -1062,7 +1163,7 @@ const ManageMatches = () => {
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Status:</label>
+                <label style={{ color: 'white' }}>Status:</label>
                 <select
                   name="status"
                   value={formData.status}
@@ -1076,7 +1177,7 @@ const ManageMatches = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Home Score:</label>
+                <label style={{ color: 'white' }}>Home Score:</label>
                 <input
                   type="number"
                   name="homeScore"
@@ -1085,7 +1186,7 @@ const ManageMatches = () => {
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'black' }}>Away Score:</label>
+                <label style={{ color: 'white' }}>Away Score:</label>
                 <input
                   type="number"
                   name="awayScore"
@@ -1093,133 +1194,359 @@ const ManageMatches = () => {
                   onChange={handleInputChange}
                 />
               </div>
-              {/* Odds Inputs */}
-              <div className="form-group">
-                <label style={{ color: 'black' }}>Odds (Optional)</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Home Win:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="homeWin"
-                      value={formData.odds.homeWin || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Draw:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="draw"
-                      value={formData.odds.draw || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Away Win:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="awayWin"
-                      value={formData.odds.awayWin || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Total (Over/Under Line):</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="total"
-                      value={formData.odds.total || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Over Odds:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="over"
-                      value={formData.odds.over || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Under Odds:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="under"
-                      value={formData.odds.under || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Handicap Line:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="handicapLine"
-                      value={formData.odds.handicapLine || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Home Handicap Odds:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="homeHandicap"
-                      value={formData.odds.homeHandicap || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Away Handicap Odds:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="awayHandicap"
-                      value={formData.odds.awayHandicap || ''}
-                      onChange={handleOddsChange}
-                    />
-                  </div>
+              {/* Odds Management with Tabs */}
+              <div className="form-group border-t border-gray-600 pt-4">
+                <label className="text-lg font-bold mb-2 block" style={{ color: 'white' }}>Market Management</label>
+                
+                {/* Tabs Navigation */}
+                <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-600 pb-2">
+                  <button type="button" onClick={() => setActiveOddsTab('main')} className={`px-4 py-2 rounded ${activeOddsTab === 'main' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Main Markets</button>
+                  <button type="button" onClick={() => setActiveOddsTab('corners_cards')} className={`px-4 py-2 rounded ${activeOddsTab === 'corners_cards' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Corners & Cards</button>
+                  <button type="button" onClick={() => setActiveOddsTab('custom')} className={`px-4 py-2 rounded ${activeOddsTab === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Custom</button>
+                  <button type="button" onClick={() => setActiveOddsTab('results')} className={`px-4 py-2 rounded ${activeOddsTab === 'results' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Settlement Results</button>
                 </div>
+
+                {/* Main Markets Tab */}
+                {activeOddsTab === 'main' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* 1X2 */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>1X2 (Full Time Result / Match Winner)</label>
+                        <div className="space-y-2">
+                          <input type="number" step="0.01" name="homeWin" placeholder="Home win (1)" value={formData.odds.homeWin || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="draw" placeholder="Draw (X)" value={formData.odds.draw || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="awayWin" placeholder="Away win (2)" value={formData.odds.awayWin || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+
+                      {/* Double Chance */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Double Chance</label>
+                        <div className="space-y-2">
+                          <input type="number" step="0.01" name="doubleChance_1X" placeholder="Home or Draw (1X)" value={formData.odds.doubleChance_1X || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="doubleChance_12" placeholder="Home or Away (12)" value={formData.odds.doubleChance_12 || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="doubleChance_X2" placeholder="Away or Draw (X2)" value={formData.odds.doubleChance_X2 || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+
+                      {/* BTTS */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Both Teams to Score (BTTS)</label>
+                        <div className="space-y-2">
+                          <input type="number" step="0.01" name="btts_Yes" placeholder="Yes (both score)" value={formData.odds.btts_Yes || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="btts_No" placeholder="No" value={formData.odds.btts_No || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+
+                      {/* Odd/Even */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Odd/Even Goals</label>
+                        <div className="space-y-2">
+                          <input type="number" step="0.01" name="oddEven_Odd" placeholder="Odd" value={formData.odds.oddEven_Odd || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="oddEven_Even" placeholder="Even" value={formData.odds.oddEven_Even || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+
+                       {/* Penalty */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Penalty Yes/No</label>
+                        <div className="space-y-2">
+                          <input type="number" step="0.01" name="penalty_Yes" placeholder="Yes" value={formData.odds.penalty_Yes || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="penalty_No" placeholder="No" value={formData.odds.penalty_No || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+
+                      {/* Goals Over/Under */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Over/Under Goals</label>
+                        <div className="space-y-2">
+                          <input type="number" step="0.5" name="total" placeholder="Line (e.g. 2.5)" value={formData.odds.total || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="over" placeholder="Over Odds" value={formData.odds.over || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="under" placeholder="Under Odds" value={formData.odds.under || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-600 my-4"></div>
+
+                    {/* Extended Markets */}
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Handicap (Dynamic) */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Handicap (Asian/European)</label>
+                        <button type="button" onClick={() => addDynamicOddItem('handicaps', { line: '', homeOdds: '', awayOdds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Handicap Line</button>
+                        <div className="space-y-2">
+                          {(formData.odds.handicaps || []).map((item, idx) => (
+                            <div key={idx} className="flex gap-2 items-center">
+                              <div className="w-1/3">
+                                <label className="text-xs block" style={{ color: 'white' }}>Line (e.g. -1.5)</label>
+                                <input type="number" step="0.25" placeholder="Line" value={item.line || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'line', e.target.value)} className="w-full border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                              </div>
+                              <div className="w-1/3">
+                                 <label className="text-xs block" style={{ color: 'white' }}>Home Odds</label>
+                                 <input type="number" step="0.01" placeholder="Home" value={item.homeOdds || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'homeOdds', e.target.value)} className="w-full border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                              </div>
+                              <div className="w-1/3">
+                                 <label className="text-xs block" style={{ color: 'white' }}>Away Odds</label>
+                                 <input type="number" step="0.01" placeholder="Away" value={item.awayOdds || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'awayOdds', e.target.value)} className="w-full border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                              </div>
+                              <button type="button" onClick={() => removeDynamicOddItem('handicaps', idx)} className="text-red-500 font-bold px-2 self-end mb-1">X</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Correct Score */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Correct Score</label>
+                        <button type="button" onClick={() => addDynamicOddItem('correctScore', { score: '', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Score</button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {(formData.odds.correctScore || []).map((item, idx) => (
+                            <div key={idx} className="flex gap-2">
+                              <input type="text" placeholder="Score (1-0)" value={item.score || ''} onChange={(e) => handleDynamicOddsChange('correctScore', idx, 'score', e.target.value)} className="flex-1 border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('correctScore', idx, 'odds', e.target.value)} className="w-20 border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                              <button type="button" onClick={() => removeDynamicOddItem('correctScore', idx)} className="text-red-500 font-bold px-2">X</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Goalscorers */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Goalscorer Markets</label>
+                        <button type="button" onClick={() => addDynamicOddItem('goalScorers', { player: '', type: 'anytime', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Scorer</button>
+                        <div className="space-y-2">
+                          {(formData.odds.goalScorers || []).map((item, idx) => (
+                            <div key={idx} className="flex gap-2 items-center">
+                              <input type="text" placeholder="Player Name" value={item.player || ''} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'player', e.target.value)} className="flex-1 border rounded p-1" style={{ color: 'white' }} />
+                              <select value={item.type} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'type', e.target.value)} className="border rounded p-1 w-24" style={{ color: 'white' }}>
+                                  <option value="first">First</option>
+                                  <option value="anytime">Anytime</option>
+                                  <option value="last">Last</option>
+                              </select>
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'odds', e.target.value)} className="w-20 border rounded p-1" style={{ color: 'white' }} />
+                              <button type="button" onClick={() => removeDynamicOddItem('goalScorers', idx)} className="text-red-500 font-bold px-2">X</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                       {/* HT/FT */}
+                       <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-2" style={{ color: 'white' }}>Half-Time/Full-Time (HT/FT)</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['HH', 'HD', 'HA', 'DH', 'DD', 'DA', 'AH', 'AD', 'AA'].map(key => {
+                              const labels = {
+                                  'HH': 'Home/Home', 'HD': 'Home/Draw', 'HA': 'Home/Away',
+                                  'DH': 'Draw/Home', 'DD': 'Draw/Draw', 'DA': 'Draw/Away',
+                                  'AH': 'Away/Home', 'AD': 'Away/Draw', 'AA': 'Away/Away'
+                              };
+                              return (
+                                  <div key={key}>
+                                      <label className="text-xs block" style={{ color: 'white' }}>{labels[key]}</label>
+                                      <input type="number" step="0.01" name={`ht_ft_${key}`} value={formData.odds[`ht_ft_${key}`] || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                                  </div>
+                              );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Multi Goals */}
+                      <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Multi Goals / Goal Bands</label>
+                        <button type="button" onClick={() => addDynamicOddItem('multiGoals', { range: '', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Range</button>
+                        <div className="space-y-2">
+                          {(formData.odds.multiGoals || []).map((item, idx) => (
+                            <div key={idx} className="flex gap-2">
+                              <input type="text" placeholder="Range (e.g. 2-3)" value={item.range || ''} onChange={(e) => handleDynamicOddsChange('multiGoals', idx, 'range', e.target.value)} className="flex-1 border rounded p-1" style={{ color: 'white' }} />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('multiGoals', idx, 'odds', e.target.value)} className="w-24 border rounded p-1" style={{ color: 'white' }} />
+                              <button type="button" onClick={() => removeDynamicOddItem('multiGoals', idx)} className="text-red-500 font-bold px-2">X</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                       {/* Winning Margin */}
+                       <div className="form-group p-2 bg-gray-800 rounded">
+                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Winning Margin</label>
+                        <button type="button" onClick={() => addDynamicOddItem('winningMargin', { margin: '', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Margin</button>
+                        <div className="space-y-2">
+                          {(formData.odds.winningMargin || []).map((item, idx) => (
+                            <div key={idx} className="flex gap-2">
+                              <input type="text" placeholder="Margin (e.g. Home by 1)" value={item.margin || ''} onChange={(e) => handleDynamicOddsChange('winningMargin', idx, 'margin', e.target.value)} className="flex-1 border rounded p-1" style={{ color: 'white' }} />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('winningMargin', idx, 'odds', e.target.value)} className="w-24 border rounded p-1" style={{ color: 'white' }} />
+                              <button type="button" onClick={() => removeDynamicOddItem('winningMargin', idx)} className="text-red-500 font-bold px-2">X</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Corners & Cards Tab */}
+                {activeOddsTab === 'corners_cards' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Corners */}
+                    <div className="form-group p-2 bg-gray-800 rounded">
+                      <label className="font-bold block mb-1" style={{ color: 'white' }}>Corners Over/Under</label>
+                      <div className="space-y-2">
+                        <input type="number" step="0.5" name="corners_line" placeholder="Line (e.g. 9.5)" value={formData.odds.corners_line || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        <input type="number" step="0.01" name="corners_over" placeholder="Over Odds" value={formData.odds.corners_over || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        <input type="number" step="0.01" name="corners_under" placeholder="Under Odds" value={formData.odds.corners_under || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                      </div>
+                    </div>
+
+                    {/* Cards */}
+                    <div className="form-group p-2 bg-gray-800 rounded">
+                      <label className="font-bold block mb-1" style={{ color: 'white' }}>Cards Over/Under</label>
+                      <div className="space-y-2">
+                        <input type="number" step="0.5" name="cards_line" placeholder="Line (e.g. 3.5)" value={formData.odds.cards_line || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        <input type="number" step="0.01" name="cards_over" placeholder="Over Odds" value={formData.odds.cards_over || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        <input type="number" step="0.01" name="cards_under" placeholder="Under Odds" value={formData.odds.cards_under || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Markets Tab */}
+                {activeOddsTab === 'custom' && (
+                  <div className="space-y-4">
+                     <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg" style={{ color: 'white' }}>Custom Markets</h3>
+                        <button type="button" onClick={addCustomMarket} className="bg-blue-600 text-white px-3 py-1 rounded text-sm">+ New Market</button>
+                     </div>
+                     <p className="text-sm italic mb-2" style={{ color: 'gray' }}>Create your own markets with custom options.</p>
+                     
+                     {(formData.odds.customMarkets || []).map((market, mIdx) => (
+                       <div key={market.id || mIdx} className="bg-gray-800 p-4 rounded border border-gray-600">
+                          <div className="flex justify-between items-center mb-2">
+                             <input 
+                                type="text" 
+                                placeholder="Market Name (e.g. Method of Victory)" 
+                                value={market.name || ''} 
+                                onChange={(e) => updateCustomMarketName(mIdx, e.target.value)}
+                                className="font-bold text-lg bg-transparent border-b border-gray-400 focus:outline-none w-1/2"
+                                style={{ color: 'white' }}
+                             />
+                             <div className="flex gap-2">
+                                <button type="button" onClick={() => addCustomMarketOption(mIdx)} className="bg-green-600 text-white px-2 py-1 rounded text-xs">+ Add Option</button>
+                                <button type="button" onClick={() => removeCustomMarket(mIdx)} className="bg-red-600 text-white px-2 py-1 rounded text-xs">Remove Market</button>
+                             </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                             {(market.options || []).map((opt, oIdx) => (
+                                <div key={oIdx} className="flex gap-2 items-center bg-gray-700 p-2 rounded border border-gray-600">
+                                   <input 
+                                      type="text" 
+                                      placeholder="Option Name" 
+                                      value={opt.name || ''} 
+                                      onChange={(e) => updateCustomMarketOption(mIdx, oIdx, 'name', e.target.value)}
+                                      className="flex-1 border rounded p-1 text-sm"
+                                      style={{ color: 'white' }}
+                                   />
+                                   <input 
+                                      type="number" 
+                                      step="0.01" 
+                                      placeholder="Odds" 
+                                      value={opt.odds || ''} 
+                                      onChange={(e) => updateCustomMarketOption(mIdx, oIdx, 'odds', e.target.value)}
+                                      className="w-20 border rounded p-1 text-sm"
+                                      style={{ color: 'white' }}
+                                   />
+                                   <button type="button" onClick={() => removeCustomMarketOption(mIdx, oIdx)} className="text-red-500 font-bold px-2">X</button>
+                                </div>
+                             ))}
+                          </div>
+                       </div>
+                     ))}
+                  </div>
+                )}
+
+                {/* Settlement Results Tab */}
+                {activeOddsTab === 'results' && (
+                  <div className="space-y-4">
+                    <p className="text-sm mb-2" style={{ color: '#d1d5db' }}>Enter the final results here for settlement purposes. These values will determine winning bets.</p>
+                    
+                    {/* Final Scores & Half Time Scores */}
+                    <div className="form-group p-2 bg-gray-800 rounded">
+                      <label className="font-bold block mb-2" style={{ color: 'white' }}>Match Scores</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Home Score (FT)</label>
+                          <input type="number" name="homeScore" value={formData.predeterminedResult?.homeScore || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Away Score (FT)</label>
+                          <input type="number" name="awayScore" value={formData.predeterminedResult?.awayScore || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Home Score (HT)</label>
+                          <input type="number" name="homeScoreHT" value={formData.predeterminedResult?.homeScoreHT || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Away Score (HT)</label>
+                          <input type="number" name="awayScoreHT" value={formData.predeterminedResult?.awayScoreHT || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Corners & Cards & Penalty Results */}
+                    <div className="form-group p-2 bg-gray-800 rounded">
+                      <label className="font-bold block mb-2" style={{ color: 'white' }}>Corners, Cards & Events</label>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Home Corners</label>
+                          <input type="number" name="homeCorners" value={formData.predeterminedResult?.homeCorners || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Away Corners</label>
+                          <input type="number" name="awayCorners" value={formData.predeterminedResult?.awayCorners || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Home Cards</label>
+                          <input type="number" name="homeCards" value={formData.predeterminedResult?.homeCards || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Away Cards</label>
+                          <input type="number" name="awayCards" value={formData.predeterminedResult?.awayCards || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        </div>
+                        <div className="flex items-center mt-4">
+                          <input type="checkbox" name="penaltyAwarded" checked={formData.predeterminedResult?.penaltyAwarded || false} onChange={(e) => handleResultChange({ target: { name: 'penaltyAwarded', value: e.target.checked } })} className="mr-2" />
+                          <label className="text-xs block" style={{ color: 'white' }}>Penalty Awarded?</label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Goalscorers Results */}
+                    <div className="form-group p-2 bg-gray-800 rounded">
+                      <label className="font-bold block mb-2" style={{ color: 'white' }}>Goalscorer Results</label>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>First Goalscorer (Name)</label>
+                          <input type="text" name="firstGoalscorer" value={formData.predeterminedResult?.firstGoalscorer || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} placeholder="e.g. Lionel Messi" />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Anytime Goalscorers (Comma separated)</label>
+                          <input type="text" name="anytimeGoalscorers" value={formData.predeterminedResult?.anytimeGoalscorers || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} placeholder="e.g. Lionel Messi, Neymar, Mbappe" />
+                        </div>
+                        <div>
+                          <label className="text-xs block" style={{ color: 'white' }}>Last Goalscorer (Name)</label>
+                          <input type="text" name="lastGoalscorer" value={formData.predeterminedResult?.lastGoalscorer || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} placeholder="e.g. Mbappe" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Match Scripting Section */}
+              {/* Match Scripting Section - Moved to Results Tab, keeping Scheduled Events */}
               <div className="border-t border-gray-600 pt-4 mt-4 mb-4">
-                <h4 className="text-black text-lg font-bold mb-4">Match Scripting (Predetermined Results)</h4>
-                
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Final Home Score (Predetermined)</label>
-                    <input
-                      type="number"
-                      name="predeterminedHomeScore"
-                      value={formData.predeterminedHomeScore}
-                      onChange={handleInputChange}
-                      placeholder="Leave empty for fair play"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Final Away Score (Predetermined)</label>
-                    <input
-                      type="number"
-                      name="predeterminedAwayScore"
-                      value={formData.predeterminedAwayScore}
-                      onChange={handleInputChange}
-                      placeholder="Leave empty for fair play"
-                    />
-                  </div>
-                </div>
-
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-black text-sm font-bold">Scheduled Events (Goals)</label>
+                    <label className="block text-sm font-bold" style={{ color: 'white' }}>Scheduled Events (Live Simulation)</label>
                     <button type="button" onClick={addScheduledEvent} className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700">+ Add Event</button>
                   </div>
                   
@@ -1228,47 +1555,47 @@ const ManageMatches = () => {
                   )}
 
                   {scheduledEvents.map((event, index) => (
-                    <div key={index} className="flex gap-2 mb-2 items-center bg-gray-100 p-2 rounded border border-gray-300">
+                    <div key={index} className="flex gap-2 mb-2 items-center bg-gray-100 p-2 rounded border border-gray-600">
                       <div className="w-16">
-                        <label className="text-xs text-black block">Min</label>
+                        <label className="text-xs block" style={{ color: 'white' }}>Min</label>
                         <input
                           type="number"
                           placeholder="Min"
                           value={event.minute}
                           onChange={(e) => updateScheduledEvent(index, 'minute', Number(e.target.value))}
-                          className="w-full p-1 text-black rounded border border-gray-400"
+                          className="w-full p-1 text-white rounded border border-gray-400"
                         />
                       </div>
                       <div className="w-24">
-                        <label className="text-xs text-black block">Type</label>
+                        <label className="text-xs block" style={{ color: 'white' }}>Type</label>
                         <select
                           value={event.type}
                           onChange={(e) => updateScheduledEvent(index, 'type', e.target.value)}
-                          className="w-full p-1 text-black rounded border border-gray-400"
+                          className="w-full p-1 text-white rounded border border-gray-400"
                         >
                           <option value="goal">Goal</option>
                           <option value="card">Card</option>
                         </select>
                       </div>
                       <div className="w-24">
-                         <label className="text-xs text-black block">Team</label>
+                         <label className="text-xs block" style={{ color: 'white' }}>Team</label>
                         <select
                           value={event.team}
                           onChange={(e) => updateScheduledEvent(index, 'team', e.target.value)}
-                          className="w-full p-1 text-black rounded border border-gray-400"
+                          className="w-full p-1 text-white rounded border border-gray-400"
                         >
                           <option value="home">Home</option>
                           <option value="away">Away</option>
                         </select>
                       </div>
                       <div className="flex-1">
-                         <label className="text-xs text-black block">Player/Desc</label>
+                         <label className="text-xs block" style={{ color: 'white' }}>Player/Desc</label>
                         <input
                           type="text"
                           placeholder="Player Name"
                           value={event.player}
                           onChange={(e) => updateScheduledEvent(index, 'player', e.target.value)}
-                          className="w-full p-1 text-black rounded border border-gray-400"
+                          className="w-full p-1 text-white rounded border border-gray-400"
                         />
                       </div>
                       <button type="button" onClick={() => removeScheduledEvent(index)} className="text-red-500 font-bold px-2 self-end mb-1">X</button>
@@ -1312,7 +1639,7 @@ const ManageMatches = () => {
             </div>
             <div className="modal-body">
               <form onSubmit={handleUpdateResult} className="space-y-4">
-                <div className="text-white text-sm mb-2">
+                <div className="text-sm mb-2" style={{ color: 'white' }}>
                   {currentMatch && (
                     <span>
                       {currentMatch.homeTeam} vs {currentMatch.awayTeam}
@@ -1321,7 +1648,7 @@ const ManageMatches = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="form-group">
-                    <label style={{ color: 'black' }}>Home Score:</label>
+                    <label style={{ color: 'white' }}>Home Score:</label>
                     <input
                       type="number"
                       min="0"
@@ -1331,7 +1658,7 @@ const ManageMatches = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label style={{ color: 'black' }}>Away Score:</label>
+                    <label style={{ color: 'white' }}>Away Score:</label>
                     <input
                       type="number"
                       min="0"
@@ -1341,7 +1668,7 @@ const ManageMatches = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label style={{ color: 'black' }}>Completed:</label>
+                    <label style={{ color: 'white' }}>Completed:</label>
                     <select
                       value={resultCompleted ? 'true' : 'false'}
                       onChange={(e) => setResultCompleted(e.target.value === 'true')}
@@ -1349,6 +1676,124 @@ const ManageMatches = () => {
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Extended Results: Half Time */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-bold mb-2" style={{ color: 'white' }}>Half Time Scores</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>HT Home Score:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultHomeScoreHT}
+                        onChange={(e) => setResultHomeScoreHT(e.target.value)}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>HT Away Score:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultAwayScoreHT}
+                        onChange={(e) => setResultAwayScoreHT(e.target.value)}
+                        placeholder="Optional"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Extended Results: Stats */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-bold mb-2" style={{ color: 'white' }}>Match Stats</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>Home Corners:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultHomeCorners}
+                        onChange={(e) => setResultHomeCorners(e.target.value)}
+                        placeholder="Opt"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>Away Corners:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultAwayCorners}
+                        onChange={(e) => setResultAwayCorners(e.target.value)}
+                        placeholder="Opt"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>Home Cards:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultHomeCards}
+                        onChange={(e) => setResultHomeCards(e.target.value)}
+                        placeholder="Opt"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>Away Cards:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={resultAwayCards}
+                        onChange={(e) => setResultAwayCards(e.target.value)}
+                        placeholder="Opt"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Extended Results: Events */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-bold mb-2" style={{ color: 'white' }}>Key Events</h4>
+                  <div className="mb-4">
+                    <label className="flex items-center gap-2" style={{ color: 'white', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={resultPenaltyAwarded}
+                        onChange={(e) => setResultPenaltyAwarded(e.target.checked)}
+                      />
+                      <span>Penalty Awarded?</span>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>First Goalscorer:</label>
+                      <input
+                        type="text"
+                        value={resultFirstGoalscorer}
+                        onChange={(e) => setResultFirstGoalscorer(e.target.value)}
+                        placeholder="Player Name"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>Last Goalscorer:</label>
+                      <input
+                        type="text"
+                        value={resultLastGoalscorer}
+                        onChange={(e) => setResultLastGoalscorer(e.target.value)}
+                        placeholder="Player Name"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ color: 'white' }}>Anytime Scorers:</label>
+                      <input
+                        type="text"
+                        value={resultAnytimeGoalscorers}
+                        onChange={(e) => setResultAnytimeGoalscorers(e.target.value)}
+                        placeholder="Comma separated"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">

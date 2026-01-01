@@ -480,13 +480,17 @@ const Aviator = () => {
       const r = Math.random();
       
       // More random distribution for "winnings should be random"
-      if (r < 0.5) { // 50% early cashout (1.10 - 2.00)
+      if (r < 0.4) { // 40% early cashout (1.10 - 2.00)
          target = 1.10 + Math.random() * 0.90;
-      } else if (r < 0.8) { // 30% mid range (2.00 - 10.00)
+      } else if (r < 0.7) { // 30% mid range (2.00 - 10.00)
          target = 2.00 + Math.random() * 8.00;
-      } else { // 20% moon shots (10.00 - 100.00+)
-         // Exponential distribution for high multipliers
-         target = 10.00 + Math.exp(Math.random() * 4); 
+      } else if (r < 0.9) { // 20% high range (10.00 - 50.00)
+         target = 10.00 + Math.random() * 40.00;
+      } else { // 10% HUGE winners (50x - 5000x)
+         const power = Math.random();
+         if (power < 0.5) target = 50 + Math.random() * 150; // 50x - 200x
+         else if (power < 0.8) target = 200 + Math.random() * 800; // 200x - 1000x
+         else target = 1000 + Math.random() * 4000; // 1000x - 5000x
       }
 
       // Randomize bet amounts more
@@ -1164,13 +1168,36 @@ const Aviator = () => {
   useEffect(() => {
     if (showTopWinners) {
       const generateWinners = (count) => {
-        return Array.from({ length: count }, (_, i) => ({
-          rank: i + 1,
-          user: realNames[Math.floor(Math.random() * realNames.length)],
-          bet: (Math.random() * 100 + 10).toFixed(2),
-          multiplier: (Math.random() * 10 + 1.5).toFixed(2),
-          win: (Math.random() * 500 + 50).toFixed(2)
-        }));
+        return Array.from({ length: count }, (_, i) => {
+           // Generate realistic but huge multipliers for "Top Winners"
+           let multiplier;
+           const r = Math.random();
+           
+           if (r < 0.2) { 
+               // 20% "Normal" big wins (10x - 50x)
+               multiplier = 10 + Math.random() * 40;
+           } else if (r < 0.6) { 
+               // 40% Huge wins (50x - 200x)
+               multiplier = 50 + Math.random() * 150;
+           } else if (r < 0.9) { 
+               // 30% Massive wins (200x - 1000x)
+               multiplier = 200 + Math.random() * 800;
+           } else { 
+               // 10% Jackpot wins (1000x - 5000x)
+               multiplier = 1000 + Math.random() * 4000;
+           }
+
+           const bet = (Math.random() * 100 + 10);
+           const win = bet * multiplier;
+
+           return {
+              rank: i + 1,
+              user: realNames[Math.floor(Math.random() * realNames.length)],
+              bet: bet.toFixed(2),
+              multiplier: multiplier.toFixed(2),
+              win: win.toFixed(2)
+           };
+        });
       };
       setTopWinnersData(generateWinners(10)); // Generate 10 mock winners
     }
