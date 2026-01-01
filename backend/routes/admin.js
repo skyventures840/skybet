@@ -301,8 +301,15 @@ router.put('/matches/:id', adminAuth, async (req, res) => {
     if (odds) {
       const oddsMap = new Map();
       Object.keys(odds).forEach(key => {
-        const val = Number(odds[key]);
-        if (!isNaN(val)) oddsMap.set(key, val);
+        const value = odds[key];
+        const isSimpleNumber = (typeof value === 'number') || (typeof value === 'string' && !isNaN(Number(value)) && value.trim() !== '');
+
+        if (isSimpleNumber) {
+           oddsMap.set(key, Number(value));
+        } else if (value && typeof value === 'object') {
+           // Allow complex objects/arrays
+           oddsMap.set(key, value);
+        }
       });
       updateData.odds = oddsMap;
     }
@@ -354,7 +361,7 @@ router.put('/matches/:matchId/odds', adminAuth, [
     Object.keys(normalizedOdds).forEach(key => {
       if (!['1', 'X', '2', 'homeWin', 'awayWin', 'draw'].includes(key)) {
         const value = normalizedOdds[key];
-        if (value && value > 1) {
+        if ((typeof value === 'number' && value > 1) || (typeof value === 'object' && value !== null)) {
           oddsMap.set(key, value);
         }
       }
@@ -872,7 +879,14 @@ router.put('/matches/:matchId/result', adminAuth, [
 router.put('/odds/:eventId/result', adminAuth, [
   body('homeScore').isInt({ min: 0 }).withMessage('homeScore must be a non-negative integer'),
   body('awayScore').isInt({ min: 0 }).withMessage('awayScore must be a non-negative integer'),
-  body('completed').optional().isBoolean()
+  body('completed').optional().isBoolean(),
+  body('homeScoreHT').optional().isInt({ min: 0 }),
+  body('awayScoreHT').optional().isInt({ min: 0 }),
+  body('homeCorners').optional().isInt({ min: 0 }),
+  body('awayCorners').optional().isInt({ min: 0 }),
+  body('homeCards').optional().isInt({ min: 0 }),
+  body('awayCards').optional().isInt({ min: 0 }),
+  body('penaltyAwarded').optional().isBoolean()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -880,13 +894,28 @@ router.put('/odds/:eventId/result', adminAuth, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { homeScore, awayScore, completed } = req.body;
+    let { 
+      homeScore, awayScore, completed,
+      homeScoreHT, awayScoreHT,
+      homeCorners, awayCorners,
+      homeCards, awayCards,
+      penaltyAwarded,
+      firstGoalscorer, anytimeGoalscorers, lastGoalscorer
+    } = req.body;
+    
     const eventId = String(req.params.eventId);
 
     // Pull canonical event details from Odds collection
     const odds = await Odds.findOne({ gameId: eventId });
     if (!odds) {
       return res.status(404).json({ error: 'Odds event not found' });
+    }
+
+    // Process anytimeGoalscorers if string (comma-separated)
+    if (typeof anytimeGoalscorers === 'string') {
+      anytimeGoalscorers = anytimeGoalscorers.split(',').map(s => s.trim()).filter(s => s);
+    } else if (!Array.isArray(anytimeGoalscorers)) {
+      anytimeGoalscorers = [];
     }
 
     const sport_key = odds.sport_key || 'football';
@@ -912,6 +941,13 @@ router.put('/odds/:eventId/result', adminAuth, [
       home_team,
       away_team,
       scores,
+      // Extended results
+      homeScoreHT, awayScoreHT,
+      homeCorners, awayCorners,
+      homeCards, awayCards,
+      penaltyAwarded,
+      firstGoalscorer, anytimeGoalscorers, lastGoalscorer,
+      
       last_update: now,
       lastFetched: now,
       fetchCount: 0

@@ -58,6 +58,16 @@ const matchSchema = new mongoose.Schema({
   predeterminedResult: {
     homeScore: { type: Number },
     awayScore: { type: Number },
+    homeScoreHT: { type: Number },
+    awayScoreHT: { type: Number },
+    homeCorners: { type: Number },
+    awayCorners: { type: Number },
+    homeCards: { type: Number },
+    awayCards: { type: Number },
+    penaltyAwarded: { type: Boolean, default: false },
+    firstGoalscorer: { type: String },
+    anytimeGoalscorers: { type: String }, // Comma separated
+    lastGoalscorer: { type: String },
     shouldSettle: { type: Boolean, default: true }
   },
   // Scheduled events (goals, cards, etc.)

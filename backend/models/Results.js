@@ -44,6 +44,18 @@ const ResultsSchema = new mongoose.Schema({
       required: true
     }
   }],
+  // Detailed results for props
+  homeScoreHT: Number,
+  awayScoreHT: Number,
+  homeCorners: Number,
+  awayCorners: Number,
+  homeCards: Number,
+  awayCards: Number,
+  penaltyAwarded: Boolean,
+  firstGoalscorer: String,
+  anytimeGoalscorers: [String],
+  lastGoalscorer: String,
+  
   last_update: {
     type: Date,
     default: Date.now

@@ -188,9 +188,10 @@ router.post('/', adminAuth, async (req, res) => {
 router.get('/all', adminAuth, async (req, res) => {
   try {
     const matches = await Match.find({})
-      .select('_id homeTeam awayTeam startTime sport status createdAt leagueId')
-      .lean()
-      .sort({ createdAt: -1 });
+        .select('_id homeTeam awayTeam startTime sport status createdAt leagueId odds videoUrl videoPosterUrl externalId homeScore awayScore')
+        .populate('leagueId', 'name')
+        .lean()
+        .sort({ createdAt: -1 });
     res.json({ matches });
   } catch (error) {
     console.error('Get all matches for admin error:', error);
