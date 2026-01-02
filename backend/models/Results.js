@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const ResultsSchema = new mongoose.Schema({
   eventId: {
@@ -55,7 +55,7 @@ const ResultsSchema = new mongoose.Schema({
   firstGoalscorer: String,
   anytimeGoalscorers: [String],
   lastGoalscorer: String,
-  
+
   last_update: {
     type: Date,
     default: Date.now
@@ -78,14 +78,14 @@ const ResultsSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
-});
+})
 
 // Compound indexes for efficient queries
-ResultsSchema.index({ sport_key: 1, commence_time: -1 });
-ResultsSchema.index({ sport_key: 1, completed: 1 });
-ResultsSchema.index({ completed: 1, last_update: -1 });
+ResultsSchema.index({ sport_key: 1, commence_time: -1 })
+ResultsSchema.index({ sport_key: 1, completed: 1 })
+ResultsSchema.index({ completed: 1, last_update: -1 })
 
 // TTL index to automatically remove old completed results after 90 days
-ResultsSchema.index({ last_update: 1 }, { expireAfterSeconds: 7776000 }); // 90 days
+ResultsSchema.index({ last_update: 1 }, { expireAfterSeconds: 7776000 }) // 90 days
 
-module.exports = mongoose.model('Results', ResultsSchema);
+module.exports = mongoose.model('Results', ResultsSchema)

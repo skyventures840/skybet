@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const promoCodeSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, uppercase: true, trim: true },
@@ -24,15 +24,14 @@ const promoCodeSchema = new mongoose.Schema({
   endsAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
-});
+})
 
-promoCodeSchema.index({ code: 1 });
-promoCodeSchema.index({ type: 1, isActive: 1 });
+promoCodeSchema.index({ code: 1 })
+promoCodeSchema.index({ type: 1, isActive: 1 })
 
-promoCodeSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+promoCodeSchema.pre('save', function (next) {
+  this.updatedAt = Date.now()
+  next()
+})
 
-module.exports = mongoose.model('PromoCode', promoCodeSchema);
-
+module.exports = mongoose.model('PromoCode', promoCodeSchema)

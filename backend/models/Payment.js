@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const paymentSchema = new mongoose.Schema({
   userId: {
@@ -7,28 +7,28 @@ const paymentSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  orderId: { 
-    type: String, 
-    required: true, 
-    unique: true 
+  orderId: {
+    type: String,
+    required: true,
+    unique: true
   },
-  paymentId: { 
-    type: String, 
-    required: true 
+  paymentId: {
+    type: String,
+    required: true
   },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     required: true,
     enum: ['waiting', 'confirming', 'confirmed', 'sending', 'partially_paid', 'finished', 'failed', 'refunded', 'expired'],
     default: 'waiting'
   },
-  amount: { 
-    type: Number, 
-    required: true 
+  amount: {
+    type: Number,
+    required: true
   },
-  currency: { 
-    type: String, 
-    required: true 
+  currency: {
+    type: String,
+    required: true
   },
   payAmount: {
     type: Number,
@@ -97,59 +97,59 @@ const paymentSchema = new mongoose.Schema({
   outcomeCurrencyConverted: {
     type: String
   },
-  createdAt: { 
-    type: Date, 
+  createdAt: {
+    type: Date,
     default: Date.now,
     index: true
   },
-  updatedAt: { 
-    type: Date, 
-    default: Date.now 
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-});
+})
 
 // Update the updatedAt field before saving
-paymentSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
+paymentSchema.pre('save', function (next) {
+  this.updatedAt = new Date()
+  next()
+})
 
 // Static method to get payments by user
-paymentSchema.statics.getByUser = function(userId, status = null) {
-  const query = { userId };
-  if (status) query.status = status;
-  
-  return this.find(query).sort({ createdAt: -1 });
-};
+paymentSchema.statics.getByUser = function (userId, status = null) {
+  const query = { userId }
+  if (status) query.status = status
+
+  return this.find(query).sort({ createdAt: -1 })
+}
 
 // Static method to update payment status
-paymentSchema.statics.updatePaymentStatus = function(orderId, status, additionalData = {}) {
+paymentSchema.statics.updatePaymentStatus = function (orderId, status, additionalData = {}) {
   const updateData = {
     status,
     updatedAt: new Date(),
     ...additionalData
-  };
-  
+  }
+
   return this.findOneAndUpdate(
     { orderId },
     updateData,
     { new: true }
-  );
-};
+  )
+}
 
 // Static method to create payment
-paymentSchema.statics.createPayment = function(paymentData) {
-  return this.create(paymentData);
-};
+paymentSchema.statics.createPayment = function (paymentData) {
+  return this.create(paymentData)
+}
 
 // Static method to get payment by order ID
-paymentSchema.statics.getByOrderId = function(orderId) {
-  return this.findOne({ orderId });
-};
+paymentSchema.statics.getByOrderId = function (orderId) {
+  return this.findOne({ orderId })
+}
 
 // Static method to get payment by payment ID
-paymentSchema.statics.getByPaymentId = function(paymentId) {
-  return this.findOne({ paymentId });
-};
+paymentSchema.statics.getByPaymentId = function (paymentId) {
+  return this.findOne({ paymentId })
+}
 
-module.exports = mongoose.model('Payment', paymentSchema); 
+module.exports = mongoose.model('Payment', paymentSchema)

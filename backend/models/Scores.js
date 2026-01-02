@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const ScoresSchema = new mongoose.Schema({
   eventId: {
@@ -85,15 +85,15 @@ const ScoresSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
-});
+})
 
 // Compound indexes for efficient queries
-ScoresSchema.index({ sport_key: 1, commence_time: -1 });
-ScoresSchema.index({ sport_key: 1, status: 1 });
-ScoresSchema.index({ status: 1, last_update: -1 });
-ScoresSchema.index({ completed: 1, last_update: -1 });
+ScoresSchema.index({ sport_key: 1, commence_time: -1 })
+ScoresSchema.index({ sport_key: 1, status: 1 })
+ScoresSchema.index({ status: 1, last_update: -1 })
+ScoresSchema.index({ completed: 1, last_update: -1 })
 
 // TTL index to automatically remove old completed scores after 30 days
-ScoresSchema.index({ last_update: 1 }, { expireAfterSeconds: 2592000 }); // 30 days
+ScoresSchema.index({ last_update: 1 }, { expireAfterSeconds: 2592000 }) // 30 days
 
-module.exports = mongoose.model('Scores', ScoresSchema);
+module.exports = mongoose.model('Scores', ScoresSchema)

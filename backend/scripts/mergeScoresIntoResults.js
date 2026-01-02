@@ -1,46 +1,46 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
-const Scores = require('../models/Scores');
-const Results = require('../models/Results');
+require('dotenv').config()
+const mongoose = require('mongoose')
+const Scores = require('../models/Scores')
+const Results = require('../models/Results')
 
-const dryRun = process.argv.includes('--dryRun');
+const dryRun = process.argv.includes('--dryRun')
 
-function normalizeScores(scores) {
+function normalizeScores (scores) {
   return (scores || [])
     .map(s => `${s.name}:${s.score}`)
     .sort()
-    .join('|');
+    .join('|')
 }
 
-function toTime(v) {
-  return v ? new Date(v).getTime() : null;
+function toTime (v) {
+  return v ? new Date(v).getTime() : null
 }
 
-function docsEqual(a, b) {
-  const fields = ['eventId', 'sport_key', 'sport_title', 'completed', 'home_team', 'away_team'];
+function docsEqual (a, b) {
+  const fields = ['eventId', 'sport_key', 'sport_title', 'completed', 'home_team', 'away_team']
   for (const f of fields) {
-    const va = a && a[f] !== undefined ? String(a[f]) : '';
-    const vb = b && b[f] !== undefined ? String(b[f]) : '';
-    if (va !== vb) return false;
+    const va = a && a[f] !== undefined ? String(a[f]) : ''
+    const vb = b && b[f] !== undefined ? String(b[f]) : ''
+    if (va !== vb) return false
   }
-  if (toTime(a.commence_time) !== toTime(b.commence_time)) return false;
-  if (normalizeScores(a.scores) !== normalizeScores(b.scores)) return false;
-  return true;
+  if (toTime(a.commence_time) !== toTime(b.commence_time)) return false
+  if (normalizeScores(a.scores) !== normalizeScores(b.scores)) return false
+  return true
 }
 
-async function run() {
+async function run () {
   try {
-    await mongoose.connect(process.env.MONGODB_EXTERNAL_URI || process.env.MONGODB_URI);
-    let processed = 0;
-    let merged = 0;
-    let created = 0;
-    let skipped = 0;
+    await mongoose.connect(process.env.MONGODB_EXTERNAL_URI || process.env.MONGODB_URI)
+    let processed = 0
+    let merged = 0
+    let created = 0
+    let skipped = 0
 
-    const cursor = Scores.find({}).cursor();
+    const cursor = Scores.find({}).cursor()
     for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-      processed++;
-      const scoreDoc = doc.toObject();
-      const resDoc = await Results.findOne({ eventId: scoreDoc.eventId });
+      processed++
+      const scoreDoc = doc.toObject()
+      const resDoc = await Results.findOne({ eventId: scoreDoc.eventId })
       if (!resDoc) {
         const payload = {
           eventId: scoreDoc.eventId,
@@ -55,43 +55,43 @@ async function run() {
           season: scoreDoc.season,
           week: scoreDoc.week,
           lastFetched: scoreDoc.lastFetched,
-          fetchCount: scoreDoc.fetchCount,
-        };
-        if (!dryRun) {
-          await Results.create(payload);
-          await Scores.deleteOne({ _id: doc._id });
+          fetchCount: scoreDoc.fetchCount
         }
-        created++;
-        continue;
+        if (!dryRun) {
+          await Results.create(payload)
+          await Scores.deleteOne({ _id: doc._id })
+        }
+        created++
+        continue
       }
 
-      const resObj = resDoc.toObject();
+      const resObj = resDoc.toObject()
       if (docsEqual(scoreDoc, resObj)) {
         if (!dryRun) {
           const lastUpdate = [scoreDoc.last_update, resObj.last_update]
             .filter(Boolean)
-            .map(v => new Date(v).getTime());
-          const maxUpdate = lastUpdate.length ? new Date(Math.max(...lastUpdate)) : new Date();
-          await Results.updateOne({ _id: resDoc._id }, { $set: { last_update: maxUpdate } });
-          await Scores.deleteOne({ _id: doc._id });
+            .map(v => new Date(v).getTime())
+          const maxUpdate = lastUpdate.length ? new Date(Math.max(...lastUpdate)) : new Date()
+          await Results.updateOne({ _id: resDoc._id }, { $set: { last_update: maxUpdate } })
+          await Scores.deleteOne({ _id: doc._id })
         }
-        merged++;
+        merged++
       } else {
-        skipped++;
+        skipped++
       }
     }
 
-    console.log(`Processed ${processed}`);
-    console.log(`Merged ${merged}`);
-    console.log(`Created ${created}`);
-    console.log(`Skipped ${skipped}`);
+    console.log(`Processed ${processed}`)
+    console.log(`Merged ${merged}`)
+    console.log(`Created ${created}`)
+    console.log(`Skipped ${skipped}`)
 
-    await mongoose.disconnect();
-    process.exit(0);
+    await mongoose.disconnect()
+    process.exit(0)
   } catch (e) {
-    console.error(e.message);
-    process.exit(1);
+    console.error(e.message)
+    process.exit(1)
   }
 }
 
-run();
+run()

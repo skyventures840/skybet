@@ -1,40 +1,39 @@
-const express = require('express');
-const router = express.Router();
-const { auth } = require('../middleware/auth');
-const MultiBet = require('../models/MultiBet');
-const User = require('../models/User');
-const { validateMultiBet } = require('../utils/Validation');
-
+const express = require('express')
+const router = express.Router()
+const { auth } = require('../middleware/auth')
+const MultiBet = require('../models/MultiBet')
+const User = require('../models/User')
+const { validateMultiBet } = require('../utils/Validation')
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { matches, stake, currency = 'USD' } = req.body;
-    
+    const { matches, stake, currency = 'USD' } = req.body
+
     // Validate request
-    const validation = validateMultiBet(req.body);
+    const validation = validateMultiBet(req.body)
     if (!validation.isValid) {
-      return res.status(400).json({ 
-        success: false, 
-        message: validation.errors.join(', ') 
-      });
+      return res.status(400).json({
+        success: false,
+        message: validation.errors.join(', ')
+      })
     }
-    
+
     // Place bet (atomic balance deduction)
-    let betResult;
+    let betResult
     try {
-      betResult = await User.placeBet(req.user.id, stake);
+      betResult = await User.placeBet(req.user.id, stake)
     } catch (err) {
       if (err.message === 'Insufficient balance') {
-        return res.status(400).json({ success: false, message: 'Insufficient balance' });
+        return res.status(400).json({ success: false, message: 'Insufficient balance' })
       }
-      throw err;
+      throw err
     }
-    
+
     // Calculate combined odds
-    const oddsArray = matches.map(match => match.odds);
-    const combinedOdds = MultiBet.calculateCombinedOdds(oddsArray);
-    const potentialPayout = MultiBet.calculatePotentialPayout(combinedOdds, stake);
-    
+    const oddsArray = matches.map(match => match.odds)
+    const combinedOdds = MultiBet.calculateCombinedOdds(oddsArray)
+    const potentialPayout = MultiBet.calculatePotentialPayout(combinedOdds, stake)
+
     // Create multi-bet
     const multiBet = new MultiBet({
       userId: req.user.id,
@@ -53,66 +52,65 @@ router.post('/', auth, async (req, res) => {
       potentialPayout,
       totalMatches: matches.length,
       currency
-    });
-    
+    })
+
     try {
-      await multiBet.save();
+      await multiBet.save()
     } catch (saveError) {
       // Refund if save fails
-      console.error('Failed to save multi-bet, refunding user:', saveError);
-      await User.refundBet(req.user.id, stake, { bonus: betResult.bonusUsed, real: betResult.realUsed });
-      throw saveError;
+      console.error('Failed to save multi-bet, refunding user:', saveError)
+      await User.refundBet(req.user.id, stake, { bonus: betResult.bonusUsed, real: betResult.realUsed })
+      throw saveError
     }
-    
+
     res.status(201).json({
       success: true,
       data: multiBet,
       message: 'Multi-bet created successfully'
-    });
-    
+    })
   } catch (error) {
-    console.error('Multi-bet creation error:', error);
+    console.error('Multi-bet creation error:', error)
     res.status(500).json({
       success: false,
       message: 'Server error while creating multi-bet'
-    });
+    })
   }
-});
+})
 
 // @route   GET /api/multibets
 // @desc    Get user's multi-bets with filtering and pagination
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const { 
-      status, 
-      page = 1, 
-      limit = 10, 
-      sortBy = 'submittedAt', 
-      sortOrder = 'desc' 
-    } = req.query;
-    
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'submittedAt',
+      sortOrder = 'desc'
+    } = req.query
+
     // Build query
-    const query = { userId: req.user.id };
+    const query = { userId: req.user.id }
     if (status && status !== 'all') {
-      query.status = status;
+      query.status = status
     }
-    
+
     // Build sort object
-    const sort = {};
-    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
-    
+    const sort = {}
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1
+
     // Execute query with pagination
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit
     const multiBets = await MultiBet.find(query)
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('userId', 'username email');
-    
+      .populate('userId', 'username email')
+
     // Get total count for pagination
-    const total = await MultiBet.countDocuments(query);
-    
+    const total = await MultiBet.countDocuments(query)
+
     res.json({
       success: true,
       data: multiBets,
@@ -122,16 +120,15 @@ router.get('/', auth, async (req, res) => {
         totalItems: total,
         itemsPerPage: parseInt(limit)
       }
-    });
-    
+    })
   } catch (error) {
-    console.error('Multi-bets retrieval error:', error);
+    console.error('Multi-bets retrieval error:', error)
     res.status(500).json({
       success: false,
       message: 'Server error while retrieving multi-bets'
-    });
+    })
   }
-});
+})
 
 // @route   GET /api/multibets/:id
 // @desc    Get specific multi-bet by ID
@@ -141,61 +138,59 @@ router.get('/:id', auth, async (req, res) => {
     const multiBet = await MultiBet.findOne({
       _id: req.params.id,
       userId: req.user.id
-    }).populate('userId', 'username email');
-    
+    }).populate('userId', 'username email')
+
     if (!multiBet) {
       return res.status(404).json({
         success: false,
         message: 'Multi-bet not found'
-      });
+      })
     }
-    
+
     res.json({
       success: true,
       data: multiBet
-    });
-    
+    })
   } catch (error) {
-    console.error('Multi-bet retrieval error:', error);
+    console.error('Multi-bet retrieval error:', error)
     res.status(500).json({
       success: false,
       message: 'Server error while retrieving multi-bet'
-    });
+    })
   }
-});
+})
 
 // @route   PUT /api/multibets/:id/status
 // @desc    Update match status (for admin/system use)
 // @access  Private (admin only in production)
 router.put('/:id/status', auth, async (req, res) => {
   try {
-    const { matchId, status, result } = req.body;
-    
-    const multiBet = await MultiBet.findById(req.params.id);
+    const { matchId, status, result } = req.body
+
+    const multiBet = await MultiBet.findById(req.params.id)
     if (!multiBet) {
       return res.status(404).json({
         success: false,
         message: 'Multi-bet not found'
-      });
+      })
     }
-    
+
     // Update match status
-    await multiBet.updateMatchStatus(matchId, status, result);
-    
+    await multiBet.updateMatchStatus(matchId, status, result)
+
     res.json({
       success: true,
       data: multiBet,
       message: 'Match status updated successfully'
-    });
-    
+    })
   } catch (error) {
-    console.error('Match status update error:', error);
+    console.error('Match status update error:', error)
     res.status(500).json({
       success: false,
       message: 'Server error while updating match status'
-    });
+    })
   }
-});
+})
 
 // @route   DELETE /api/multibets/:id
 // @desc    Cancel multi-bet (only if all matches are pending)
@@ -205,45 +200,44 @@ router.delete('/:id', auth, async (req, res) => {
     const multiBet = await MultiBet.findOne({
       _id: req.params.id,
       userId: req.user.id
-    });
-    
+    })
+
     if (!multiBet) {
       return res.status(404).json({
         success: false,
         message: 'Multi-bet not found'
-      });
+      })
     }
-    
+
     // Check if bet can be cancelled (all matches pending)
-    const hasStartedMatches = multiBet.matches.some(match => 
+    const hasStartedMatches = multiBet.matches.some(match =>
       match.status !== 'Pending'
-    );
-    
+    )
+
     if (hasStartedMatches) {
       return res.status(400).json({
         success: false,
         message: 'Cannot cancel multi-bet with started matches'
-      });
+      })
     }
-    
+
     // Refund stake to user balance
-    await User.refundBet(req.user.id, multiBet.stake);
-    
-    await multiBet.remove();
-    
+    await User.refundBet(req.user.id, multiBet.stake)
+
+    await multiBet.remove()
+
     res.json({
       success: true,
       message: 'Multi-bet cancelled successfully'
-    });
-    
+    })
   } catch (error) {
-    console.error('Multi-bet cancellation error:', error);
+    console.error('Multi-bet cancellation error:', error)
     res.status(500).json({
       success: false,
       message: 'Server error while cancelling multi-bet'
-    });
+    })
   }
-});
+})
 
 // @route   GET /api/multibets/stats/summary
 // @desc    Get user's betting statistics
@@ -264,8 +258,8 @@ router.get('/stats/summary', auth, async (req, res) => {
           totalWinnings: { $sum: { $cond: [{ $eq: ['$status', 'Win'] }, '$potentialPayout', 0] } }
         }
       }
-    ]);
-    
+    ])
+
     const summary = stats[0] || {
       totalBets: 0,
       totalStake: 0,
@@ -274,24 +268,24 @@ router.get('/stats/summary', auth, async (req, res) => {
       lostBets: 0,
       pendingBets: 0,
       totalWinnings: 0
-    };
-    
-    summary.winRate = summary.totalBets > 0 ? 
-      (summary.wonBets / summary.totalBets) * 100 : 0;
-    summary.profitLoss = summary.totalWinnings - summary.totalStake;
-    
+    }
+
+    summary.winRate = summary.totalBets > 0
+      ? (summary.wonBets / summary.totalBets) * 100
+      : 0
+    summary.profitLoss = summary.totalWinnings - summary.totalStake
+
     res.json({
       success: true,
       data: summary
-    });
-    
+    })
   } catch (error) {
-    console.error('Stats retrieval error:', error);
+    console.error('Stats retrieval error:', error)
     res.status(500).json({
       success: false,
       message: 'Server error while retrieving statistics'
-    });
+    })
   }
-});
+})
 
-module.exports = router;
+module.exports = router

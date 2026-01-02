@@ -1,199 +1,199 @@
 // Country flag mappings
 const COUNTRY_FLAGS = {
-  'Spain': '🇪🇸',
-  'Brazil': '🇧🇷',
-  'England': '🏴',
-  'France': '🇫🇷',
-  'Italy': '🇮🇹',
-  'Germany': '🇩🇪',
-  'Netherlands': '🇳🇱',
-  'Portugal': '🇵🇹',
-  'Belgium': '🇧🇪',
-  'Europe': '🇪🇺',
-  'USA': '🇺🇸',
+  Spain: '🇪🇸',
+  Brazil: '🇧🇷',
+  England: '🏴',
+  France: '🇫🇷',
+  Italy: '🇮🇹',
+  Germany: '🇩🇪',
+  Netherlands: '🇳🇱',
+  Portugal: '🇵🇹',
+  Belgium: '🇧🇪',
+  Europe: '🇪🇺',
+  USA: '🇺🇸',
   'United States': '🇺🇸',
-  'Canada': '🇨🇦',
-  'Mexico': '🇲🇽',
-  'Argentina': '🇦🇷',
-  'Australia': '🇦🇺',
-  'Japan': '🇯🇵',
+  Canada: '🇨🇦',
+  Mexico: '🇲🇽',
+  Argentina: '🇦🇷',
+  Australia: '🇦🇺',
+  Japan: '🇯🇵',
   'South Korea': '🇰🇷',
-  'China': '🇨🇳',
-  'India': '🇮🇳',
-  'Russia': '🇷🇺',
-  'Turkey': '🇹🇷',
-  'Greece': '🇬🇷',
-  'Sweden': '🇸🇪',
-  'Norway': '🇳🇴',
-  'Denmark': '🇩🇰',
-  'Finland': '🇫🇮',
-  'Switzerland': '🇨🇭',
-  'Austria': '🇦🇹',
+  China: '🇨🇳',
+  India: '🇮🇳',
+  Russia: '🇷🇺',
+  Turkey: '🇹🇷',
+  Greece: '🇬🇷',
+  Sweden: '🇸🇪',
+  Norway: '🇳🇴',
+  Denmark: '🇩🇰',
+  Finland: '🇫🇮',
+  Switzerland: '🇨🇭',
+  Austria: '🇦🇹',
   'Czech Republic': '🇨🇿',
-  'Poland': '🇵🇱',
-  'Ukraine': '🇺🇦',
-  'Croatia': '🇭🇷',
-  'Serbia': '🇷🇸',
-  'Scotland': '🏴',
-  'Wales': '🏴',
-  'Ireland': '🇮🇪',
+  Poland: '🇵🇱',
+  Ukraine: '🇺🇦',
+  Croatia: '🇭🇷',
+  Serbia: '🇷🇸',
+  Scotland: '🏴',
+  Wales: '🏴',
+  Ireland: '🇮🇪',
   'Northern Ireland': '🇬🇧'
-};
+}
 
 // Canonical mappings for popular leagues from Odds API keys
 const CANONICAL_LEAGUE_MAP = {
   // Soccer
-  'soccer_epl': { sport: 'Soccer', country: 'England', league: 'Premier League' },
-  'soccer_england_league_1': { sport: 'Soccer', country: 'England', league: 'League One' },
-  'soccer_france_ligue_one': { sport: 'Soccer', country: 'France', league: 'Ligue 1' },
-  'soccer_spain_la_liga': { sport: 'Soccer', country: 'Spain', league: 'La Liga' },
-  'soccer_italy_serie_a': { sport: 'Soccer', country: 'Italy', league: 'Serie A' },
-  'soccer_germany_bundesliga': { sport: 'Soccer', country: 'Germany', league: 'Bundesliga' },
-  'soccer_netherlands_eredivisie': { sport: 'Soccer', country: 'Netherlands', league: 'Eredivisie' },
-  'soccer_portugal_primeira_liga': { sport: 'Soccer', country: 'Portugal', league: 'Primeira Liga' },
-  'soccer_belgium_first_div': { sport: 'Soccer', country: 'Belgium', league: 'First Division A' },
-  'soccer_uefa_champions_league': { sport: 'Soccer', country: 'Europe', league: 'UEFA Champions League' },
+  soccer_epl: { sport: 'Soccer', country: 'England', league: 'Premier League' },
+  soccer_england_league_1: { sport: 'Soccer', country: 'England', league: 'League One' },
+  soccer_france_ligue_one: { sport: 'Soccer', country: 'France', league: 'Ligue 1' },
+  soccer_spain_la_liga: { sport: 'Soccer', country: 'Spain', league: 'La Liga' },
+  soccer_italy_serie_a: { sport: 'Soccer', country: 'Italy', league: 'Serie A' },
+  soccer_germany_bundesliga: { sport: 'Soccer', country: 'Germany', league: 'Bundesliga' },
+  soccer_netherlands_eredivisie: { sport: 'Soccer', country: 'Netherlands', league: 'Eredivisie' },
+  soccer_portugal_primeira_liga: { sport: 'Soccer', country: 'Portugal', league: 'Primeira Liga' },
+  soccer_belgium_first_div: { sport: 'Soccer', country: 'Belgium', league: 'First Division A' },
+  soccer_uefa_champions_league: { sport: 'Soccer', country: 'Europe', league: 'UEFA Champions League' },
   // Variants provided by API/user
-  'soccer_uefa_champs_league': { sport: 'Soccer', country: 'Europe', league: 'UEFA Champions League' },
-  'soccer_uefa_champs_league_qualification': { sport: 'Soccer', country: 'Europe', league: 'UEFA Champions League Qualification' },
-  'soccer_uefa_champs_league_women': { sport: 'Soccer', country: 'Europe', league: "UEFA Women's Champions League" },
-  'soccer_uefa_europa_league': { sport: 'Soccer', country: 'Europe', league: 'UEFA Europa League' },
-  'soccer_europe_uefa_europa_league': { sport: 'Soccer', country: 'Europe', league: 'UEFA Europa League' },
-  'soccer_uefa_european_championship': { sport: 'Soccer', country: 'Europe', league: 'UEFA Euro 2024' },
-  'soccer_uefa_euro_qualification': { sport: 'Soccer', country: 'Europe', league: 'UEFA Euro Qualification' },
-  'soccer_uefa_nations_league': { sport: 'Soccer', country: 'Europe', league: 'UEFA Nations League' },
-  'soccer_concacaf_gold_cup': { sport: 'Soccer', country: 'CONCACAF', league: 'Gold Cup' },
-  'soccer_concacaf_leagues_cup': { sport: 'Soccer', country: 'CONCACAF', league: 'Leagues Cup' },
-  'soccer_conmebol_copa_america': { sport: 'Soccer', country: 'CONMEBOL', league: 'Copa América' },
-  'soccer_conmebol_copa_libertadores': { sport: 'Soccer', country: 'CONMEBOL', league: 'Copa Libertadores' },
-  'soccer_conmebol_copa_sudamericana': { sport: 'Soccer', country: 'CONMEBOL', league: 'Copa Sudamericana' },
-  'soccer_usa_mls': { sport: 'Soccer', country: 'USA', league: 'MLS' },
+  soccer_uefa_champs_league: { sport: 'Soccer', country: 'Europe', league: 'UEFA Champions League' },
+  soccer_uefa_champs_league_qualification: { sport: 'Soccer', country: 'Europe', league: 'UEFA Champions League Qualification' },
+  soccer_uefa_champs_league_women: { sport: 'Soccer', country: 'Europe', league: "UEFA Women's Champions League" },
+  soccer_uefa_europa_league: { sport: 'Soccer', country: 'Europe', league: 'UEFA Europa League' },
+  soccer_europe_uefa_europa_league: { sport: 'Soccer', country: 'Europe', league: 'UEFA Europa League' },
+  soccer_uefa_european_championship: { sport: 'Soccer', country: 'Europe', league: 'UEFA Euro 2024' },
+  soccer_uefa_euro_qualification: { sport: 'Soccer', country: 'Europe', league: 'UEFA Euro Qualification' },
+  soccer_uefa_nations_league: { sport: 'Soccer', country: 'Europe', league: 'UEFA Nations League' },
+  soccer_concacaf_gold_cup: { sport: 'Soccer', country: 'CONCACAF', league: 'Gold Cup' },
+  soccer_concacaf_leagues_cup: { sport: 'Soccer', country: 'CONCACAF', league: 'Leagues Cup' },
+  soccer_conmebol_copa_america: { sport: 'Soccer', country: 'CONMEBOL', league: 'Copa América' },
+  soccer_conmebol_copa_libertadores: { sport: 'Soccer', country: 'CONMEBOL', league: 'Copa Libertadores' },
+  soccer_conmebol_copa_sudamericana: { sport: 'Soccer', country: 'CONMEBOL', league: 'Copa Sudamericana' },
+  soccer_usa_mls: { sport: 'Soccer', country: 'USA', league: 'MLS' },
   // Basketball
-  'basketball_nba': { sport: 'Basketball', country: 'USA', league: 'NBA' },
-  'basketball_euroleague': { sport: 'Basketball', country: 'Europe', league: 'EuroLeague' },
-  'basketball_spain_liga_acb': { sport: 'Basketball', country: 'Spain', league: 'Liga ACB' },
-  'basketball_france_lnb': { sport: 'Basketball', country: 'France', league: 'LNB Pro A' },
+  basketball_nba: { sport: 'Basketball', country: 'USA', league: 'NBA' },
+  basketball_euroleague: { sport: 'Basketball', country: 'Europe', league: 'EuroLeague' },
+  basketball_spain_liga_acb: { sport: 'Basketball', country: 'Spain', league: 'Liga ACB' },
+  basketball_france_lnb: { sport: 'Basketball', country: 'France', league: 'LNB Pro A' },
   // American Football
-  'americanfootball_nfl': { sport: 'American Football', country: 'USA', league: 'NFL' },
+  americanfootball_nfl: { sport: 'American Football', country: 'USA', league: 'NFL' },
   // Baseball
-  'baseball_mlb': { sport: 'Baseball', country: 'USA', league: 'MLB' },
+  baseball_mlb: { sport: 'Baseball', country: 'USA', league: 'MLB' },
   // Ice Hockey
-  'icehockey_nhl': { sport: 'Ice Hockey', country: 'USA', league: 'NHL' },
-  'icehockey_sweden_shl': { sport: 'Ice Hockey', country: 'Sweden', league: 'SHL' },
+  icehockey_nhl: { sport: 'Ice Hockey', country: 'USA', league: 'NHL' },
+  icehockey_sweden_shl: { sport: 'Ice Hockey', country: 'Sweden', league: 'SHL' },
   // Tennis
-  'tennis_atp_singles': { sport: 'Tennis', country: '', league: 'ATP' },
-  'tennis_wta_singles': { sport: 'Tennis', country: '', league: 'WTA' },
+  tennis_atp_singles: { sport: 'Tennis', country: '', league: 'ATP' },
+  tennis_wta_singles: { sport: 'Tennis', country: '', league: 'WTA' },
   // ATP tournaments
-  'tennis_atp_aus_open_singles': { sport: 'Tennis', country: '', league: 'ATP Australian Open' },
-  'tennis_atp_canadian_open': { sport: 'Tennis', country: '', league: 'ATP Canadian Open' },
-  'tennis_atp_china_open': { sport: 'Tennis', country: '', league: 'ATP China Open' },
-  'tennis_atp_cincinnati_open': { sport: 'Tennis', country: '', league: 'ATP Cincinnati Open' },
-  'tennis_atp_dubai': { sport: 'Tennis', country: '', league: 'ATP Dubai Championships' },
-  'tennis_atp_french_open': { sport: 'Tennis', country: '', league: 'ATP French Open' },
-  'tennis_atp_indian_wells': { sport: 'Tennis', country: '', league: 'ATP Indian Wells' },
-  'tennis_atp_italian_open': { sport: 'Tennis', country: '', league: 'ATP Italian Open' },
-  'tennis_atp_madrid_open': { sport: 'Tennis', country: '', league: 'ATP Madrid Open' },
-  'tennis_atp_miami_open': { sport: 'Tennis', country: '', league: 'ATP Miami Open' },
-  'tennis_atp_monte_carlo_masters': { sport: 'Tennis', country: '', league: 'ATP Monte-Carlo Masters' },
-  'tennis_atp_paris_masters': { sport: 'Tennis', country: '', league: 'ATP Paris Masters' },
-  'tennis_atp_qatar_open': { sport: 'Tennis', country: '', league: 'ATP Qatar Open' },
-  'tennis_atp_shanghai_masters': { sport: 'Tennis', country: '', league: 'ATP Shanghai Masters' },
-  'tennis_atp_us_open': { sport: 'Tennis', country: '', league: 'ATP US Open' },
-  'tennis_atp_wimbledon': { sport: 'Tennis', country: '', league: 'ATP Wimbledon' },
+  tennis_atp_aus_open_singles: { sport: 'Tennis', country: '', league: 'ATP Australian Open' },
+  tennis_atp_canadian_open: { sport: 'Tennis', country: '', league: 'ATP Canadian Open' },
+  tennis_atp_china_open: { sport: 'Tennis', country: '', league: 'ATP China Open' },
+  tennis_atp_cincinnati_open: { sport: 'Tennis', country: '', league: 'ATP Cincinnati Open' },
+  tennis_atp_dubai: { sport: 'Tennis', country: '', league: 'ATP Dubai Championships' },
+  tennis_atp_french_open: { sport: 'Tennis', country: '', league: 'ATP French Open' },
+  tennis_atp_indian_wells: { sport: 'Tennis', country: '', league: 'ATP Indian Wells' },
+  tennis_atp_italian_open: { sport: 'Tennis', country: '', league: 'ATP Italian Open' },
+  tennis_atp_madrid_open: { sport: 'Tennis', country: '', league: 'ATP Madrid Open' },
+  tennis_atp_miami_open: { sport: 'Tennis', country: '', league: 'ATP Miami Open' },
+  tennis_atp_monte_carlo_masters: { sport: 'Tennis', country: '', league: 'ATP Monte-Carlo Masters' },
+  tennis_atp_paris_masters: { sport: 'Tennis', country: '', league: 'ATP Paris Masters' },
+  tennis_atp_qatar_open: { sport: 'Tennis', country: '', league: 'ATP Qatar Open' },
+  tennis_atp_shanghai_masters: { sport: 'Tennis', country: '', league: 'ATP Shanghai Masters' },
+  tennis_atp_us_open: { sport: 'Tennis', country: '', league: 'ATP US Open' },
+  tennis_atp_wimbledon: { sport: 'Tennis', country: '', league: 'ATP Wimbledon' },
   // WTA tournaments
-  'tennis_wta_aus_open_singles': { sport: 'Tennis', country: '', league: 'WTA Australian Open' },
-  'tennis_wta_canadian_open': { sport: 'Tennis', country: '', league: 'WTA Canadian Open' },
-  'tennis_wta_china_open': { sport: 'Tennis', country: '', league: 'WTA China Open' },
-  'tennis_wta_cincinnati_open': { sport: 'Tennis', country: '', league: 'WTA Cincinnati Open' },
-  'tennis_wta_dubai': { sport: 'Tennis', country: '', league: 'WTA Dubai Championships' },
-  'tennis_wta_french_open': { sport: 'Tennis', country: '', league: 'WTA French Open' },
-  'tennis_wta_indian_wells': { sport: 'Tennis', country: '', league: 'WTA Indian Wells' },
-  'tennis_wta_italian_open': { sport: 'Tennis', country: '', league: 'WTA Italian Open' },
-  'tennis_wta_madrid_open': { sport: 'Tennis', country: '', league: 'WTA Madrid Open' },
-  'tennis_wta_miami_open': { sport: 'Tennis', country: '', league: 'WTA Miami Open' },
-  'tennis_wta_qatar_open': { sport: 'Tennis', country: '', league: 'WTA Qatar Open' },
-  'tennis_wta_us_open': { sport: 'Tennis', country: '', league: 'WTA US Open' },
-  'tennis_wta_wimbledon': { sport: 'Tennis', country: '', league: 'WTA Wimbledon' },
-  'tennis_wta_wuhan_open': { sport: 'Tennis', country: '', league: 'WTA Wuhan Open' },
-};
+  tennis_wta_aus_open_singles: { sport: 'Tennis', country: '', league: 'WTA Australian Open' },
+  tennis_wta_canadian_open: { sport: 'Tennis', country: '', league: 'WTA Canadian Open' },
+  tennis_wta_china_open: { sport: 'Tennis', country: '', league: 'WTA China Open' },
+  tennis_wta_cincinnati_open: { sport: 'Tennis', country: '', league: 'WTA Cincinnati Open' },
+  tennis_wta_dubai: { sport: 'Tennis', country: '', league: 'WTA Dubai Championships' },
+  tennis_wta_french_open: { sport: 'Tennis', country: '', league: 'WTA French Open' },
+  tennis_wta_indian_wells: { sport: 'Tennis', country: '', league: 'WTA Indian Wells' },
+  tennis_wta_italian_open: { sport: 'Tennis', country: '', league: 'WTA Italian Open' },
+  tennis_wta_madrid_open: { sport: 'Tennis', country: '', league: 'WTA Madrid Open' },
+  tennis_wta_miami_open: { sport: 'Tennis', country: '', league: 'WTA Miami Open' },
+  tennis_wta_qatar_open: { sport: 'Tennis', country: '', league: 'WTA Qatar Open' },
+  tennis_wta_us_open: { sport: 'Tennis', country: '', league: 'WTA US Open' },
+  tennis_wta_wimbledon: { sport: 'Tennis', country: '', league: 'WTA Wimbledon' },
+  tennis_wta_wuhan_open: { sport: 'Tennis', country: '', league: 'WTA Wuhan Open' }
+}
 
 // Map common sport tokens and names to normalized display names
 const SPORT_DISPLAY_MAP = {
-  'soccer': 'Soccer',
-  'football': 'American Football',
-  'americanfootball': 'American Football',
-  'basketball': 'Basketball',
-  'baseball': 'Baseball',
-  'icehockey': 'Ice Hockey',
-  'hockey': 'Hockey',
-  'cricket': 'Cricket',
-  'boxing': 'Boxing',
-  'mma': 'MMA',
-  'volleyball': 'Volleyball',
-  'rugby': 'Rugby',
-  'rugbyleague': 'Rugby League',
-  'aussierules': 'Aussie Rules',
-  'handball': 'Handball',
-  'tabletennis': 'Table Tennis'
-};
+  soccer: 'Soccer',
+  football: 'American Football',
+  americanfootball: 'American Football',
+  basketball: 'Basketball',
+  baseball: 'Baseball',
+  icehockey: 'Ice Hockey',
+  hockey: 'Hockey',
+  cricket: 'Cricket',
+  boxing: 'Boxing',
+  mma: 'MMA',
+  volleyball: 'Volleyball',
+  rugby: 'Rugby',
+  rugbyleague: 'Rugby League',
+  aussierules: 'Aussie Rules',
+  handball: 'Handball',
+  tabletennis: 'Table Tennis'
+}
 
-function titleCase(str = '') {
+function titleCase (str = '') {
   return String(str)
     .replace(/[_.-]+/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+    .join(' ')
 }
 
-function parseSportKey(raw = '') {
-  const key = String(raw || '').trim();
-  if (!key) return { sport: '', countryFromKey: '', leagueFromKey: '' };
-  const tokens = key.split('_').filter(Boolean);
-  const sport = tokens[0] || '';
-  const countryFromKey = tokens[1] || '';
-  const leagueFromKey = tokens.length > 2 ? tokens.slice(2).join(' ') : '';
-  return { sport, countryFromKey, leagueFromKey };
+function parseSportKey (raw = '') {
+  const key = String(raw || '').trim()
+  if (!key) return { sport: '', countryFromKey: '', leagueFromKey: '' }
+  const tokens = key.split('_').filter(Boolean)
+  const sport = tokens[0] || ''
+  const countryFromKey = tokens[1] || ''
+  const leagueFromKey = tokens.length > 2 ? tokens.slice(2).join(' ') : ''
+  return { sport, countryFromKey, leagueFromKey }
 }
 
 // Function to get country flag
-function getCountryFlag(country) {
-  return COUNTRY_FLAGS[country] || '';
+function getCountryFlag (country) {
+  return COUNTRY_FLAGS[country] || ''
 }
 
 // Helper to get structured details from key
-function getLeagueDetails(sportKeyOrName, fallbackSportTitle = '') {
-  const normalizedKey = String(sportKeyOrName || '').toLowerCase();
-  
+function getLeagueDetails (sportKeyOrName, fallbackSportTitle = '') {
+  const normalizedKey = String(sportKeyOrName || '').toLowerCase()
+
   if (CANONICAL_LEAGUE_MAP[normalizedKey]) {
-    return CANONICAL_LEAGUE_MAP[normalizedKey];
+    return CANONICAL_LEAGUE_MAP[normalizedKey]
   }
 
-  const { sport, countryFromKey, leagueFromKey } = parseSportKey(sportKeyOrName);
+  const { sport, countryFromKey, leagueFromKey } = parseSportKey(sportKeyOrName)
 
   // Sport
-  const sportRaw = sport || sportKeyOrName || fallbackSportTitle || '';
-  const normalizedSportKey = String(sportRaw).toLowerCase().replace(/\s+/g, '');
-  const mappedDisplay = SPORT_DISPLAY_MAP[normalizedSportKey];
-  const sportDisplay = mappedDisplay || titleCase(sportRaw);
+  const sportRaw = sport || sportKeyOrName || fallbackSportTitle || ''
+  const normalizedSportKey = String(sportRaw).toLowerCase().replace(/\s+/g, '')
+  const mappedDisplay = SPORT_DISPLAY_MAP[normalizedSportKey]
+  const sportDisplay = mappedDisplay || titleCase(sportRaw)
 
   // Country
-  const countryRaw = countryFromKey || '';
-  let countryDisplay = titleCase(countryRaw);
+  const countryRaw = countryFromKey || ''
+  const countryDisplay = titleCase(countryRaw)
 
   // League
-  const leagueRaw = leagueFromKey || fallbackSportTitle || '';
-  let leagueDisplay = titleCase(leagueRaw);
+  const leagueRaw = leagueFromKey || fallbackSportTitle || ''
+  const leagueDisplay = titleCase(leagueRaw)
 
   return {
     sport: sportDisplay,
     country: countryDisplay,
     league: leagueDisplay
-  };
+  }
 }
 
 // Function to compute league title with flag
-function computeLeagueTitleWithFlag({
+function computeLeagueTitleWithFlag ({
   sportKeyOrName,
   country,
   leagueName,
@@ -204,96 +204,96 @@ function computeLeagueTitleWithFlag({
     country,
     leagueName,
     fallbackSportTitle
-  });
-  
+  })
+
   // Extract country from the title to get the flag
-  const parts = fullTitle.split('.');
-  let countryName = '';
-  let leagueDisplayName = '';
-  
+  const parts = fullTitle.split('.')
+  let countryName = ''
+  let leagueDisplayName = ''
+
   if (parts.length >= 3) {
     // Format: Sport.Country.League
-    countryName = parts[1];
-    leagueDisplayName = parts[2];
+    countryName = parts[1]
+    leagueDisplayName = parts[2]
   } else if (parts.length === 2) {
     // Format: Sport.League or Country.League
     // Try to determine if first part is a country
     if (COUNTRY_FLAGS[parts[0]]) {
-      countryName = parts[0];
-      leagueDisplayName = parts[1];
+      countryName = parts[0]
+      leagueDisplayName = parts[1]
     } else {
-      leagueDisplayName = parts[1];
+      leagueDisplayName = parts[1]
     }
   } else {
-    leagueDisplayName = fullTitle;
+    leagueDisplayName = fullTitle
   }
-  
-  const flag = getCountryFlag(countryName);
-  
+
+  const flag = getCountryFlag(countryName)
+
   return {
     fullTitle,
     flag,
     countryName,
     leagueDisplayName,
     displayTitle: flag ? `${flag} ${leagueDisplayName}` : leagueDisplayName
-  };
+  }
 }
 
-function computeFullLeagueTitle({
+function computeFullLeagueTitle ({
   sportKeyOrName,
   country,
   leagueName,
   fallbackSportTitle
 }) {
-  const normalizedKey = String(sportKeyOrName || '').toLowerCase();
-  
+  const normalizedKey = String(sportKeyOrName || '').toLowerCase()
+
   // 1. Prefer Canonical Map
   if (CANONICAL_LEAGUE_MAP[normalizedKey]) {
-    const c = CANONICAL_LEAGUE_MAP[normalizedKey];
-    const parts = [c.sport, c.country, c.league].filter(Boolean);
-    return parts.join('.');
+    const c = CANONICAL_LEAGUE_MAP[normalizedKey]
+    const parts = [c.sport, c.country, c.league].filter(Boolean)
+    return parts.join('.')
   }
 
   // 2. Parse manually (reusing logic from getLeagueDetails but including overrides)
   // We need to respect the overrides (country, leagueName args) which getLeagueDetails doesn't strictly take
   // But actually, we can use getLeagueDetails as a base and then override
-  
-  let { sport, country: countryDisplay, league: leagueDisplay } = getLeagueDetails(sportKeyOrName, fallbackSportTitle);
+
+  let { sport, country: countryDisplay, league: leagueDisplay } = getLeagueDetails(sportKeyOrName, fallbackSportTitle)
 
   // Override with provided country/leagueName if they are better?
   // Original logic:
   // Country: explicit country wins; else derive
-  if (country) countryDisplay = titleCase(country);
-  
+  if (country) countryDisplay = titleCase(country)
+
   // League: explicit league wins; else derive
-  if (leagueName) leagueDisplay = titleCase(leagueName);
+  if (leagueName) leagueDisplay = titleCase(leagueName)
 
   // Logic to clean up duplicates
   if (countryDisplay) {
-    const lcLeague = leagueDisplay.toLowerCase();
-    const lcCountry = countryDisplay.toLowerCase();
+    const lcLeague = leagueDisplay.toLowerCase()
+    const lcCountry = countryDisplay.toLowerCase()
     if (lcLeague.includes(lcCountry)) {
-      countryDisplay = '';
+      countryDisplay = ''
     }
   }
 
   if (sport && countryDisplay && sport.toLowerCase() === countryDisplay.toLowerCase()) {
-    countryDisplay = '';
+    countryDisplay = ''
   }
   if (sport && leagueDisplay && sport.toLowerCase() === leagueDisplay.toLowerCase()) {
-    leagueDisplay = '';
+    leagueDisplay = ''
   }
 
-  const rawParts = [sport, countryDisplay, leagueDisplay];
-  const parts = [];
+  const rawParts = [sport, countryDisplay, leagueDisplay]
+  const parts = []
   for (const p of rawParts) {
-    const norm = String(p || '').trim();
-    if (!norm) continue;
+    const norm = String(p || '').trim()
+    if (!norm) continue
     if (!parts.some(x => x.toLowerCase() === norm.toLowerCase())) {
-      parts.push(norm);
+      parts.push(norm)
     }
   }
-  return parts.join('.');
+  return parts.join('.')
 }
 
 module.exports = {
@@ -301,4 +301,4 @@ module.exports = {
   getLeagueDetails,
   computeLeagueTitleWithFlag,
   computeFullLeagueTitle
-};
+}

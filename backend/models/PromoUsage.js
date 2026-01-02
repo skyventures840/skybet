@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const promoUsageSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -12,10 +12,9 @@ const promoUsageSchema = new mongoose.Schema({
   amountAwarded: { type: Number, default: 0 },
   usedAt: { type: Date, default: Date.now },
   metadata: { type: mongoose.Schema.Types.Mixed }
-});
+})
 
-promoUsageSchema.index({ userId: 1, code: 1 }, { unique: true });
-promoUsageSchema.index({ referrerId: 1 });
+promoUsageSchema.index({ userId: 1, code: 1 }, { unique: true })
+promoUsageSchema.index({ referrerId: 1 })
 
-module.exports = mongoose.model('PromoUsage', promoUsageSchema);
-
+module.exports = mongoose.model('PromoUsage', promoUsageSchema)

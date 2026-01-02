@@ -1,96 +1,92 @@
-const express = require('express');
-const router = express.Router();
-const fs = require('fs');
-const path = require('path');
-const mongoose = require('mongoose');
-const Odds = require('../models/Odds');
-const Match = require('../models/Match');
-const ComprehensiveOddsService = require('../services/comprehensiveOddsService');
-
+const express = require('express')
+const router = express.Router()
+const fs = require('fs')
+const path = require('path')
+const mongoose = require('mongoose')
+const Odds = require('../models/Odds')
+const Match = require('../models/Match')
+const ComprehensiveOddsService = require('../services/comprehensiveOddsService')
 
 // Initialize the comprehensive odds service (kept for non-odds utilities like betslip updates)
-const oddsService = new ComprehensiveOddsService();
-
+const oddsService = new ComprehensiveOddsService()
 
 // GET /api/odds/betslip-status-updates - Get betslip status updates based on results
 router.post('/betslip-status-updates', async (req, res) => {
   try {
-    const { betMatches } = req.body;
-    
+    const { betMatches } = req.body
+
     if (!betMatches || !Array.isArray(betMatches)) {
       return res.status(400).json({
         success: false,
         error: 'betMatches array is required'
-      });
+      })
     }
-    
-    const updates = await oddsService.getBetslipStatusUpdates(betMatches);
-    
+
+    const updates = await oddsService.getBetslipStatusUpdates(betMatches)
+
     res.json({
       success: true,
-      updates: updates,
+      updates,
       timestamp: new Date().toISOString()
-    });
-    
+    })
   } catch (error) {
-          console.error('Error updating betslip status:', error);
+    console.error('Error updating betslip status:', error)
     res.status(500).json({
       success: false,
       error: `Error updating betslip status: ${error.message}`
-    });
+    })
   }
-});
-
+})
 
 // GET /api/odds - Get all matches with odds (existing endpoint)
 router.get('/', async (req, res) => {
   try {
-    let matches = [];
-    
+    let matches = []
+
     // Try to get data from database first
     if (mongoose.connection.readyState === 1) {
-      console.log('[DEBUG] Fetching matches from database...');
-      
+      console.log('[DEBUG] Fetching matches from database...')
+
       // 1. Fetch admin-created matches (custom matches) - prioritize these
       const adminOdds = await Odds.find({ 'bookmakers.key': 'default' })
         .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
         .lean()
-        .sort({ commence_time: 1 });
+        .sort({ commence_time: 1 })
 
       // Enrich with Match IDs for admin panel operations
-      let adminMatches = [];
+      let adminMatches = []
       if (adminOdds.length > 0) {
-        const gameIds = adminOdds.map(o => o.gameId);
-        const matchesFound = await Match.find({ externalId: { $in: gameIds } }).select('_id externalId').lean();
-        const matchMap = new Map(matchesFound.map(m => [m.externalId, m._id]));
-        
+        const gameIds = adminOdds.map(o => o.gameId)
+        const matchesFound = await Match.find({ externalId: { $in: gameIds } }).select('_id externalId').lean()
+        const matchMap = new Map(matchesFound.map(m => [m.externalId, m._id]))
+
         adminMatches = adminOdds.map(o => ({
           ...o,
           id: matchMap.get(o.gameId) // Add Match _id for admin operations
-        }));
+        }))
       }
 
       // 2. Fetch API matches (optimized for production)
       // Limit to 500 matches total to avoid timeouts/crashes.
       // Filter for LIVE matches and UPCOMING matches (past 24h + future).
-      const MAX_MATCHES = 500;
-      const remainingLimit = Math.max(0, MAX_MATCHES - adminMatches.length);
-      
-      let apiMatches = [];
+      const MAX_MATCHES = 500
+      const remainingLimit = Math.max(0, MAX_MATCHES - adminMatches.length)
+
+      let apiMatches = []
       if (remainingLimit > 0) {
-        apiMatches = await Odds.find({ 
+        apiMatches = await Odds.find({
           'bookmakers.key': { $ne: 'default' },
           commence_time: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours (live/recent) + future
         })
           .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
           .lean()
           .sort({ commence_time: 1 })
-          .limit(remainingLimit);
+          .limit(remainingLimit)
       }
 
-      const oddsData = [...adminMatches, ...apiMatches];
-              console.log(`[DEBUG] Found ${oddsData.length} matches in database (${adminMatches.length} admin, ${apiMatches.length} api)`);
-      
+      const oddsData = [...adminMatches, ...apiMatches]
+      console.log(`[DEBUG] Found ${oddsData.length} matches in database (${adminMatches.length} admin, ${apiMatches.length} api)`)
+
       if (oddsData.length > 0) {
         // Transform database format to frontend format
         matches = oddsData.map(odds => ({
@@ -102,63 +98,62 @@ router.get('/', async (req, res) => {
           away_team: odds.away_team,
           bookmakers: odds.bookmakers,
           last_update: odds.lastFetched
-        }));
+        }))
       }
     }
-    
+
     // If no database data, fallback to JSON files
     if (matches.length === 0) {
-              console.log('[DEBUG] No database data, falling back to JSON files...');
-      
+      console.log('[DEBUG] No database data, falling back to JSON files...')
+
       const files = fs.readdirSync(path.join(__dirname, '..'))
-        .filter(file => file.endsWith('.json') && file.includes('_matches_'));
-      
-              console.log(`[DEBUG] Found ${files.length} JSON files`);
-      
+        .filter(file => file.endsWith('.json') && file.includes('_matches_'))
+
+      console.log(`[DEBUG] Found ${files.length} JSON files`)
+
       for (const file of files) {
         try {
-          const filePath = path.join(__dirname, '..', file);
-          const fileContent = fs.readFileSync(filePath, 'utf8');
-          const fileMatches = JSON.parse(fileContent);
-          matches.push(...fileMatches);
+          const filePath = path.join(__dirname, '..', file)
+          const fileContent = fs.readFileSync(filePath, 'utf8')
+          const fileMatches = JSON.parse(fileContent)
+          matches.push(...fileMatches)
         } catch (error) {
-          console.error(`Error reading file ${file}:`, error.message);
+          console.error(`Error reading file ${file}:`, error.message)
         }
       }
     }
-    
-    console.log(`[DEBUG] /api/odds returning ${matches.length} matches`);
-    
+
+    console.log(`[DEBUG] /api/odds returning ${matches.length} matches`)
+
     res.json({
       success: true,
-      matches: matches,
+      matches,
       total: matches.length,
       source: mongoose.connection.readyState === 1 ? 'database' : 'json_files'
-    });
-    
+    })
   } catch (error) {
-    console.error('Error fetching odds:', error);
+    console.error('Error fetching odds:', error)
     res.status(500).json({
       success: false,
       error: 'Failed to fetch odds data',
       message: error.message
-    });
+    })
   }
-});
+})
 
 // GET /api/odds/sport/:sportKey - Get matches for specific sport (existing endpoint)
 router.get('/sport/:sportKey', async (req, res) => {
   try {
-    const { sportKey } = req.params;
-    let matches = [];
-    
+    const { sportKey } = req.params
+    let matches = []
+
     // Try database first
     if (mongoose.connection.readyState === 1) {
       const oddsData = await Odds.find({ sport_key: sportKey })
         .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
         .lean()
-        .limit(50);
-      
+        .limit(50)
+
       if (oddsData.length > 0) {
         matches = oddsData.map(odds => ({
           id: odds.gameId,
@@ -169,57 +164,56 @@ router.get('/sport/:sportKey', async (req, res) => {
           away_team: odds.away_team,
           bookmakers: odds.bookmakers,
           last_update: odds.lastFetched
-        }));
+        }))
       }
     }
-    
+
     // Fallback to JSON files
     if (matches.length === 0) {
       const files = fs.readdirSync(path.join(__dirname, '..'))
-        .filter(file => file.endsWith('.json') && file.includes('_matches_'));
-      
+        .filter(file => file.endsWith('.json') && file.includes('_matches_'))
+
       for (const file of files) {
         try {
-          const filePath = path.join(__dirname, '..', file);
-          const fileContent = fs.readFileSync(filePath, 'utf8');
-          const fileMatches = JSON.parse(fileContent);
-          const sportMatches = fileMatches.filter(match => match.sport_key === sportKey);
-          matches.push(...sportMatches);
+          const filePath = path.join(__dirname, '..', file)
+          const fileContent = fs.readFileSync(filePath, 'utf8')
+          const fileMatches = JSON.parse(fileContent)
+          const sportMatches = fileMatches.filter(match => match.sport_key === sportKey)
+          matches.push(...sportMatches)
         } catch (error) {
-          console.error(`Error reading file ${file}:`, error.message);
+          console.error(`Error reading file ${file}:`, error.message)
         }
       }
     }
-    
+
     res.json({
       success: true,
-      matches: matches,
+      matches,
       total: matches.length,
       sport: sportKey
-    });
-    
+    })
   } catch (error) {
-    console.error(`Error fetching odds for sport ${req.params.sportKey}:`, error);
+    console.error(`Error fetching odds for sport ${req.params.sportKey}:`, error)
     res.status(500).json({
       success: false,
       error: 'Failed to fetch sport odds',
       message: error.message
-    });
+    })
   }
-});
+})
 
 // GET /api/odds/match/:matchId - Get specific match odds (existing endpoint)
 router.get('/match/:matchId', async (req, res) => {
   try {
-    const { matchId } = req.params;
-    let match = null;
-    
+    const { matchId } = req.params
+    let match = null
+
     // Try database first
     if (mongoose.connection.readyState === 1) {
       const oddsData = await Odds.findOne({ gameId: matchId })
         .select('gameId sport_key sport_title commence_time home_team away_team bookmakers lastFetched')
-        .lean();
-      
+        .lean()
+
       if (oddsData) {
         match = {
           id: oddsData.gameId,
@@ -230,82 +224,81 @@ router.get('/match/:matchId', async (req, res) => {
           away_team: oddsData.away_team,
           bookmakers: oddsData.bookmakers,
           last_update: oddsData.lastFetched
-        };
-      }
-    }
-    
-    // Fallback to JSON files
-    if (!match) {
-      const files = fs.readdirSync(path.join(__dirname, '..'))
-        .filter(file => file.endsWith('.json') && file.includes('_matches_'));
-      
-      for (const file of files) {
-        try {
-          const filePath = path.join(__dirname, '..', file);
-          const fileContent = fs.readFileSync(filePath, 'utf8');
-          const fileMatches = JSON.parse(fileContent);
-          match = fileMatches.find(m => m.id === matchId);
-          if (match) break;
-        } catch (error) {
-          console.error(`Error reading file ${file}:`, error.message);
         }
       }
     }
-    
+
+    // Fallback to JSON files
+    if (!match) {
+      const files = fs.readdirSync(path.join(__dirname, '..'))
+        .filter(file => file.endsWith('.json') && file.includes('_matches_'))
+
+      for (const file of files) {
+        try {
+          const filePath = path.join(__dirname, '..', file)
+          const fileContent = fs.readFileSync(filePath, 'utf8')
+          const fileMatches = JSON.parse(fileContent)
+          match = fileMatches.find(m => m.id === matchId)
+          if (match) break
+        } catch (error) {
+          console.error(`Error reading file ${file}:`, error.message)
+        }
+      }
+    }
+
     if (match) {
       res.json({
         success: true,
-        match: match
-      });
+        match
+      })
     } else {
       res.status(404).json({
         success: false,
         error: 'Match not found'
-      });
+      })
     }
-    
   } catch (error) {
-    console.error(`Error fetching match ${req.params.matchId}:`, error);
+    console.error(`Error fetching match ${req.params.matchId}:`, error)
     res.status(500).json({
       success: false,
       error: 'Failed to fetch match odds',
       message: error.message
-    });
+    })
   }
-});
+})
 
 // POST /api/odds/events/comprehensive - Get comprehensive odds for specific events with additional markets
 router.post('/events/comprehensive', async (req, res) => {
   try {
-    const { 
-      sport, 
-      eventIds, 
-      basicMarkets = ['h2h'], 
-      additionalMarkets = [], 
-      regions = 'us,us2', 
+    const {
+      sport,
+      eventIds,
+      basicMarkets = ['h2h'],
+      additionalMarkets = [],
+      regions = 'us,us2',
       oddsFormat = 'decimal',
-      bookmakers 
-    } = req.body;
-    
+      bookmakers
+    } = req.body
+
     // Validate required parameters
     if (!sport) {
       return res.status(400).json({
         success: false,
         error: 'Sport parameter is required'
-      });
+      })
     }
-    
+
     if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'eventIds array is required and must not be empty'
-      });
+      })
     }
-    
-    console.log(`[API] Fetching comprehensive odds for ${eventIds.length} events in ${sport}`);
-    console.log(`[API] Basic markets: [${basicMarkets.join(', ')}]`);
-    console.log(`[API] Additional markets: [${additionalMarkets.join(', ')}]`);
-    
+
+    console.log(`[API] Fetching comprehensive odds for ${eventIds.length} events in ${sport}`)
+    console.log(`[API] Basic markets: [${basicMarkets.join(', ')}]`)
+    console.log(`[API] Additional markets: [${additionalMarkets.join(', ')}]`)
+
     // Use the comprehensive odds service to fetch event-specific data
     const result = await oddsService.fetchComprehensiveOddsForEvents(
       sport,
@@ -317,8 +310,8 @@ router.post('/events/comprehensive', async (req, res) => {
         oddsFormat,
         bookmakers
       }
-    );
-    
+    )
+
     if (result.success) {
       res.json({
         success: true,
@@ -328,62 +321,61 @@ router.post('/events/comprehensive', async (req, res) => {
         basicOddsCount: result.basicOdds?.length || 0,
         additionalMarkets: result.additionalMarkets,
         timestamp: new Date().toISOString()
-      });
+      })
     } else {
       res.status(500).json({
         success: false,
         error: result.message,
         details: result.error
-      });
+      })
     }
-    
   } catch (error) {
-    console.error('Error fetching comprehensive event odds:', error);
+    console.error('Error fetching comprehensive event odds:', error)
     res.status(500).json({
       success: false,
       error: 'Failed to fetch comprehensive event odds',
       message: error.message
-    });
+    })
   }
-});
+})
 
 // POST /api/odds/events/additional-markets - Get additional markets for specific events
 router.post('/events/additional-markets', async (req, res) => {
   try {
-    const { 
-      sport, 
-      eventIds, 
-      markets = [], 
-      regions = ['us', 'us2'], 
+    const {
+      sport,
+      eventIds,
+      markets = [],
+      regions = ['us', 'us2'],
       oddsFormat = 'decimal',
-      bookmakers 
-    } = req.body;
-    
+      bookmakers
+    } = req.body
+
     // Validate required parameters
     if (!sport) {
       return res.status(400).json({
         success: false,
         error: 'Sport parameter is required'
-      });
+      })
     }
-    
+
     if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'eventIds array is required and must not be empty'
-      });
+      })
     }
-    
+
     if (!markets || !Array.isArray(markets) || markets.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'markets array is required and must not be empty'
-      });
+      })
     }
-    
-    console.log(`[API] Fetching additional markets for ${eventIds.length} events in ${sport}`);
-    console.log(`[API] Markets: [${markets.join(', ')}]`);
-    
+
+    console.log(`[API] Fetching additional markets for ${eventIds.length} events in ${sport}`)
+    console.log(`[API] Markets: [${markets.join(', ')}]`)
+
     // Use the comprehensive odds service to fetch additional markets
     const result = await oddsService.fetchAdditionalMarketsForEvents(
       sport,
@@ -394,8 +386,8 @@ router.post('/events/additional-markets', async (req, res) => {
         oddsFormat,
         bookmakers
       }
-    );
-    
+    )
+
     if (result.success) {
       res.json({
         success: true,
@@ -404,23 +396,22 @@ router.post('/events/additional-markets', async (req, res) => {
         results: result.results,
         unsupportedMarkets: result.unsupportedMarkets,
         timestamp: new Date().toISOString()
-      });
+      })
     } else {
       res.status(500).json({
         success: false,
         error: result.message,
         details: result.error
-      });
+      })
     }
-    
   } catch (error) {
-    console.error('Error fetching additional markets for events:', error);
+    console.error('Error fetching additional markets for events:', error)
     res.status(500).json({
       success: false,
       error: 'Failed to fetch additional markets for events',
       message: error.message
-    });
+    })
   }
-});
+})
 
-module.exports = router;
+module.exports = router

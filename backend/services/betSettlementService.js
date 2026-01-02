@@ -1,77 +1,74 @@
-const mongoose = require('mongoose');
-const Bet = require('../models/Bet');
-const User = require('../models/User');
-const Match = require('../models/Match');
-const Results = require('../models/Results');
-const Odds = require('../models/Odds');
-const MultiBet = require('../models/MultiBet');
-const logger = require('../utils/logger');
-const { bus } = require('../utils/cache');
+const Bet = require('../models/Bet')
+const User = require('../models/User')
+const Match = require('../models/Match')
+const Results = require('../models/Results')
+const MultiBet = require('../models/MultiBet')
+const logger = require('../utils/logger')
+const { bus } = require('../utils/cache')
 
 class BetSettlementService {
-  constructor() {
-    this.isProcessing = false;
+  constructor () {
+    this.isProcessing = false
   }
 
   /**
    * Main function to process bet settlements
    * Checks for completed matches and settles pending bets
    */
-  async processSettlements() {
+  async processSettlements () {
     if (this.isProcessing) {
-      logger.warn('Bet settlement already in progress, skipping...');
-      return;
+      logger.warn('Bet settlement already in progress, skipping...')
+      return
     }
 
-    this.isProcessing = true;
-    let settledBetsCount = 0;
-    let processedMatchesCount = 0;
+    this.isProcessing = true
+    let settledBetsCount = 0
+    let processedMatchesCount = 0
 
     try {
-      logger.info('Starting automated bet settlement process...');
+      logger.info('Starting automated bet settlement process...')
 
-      const completedResults = await Results.find({ completed: true });
+      const completedResults = await Results.find({ completed: true })
       // Fetch finished matches from DB (including custom matches)
-      const completedMatchesDB = await Match.find({ status: 'finished' });
-      
-      const completedMatches = this.combineCompletedMatches(completedResults, completedMatchesDB);
-      
-      logger.info(`Found ${completedMatches.length} completed matches to process`);
+      const completedMatchesDB = await Match.find({ status: 'finished' })
+
+      const completedMatches = this.combineCompletedMatches(completedResults, completedMatchesDB)
+
+      logger.info(`Found ${completedMatches.length} completed matches to process`)
 
       for (const match of completedMatches) {
         try {
-          const settled = await this.settleMatchBets(match);
+          const settled = await this.settleMatchBets(match)
           if (settled > 0) {
-            settledBetsCount += settled;
-            processedMatchesCount++;
+            settledBetsCount += settled
+            processedMatchesCount++
           }
         } catch (error) {
-          logger.error(`Error settling bets for match ${match.eventId}:`, error);
+          logger.error(`Error settling bets for match ${match.eventId}:`, error)
         }
       }
 
-      logger.info(`Bet settlement completed: ${settledBetsCount} bets settled across ${processedMatchesCount} matches`);
-      
+      logger.info(`Bet settlement completed: ${settledBetsCount} bets settled across ${processedMatchesCount} matches`)
+
       return {
         success: true,
         settledBets: settledBetsCount,
         processedMatches: processedMatchesCount
-      };
-
+      }
     } catch (error) {
-      logger.error('Error in bet settlement process:', error);
-      throw error;
+      logger.error('Error in bet settlement process:', error)
+      throw error
     } finally {
-      this.isProcessing = false;
+      this.isProcessing = false
     }
   }
 
   /**
    * Combine completed matches from Results and Scores, avoiding duplicates
    */
-  combineCompletedMatches(results, matchesDB = []) {
-    const matchMap = new Map();
-    
+  combineCompletedMatches (results, matchesDB = []) {
+    const matchMap = new Map()
+
     // Process Results from API
     results.forEach(result => {
       matchMap.set(result.eventId, {
@@ -83,117 +80,119 @@ class BetSettlementService {
         sport_key: result.sport_key,
         source: 'results',
         directResults: {
-           homeScoreHT: result.homeScoreHT,
-           awayScoreHT: result.awayScoreHT,
-           homeCorners: result.homeCorners,
-           awayCorners: result.awayCorners,
-           homeCards: result.homeCards,
-           awayCards: result.awayCards,
-           penaltyAwarded: result.penaltyAwarded,
-           firstGoalscorer: result.firstGoalscorer,
-           anytimeGoalscorers: result.anytimeGoalscorers,
-           lastGoalscorer: result.lastGoalscorer
+          homeScoreHT: result.homeScoreHT,
+          awayScoreHT: result.awayScoreHT,
+          homeCorners: result.homeCorners,
+          awayCorners: result.awayCorners,
+          homeCards: result.homeCards,
+          awayCards: result.awayCards,
+          penaltyAwarded: result.penaltyAwarded,
+          firstGoalscorer: result.firstGoalscorer,
+          anytimeGoalscorers: result.anytimeGoalscorers,
+          lastGoalscorer: result.lastGoalscorer
         }
-      });
-    });
+      })
+    })
 
     // Process Matches from DB (Custom/Predetermined)
     matchesDB.forEach(match => {
-       // Use _id as eventId if not present (or match.externalId)
-       // Prefer externalId if it matches API format, otherwise use _id
-       const eventId = match.externalId || match._id.toString();
-       
-       // Create direct results object from predeterminedResult or direct fields
-       const predetermined = match.predeterminedResult || {};
-       const directResults = {
-         homeScore: predetermined.homeScore ?? match.homeScore,
-         awayScore: predetermined.awayScore ?? match.awayScore,
-         homeScoreHT: predetermined.homeScoreHT,
-         awayScoreHT: predetermined.awayScoreHT,
-         homeCorners: predetermined.homeCorners,
-         awayCorners: predetermined.awayCorners,
-         homeCards: predetermined.homeCards,
-         awayCards: predetermined.awayCards,
-         penaltyAwarded: predetermined.penaltyAwarded,
-         firstGoalscorer: predetermined.firstGoalscorer,
-         anytimeGoalscorers: predetermined.anytimeGoalscorers,
-         lastGoalscorer: predetermined.lastGoalscorer,
-       };
+      // Use _id as eventId if not present (or match.externalId)
+      // Prefer externalId if it matches API format, otherwise use _id
+      const eventId = match.externalId || match._id.toString()
 
-       if (!matchMap.has(eventId)) {
-         matchMap.set(eventId, {
-           eventId: eventId,
-           homeTeam: match.homeTeam,
-           awayTeam: match.awayTeam,
-           scores: [
-             { name: match.homeTeam, score: directResults.homeScore },
-             { name: match.awayTeam, score: directResults.awayScore }
-           ],
-           completed: true,
-           sport_key: match.sport,
-           source: 'db',
-           directResults: directResults
-         });
-       } else {
-         // If match exists from API but we have DB override (predeterminedResult), merge/override
-         // This is useful if API is missing stats like corners/cards but we have them manually
-         const existing = matchMap.get(eventId);
-         existing.directResults = { ...existing.directResults, ...directResults };
-         
-         // If we have explicit scores in DB, potentially override API scores (if marked as authoritative)
-         // For now, we'll just ensure directResults are available for extended markets
-       }
-    });
+      // Create direct results object from predeterminedResult or direct fields
+      const predetermined = match.predeterminedResult || {}
+      const directResults = {
+        homeScore: predetermined.homeScore ?? match.homeScore,
+        awayScore: predetermined.awayScore ?? match.awayScore,
+        homeScoreHT: predetermined.homeScoreHT,
+        awayScoreHT: predetermined.awayScoreHT,
+        homeCorners: predetermined.homeCorners,
+        awayCorners: predetermined.awayCorners,
+        homeCards: predetermined.homeCards,
+        awayCards: predetermined.awayCards,
+        penaltyAwarded: predetermined.penaltyAwarded,
+        firstGoalscorer: predetermined.firstGoalscorer,
+        anytimeGoalscorers: predetermined.anytimeGoalscorers,
+        lastGoalscorer: predetermined.lastGoalscorer
+      }
 
-    return Array.from(matchMap.values());
+      if (!matchMap.has(eventId)) {
+        matchMap.set(eventId, {
+          eventId,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          scores: [
+            { name: match.homeTeam, score: directResults.homeScore },
+            { name: match.awayTeam, score: directResults.awayScore }
+          ],
+          completed: true,
+          sport_key: match.sport,
+          source: 'db',
+          directResults
+        })
+      } else {
+        // If match exists from API but we have DB override (predeterminedResult), merge/override
+        // This is useful if API is missing stats like corners/cards but we have them manually
+        const existing = matchMap.get(eventId)
+        existing.directResults = { ...existing.directResults, ...directResults }
+
+        // If we have explicit scores in DB, potentially override API scores (if marked as authoritative)
+        // For now, we'll just ensure directResults are available for extended markets
+      }
+    })
+
+    return Array.from(matchMap.values())
   }
 
   /**
    * Settle bets for a specific completed match
    */
-  async settleMatchBets(match) {
+  async settleMatchBets (match) {
     try {
       // Extract comprehensive results from the match data
-      const results = this.extractResults(match);
-      
+      const results = this.extractResults(match)
+
       if (results.homeScore === null || results.awayScore === null) {
-        logger.warn(`Invalid scores for match ${match.eventId}`);
-        return 0;
+        logger.warn(`Invalid scores for match ${match.eventId}`)
+        return 0
       }
 
-      await this.updateBetslipWithResult(match, results);
-      const pendingBets = await this.findMatchingBets(match);
+      await this.updateBetslipWithResult(match, results)
+      const pendingBets = await this.findMatchingBets(match)
+      
+      // Settle MultiBets
+      const settledMultiBetsCount = await this.settleMultiBets(match)
 
-      if (pendingBets.length === 0) {
-        logger.debug(`No pending bets found for match ${match.eventId}`);
-        return 0;
+      if (pendingBets.length === 0 && settledMultiBetsCount === 0) {
+        logger.debug(`No pending bets found for match ${match.eventId}`)
+        return 0
       }
 
-      logger.info(`Settling ${pendingBets.length} bets for match ${match.eventId} (${match.homeTeam} vs ${match.awayTeam})`);
+      logger.info(`Settling ${pendingBets.length} single bets and ${settledMultiBetsCount} multi-bets for match ${match.eventId} (${match.homeTeam} vs ${match.awayTeam})`)
 
-      let settledCount = 0;
+      let settledCount = 0
       for (const bet of pendingBets) {
         try {
-          const settled = await this.settleSingleBet(bet, results, match);
-          if (settled) settledCount++;
+          const settled = await this.settleSingleBet(bet, results, match)
+          if (settled) settledCount++
         } catch (error) {
-          logger.error(`Error settling bet ${bet._id}:`, error);
+          logger.error(`Error settling bet ${bet._id}:`, error)
         }
       }
 
-      return settledCount;
-
+      return settledCount + settledMultiBetsCount
     } catch (error) {
-      logger.error(`Error settling bets for match ${match.eventId}:`, error);
-      return 0;
+      logger.error(`Error settling bets for match ${match.eventId}:`, error)
+      return 0
     }
   }
 
-  async updateBetslipWithResult(match, results) {
+  async updateBetslipWithResult (match, results) {
     try {
-      const { homeScore, awayScore } = results;
-      const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
-      const resultData = { ...results, finalOutcome };
+      const { homeScore, awayScore } = results
+      const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+      const resultData = { ...results, finalOutcome }
 
       await MultiBet.updateMany(
         { 'matches.matchId': match.eventId },
@@ -203,8 +202,8 @@ class BetSettlementService {
             'matches.$.result': resultData
           }
         }
-      );
-      
+      )
+
       // Update Single Bets (Top level result)
       await Bet.updateMany(
         { matchId: match.eventId },
@@ -213,7 +212,7 @@ class BetSettlementService {
             result: resultData
           }
         }
-      );
+      )
 
       await Bet.updateMany(
         { 'matches.matchId': match.eventId },
@@ -223,27 +222,27 @@ class BetSettlementService {
             'matches.$.result': resultData
           }
         }
-      );
-      try { bus.emit('bets:changed'); } catch (e) {}
+      )
+      try { bus.emit('bets:changed') } catch (e) {}
 
       if (global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
         try {
-          global.websocketServer.broadcastMatchResult(String(match.eventId), { 
-            homeScore, 
-            awayScore, 
-            score: `${homeScore}:${awayScore}` 
-          });
+          global.websocketServer.broadcastMatchResult(String(match.eventId), {
+            homeScore,
+            awayScore,
+            score: `${homeScore}:${awayScore}`
+          })
         } catch (wsErr) {}
       }
     } catch (error) {
-      logger.warn('Failed to push result to betslip:', error);
+      logger.warn('Failed to push result to betslip:', error)
     }
   }
 
   /**
    * Extract comprehensive results from match data
    */
-  extractResults(match) {
+  extractResults (match) {
     let results = {
       homeScore: null,
       awayScore: null,
@@ -257,7 +256,7 @@ class BetSettlementService {
       firstGoalscorer: null,
       anytimeGoalscorers: [],
       lastGoalscorer: null
-    };
+    }
 
     // 1. Prefer direct results (DB or manually entered)
     if (match.directResults) {
@@ -265,36 +264,35 @@ class BetSettlementService {
       // Ensure numeric types
       ['homeScore', 'awayScore', 'homeScoreHT', 'awayScoreHT', 'homeCorners', 'awayCorners', 'homeCards', 'awayCards'].forEach(key => {
         if (results[key] !== undefined && results[key] !== null) {
-          results[key] = parseInt(results[key]);
+          results[key] = parseInt(results[key])
         }
-      });
+      })
       // Ensure boolean
-      if (results.penaltyAwarded !== undefined) results.penaltyAwarded = !!results.penaltyAwarded;
+      if (results.penaltyAwarded !== undefined) results.penaltyAwarded = !!results.penaltyAwarded
     }
-    
+
     // 2. Fallback for basic scores if still null
-    if ((results.homeScore === null || results.awayScore === null) && 
+    if ((results.homeScore === null || results.awayScore === null) &&
         match.scores && Array.isArray(match.scores)) {
-      
-      const homeScoreData = match.scores.find(s => s.name === match.homeTeam);
-      const awayScoreData = match.scores.find(s => s.name === match.awayTeam);
+      const homeScoreData = match.scores.find(s => s.name === match.homeTeam)
+      const awayScoreData = match.scores.find(s => s.name === match.awayTeam)
 
       if (homeScoreData && awayScoreData) {
-        results.homeScore = parseInt(homeScoreData.score) || 0;
-        results.awayScore = parseInt(awayScoreData.score) || 0;
+        results.homeScore = parseInt(homeScoreData.score) || 0
+        results.awayScore = parseInt(awayScoreData.score) || 0
       } else if (match.scores.length >= 2) {
-        results.homeScore = parseInt(match.scores[0].score) || 0;
-        results.awayScore = parseInt(match.scores[1].score) || 0;
+        results.homeScore = parseInt(match.scores[0].score) || 0
+        results.awayScore = parseInt(match.scores[1].score) || 0
       }
     }
 
-    return results;
+    return results
   }
 
   /**
    * Find bets that match the completed match
    */
-  async findMatchingBets(match) {
+  async findMatchingBets (match) {
     const queries = [
       { matchId: match.eventId, status: 'pending' },
       {
@@ -304,28 +302,28 @@ class BetSettlementService {
           { awayTeam: { $regex: new RegExp(match.awayTeam, 'i') } }
         ]
       }
-    ];
+    ]
 
-    let allBets = [];
+    let allBets = []
     for (const query of queries) {
-      const bets = await Bet.find(query);
-      allBets = allBets.concat(bets);
+      const bets = await Bet.find(query)
+      allBets = allBets.concat(bets)
     }
 
-    const uniqueBets = allBets.filter((bet, index, self) => 
+    const uniqueBets = allBets.filter((bet, index, self) =>
       index === self.findIndex(b => b._id.toString() === bet._id.toString())
-    );
+    )
 
-    return uniqueBets;
+    return uniqueBets
   }
 
   /**
    * Settle a single bet based on match outcome
    */
-  async settleSingleBet(bet, results, match) {
+  async settleSingleBet (bet, results, match) {
     try {
-      let won = false;
-      const { homeScore, awayScore } = results;
+      let won = false
+      const { homeScore, awayScore } = results
 
       // Determine bet outcome based on market type
       switch (bet.market.toLowerCase()) {
@@ -333,88 +331,88 @@ class BetSettlementService {
         case 'moneyline':
         case 'match_winner':
         case '1x2':
-          won = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match);
-          break;
+          won = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
+          break
         case 'double_chance':
-          won = this.evaluateDoubleChanceBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateDoubleChanceBet(bet.selection, homeScore, awayScore)
+          break
         case 'btts':
         case 'both_teams_to_score':
-          won = this.evaluateBTTSBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateBTTSBet(bet.selection, homeScore, awayScore)
+          break
         case 'handicap':
         case 'spread':
-          won = this.evaluateHandicapBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateHandicapBet(bet.selection, homeScore, awayScore)
+          break
         case 'totals':
         case 'over_under':
         case 'total_goals':
-          won = this.evaluateTotalsBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateTotalsBet(bet.selection, homeScore, awayScore)
+          break
         case 'correct_score':
-          won = this.evaluateCorrectScoreBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateCorrectScoreBet(bet.selection, homeScore, awayScore)
+          break
         case 'ht_ft':
         case 'halftime_fulltime':
-          won = this.evaluateHTFTBet(bet.selection, results);
-          break;
+          won = this.evaluateHTFTBet(bet.selection, results)
+          break
         case 'corners':
         case 'corners_over_under':
-          won = this.evaluateCornersBet(bet.selection, results);
-          break;
+          won = this.evaluateCornersBet(bet.selection, results)
+          break
         case 'cards':
         case 'cards_over_under':
-          won = this.evaluateCardsBet(bet.selection, results);
-          break;
+          won = this.evaluateCardsBet(bet.selection, results)
+          break
         case 'goalscorer':
         case 'first_goalscorer':
         case 'anytime_goalscorer':
         case 'last_goalscorer':
-          won = this.evaluateGoalscorerBet(bet.selection, bet.market, results);
-          break;
+          won = this.evaluateGoalscorerBet(bet.selection, bet.market, results)
+          break
         case 'odd_even':
         case 'odd_even_goals':
-          won = this.evaluateOddEvenBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateOddEvenBet(bet.selection, homeScore, awayScore)
+          break
         case 'multi_goals':
         case 'goal_bands':
-          won = this.evaluateMultiGoalsBet(bet.selection, homeScore, awayScore);
-          break;
+          won = this.evaluateMultiGoalsBet(bet.selection, homeScore, awayScore)
+          break
         case 'winning_margin':
-          won = this.evaluateWinningMarginBet(bet.selection, homeScore, awayScore, match);
-          break;
+          won = this.evaluateWinningMarginBet(bet.selection, homeScore, awayScore, match)
+          break
         case 'penalty':
         case 'penalty_awarded':
-          won = this.evaluatePenaltyBet(bet.selection, results);
-          break;
+          won = this.evaluatePenaltyBet(bet.selection, results)
+          break
         default:
-          logger.warn(`Unknown market type: ${bet.market} for bet ${bet._id}`);
+          logger.warn(`Unknown market type: ${bet.market} for bet ${bet._id}`)
           // Fallback to match winner if possible, otherwise fail safe to lost (or keep pending?)
           // Safe default: process as match winner only if it looks like one
           if (['1', 'X', '2'].includes(bet.selection) || bet.selection.includes('Home') || bet.selection.includes('Away')) {
-             won = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match);
+            won = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
           }
       }
 
       // Update bet status
-      const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X';
+      const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
       const update = {
         status: won ? 'won' : 'lost',
         actualWin: won ? bet.potentialWin : 0,
         settledAt: new Date(),
         result: { ...results, finalOutcome }
-      };
-
-      await Bet.findByIdAndUpdate(bet._id, update);
-      
-      if (won && update.actualWin > 0) {
-        await User.settleBetWin(bet.userId, update.actualWin);
-        await User.findByIdAndUpdate(bet.userId, { 
-          $inc: { lifetimeWinnings: update.actualWin - bet.stake } 
-        });
       }
 
-      try { bus.emit('bets:changed'); } catch (e) {}
+      await Bet.findByIdAndUpdate(bet._id, update)
+
+      if (won && update.actualWin > 0) {
+        await User.settleBetWin(bet.userId, update.actualWin)
+        await User.findByIdAndUpdate(bet.userId, {
+          $inc: { lifetimeWinnings: update.actualWin - bet.stake }
+        })
+      }
+
+      try { bus.emit('bets:changed') } catch (e) {}
 
       try {
         bus.emit('bets:update', {
@@ -426,223 +424,282 @@ class BetSettlementService {
           settledAt: update.settledAt,
           homeScore,
           awayScore
-        });
+        })
         if (global.websocketServer && typeof global.websocketServer.broadcastBetStatusUpdate === 'function') {
           global.websocketServer.broadcastBetStatusUpdate(
-            String(bet._id), 
-            String(bet.userId), 
-            update.status, 
+            String(bet._id),
+            String(bet.userId),
+            update.status,
             bet.matches || [],
             update.result
-          );
+          )
         }
       } catch (emitError) {}
 
-      logger.info(`Bet ${bet._id} settled as ${won ? 'WON' : 'LOST'} for match ${match.eventId}`);
-      return true;
-
+      logger.info(`Bet ${bet._id} settled as ${won ? 'WON' : 'LOST'} for match ${match.eventId}`)
+      return true
     } catch (error) {
-      logger.error(`Error settling bet ${bet._id}:`, error);
-      return false;
+      logger.error(`Error settling bet ${bet._id}:`, error)
+      return false
+    }
+  }
+
+  /**
+   * Settle multi-bets for a specific completed match
+   */
+  async settleMultiBets (match) {
+    try {
+      const results = this.extractResults(match)
+      if (results.homeScore === null || results.awayScore === null) return 0
+
+      // Find pending multi-bets containing this match
+      const multiBets = await MultiBet.find({
+        'matches.matchId': match.eventId,
+        status: 'Pending'
+      })
+
+      if (multiBets.length === 0) return 0
+
+      let settledCount = 0
+      for (const mb of multiBets) {
+        try {
+          // Find the specific leg
+          const leg = mb.matches.find(m => m.matchId === match.eventId)
+          if (!leg || leg.status !== 'Pending') continue
+
+          // Determine outcome (1, X, 2)
+          const finalOutcome = results.homeScore > results.awayScore ? '1' : results.homeScore < results.awayScore ? '2' : 'X'
+
+          // Determine status
+          const status = leg.outcome === finalOutcome ? 'Win' : 'Loss'
+
+          // Update the match status in the MultiBet
+          // This will trigger updateOverallStatus() and save()
+          await mb.updateMatchStatus(match.eventId, status, {
+            homeScore: results.homeScore,
+            awayScore: results.awayScore,
+            finalOutcome
+          })
+
+          // Check if the entire MultiBet is now settled (Win/Partial) and pay out if needed
+          if (mb.status === 'Win' || mb.status === 'Partial') {
+            const payout = mb.potentialPayout
+            if (payout > 0) {
+              await User.settleBetWin(mb.userId, payout)
+              await User.findByIdAndUpdate(mb.userId, {
+                $inc: { lifetimeWinnings: payout - mb.stake }
+              })
+              logger.info(`MultiBet ${mb._id} settled as ${mb.status} - Payout: ${payout}`)
+            }
+          }
+
+          settledCount++
+        } catch (err) {
+          logger.error(`Error settling multi-bet ${mb._id}:`, err)
+        }
+      }
+      return settledCount
+    } catch (error) {
+      logger.error(`Error settling multi-bets for match ${match.eventId}:`, error)
+      return 0
     }
   }
 
   // --- Evaluation Helper Functions ---
 
-  evaluateMatchWinnerBet(selection, homeScore, awayScore, match) {
-    const sel = selection.toLowerCase();
-    if (sel.includes('home') || sel === '1') return homeScore > awayScore;
-    if (sel.includes('away') || sel === '2') return awayScore > homeScore;
-    if (sel.includes('draw') || sel === 'x') return homeScore === awayScore;
-    
+  evaluateMatchWinnerBet (selection, homeScore, awayScore, match) {
+    const sel = selection.toLowerCase()
+    if (sel.includes('home') || sel === '1') return homeScore > awayScore
+    if (sel.includes('away') || sel === '2') return awayScore > homeScore
+    if (sel.includes('draw') || sel === 'x') return homeScore === awayScore
+
     if (match) {
-      const homeTeam = match.homeTeam || match.home_team;
-      const awayTeam = match.awayTeam || match.away_team;
-      if (homeTeam && sel.includes(homeTeam.toLowerCase())) return homeScore > awayScore;
-      if (awayTeam && sel.includes(awayTeam.toLowerCase())) return awayScore > homeScore;
+      const homeTeam = match.homeTeam || match.home_team
+      const awayTeam = match.awayTeam || match.away_team
+      if (homeTeam && sel.includes(homeTeam.toLowerCase())) return homeScore > awayScore
+      if (awayTeam && sel.includes(awayTeam.toLowerCase())) return awayScore > homeScore
     }
-    return false;
+    return false
   }
 
-  evaluateDoubleChanceBet(selection, homeScore, awayScore) {
+  evaluateDoubleChanceBet (selection, homeScore, awayScore) {
     // 1X (Home or Draw), X2 (Draw or Away), 12 (Home or Away)
-    const sel = selection.toUpperCase();
-    if (sel === '1X' || sel.includes('HOME/DRAW')) return homeScore >= awayScore;
-    if (sel === 'X2' || sel.includes('DRAW/AWAY')) return awayScore >= homeScore;
-    if (sel === '12' || sel.includes('HOME/AWAY')) return homeScore !== awayScore;
-    return false;
+    const sel = selection.toUpperCase()
+    if (sel === '1X' || sel.includes('HOME/DRAW')) return homeScore >= awayScore
+    if (sel === 'X2' || sel.includes('DRAW/AWAY')) return awayScore >= homeScore
+    if (sel === '12' || sel.includes('HOME/AWAY')) return homeScore !== awayScore
+    return false
   }
 
-  evaluateBTTSBet(selection, homeScore, awayScore) {
-    const sel = selection.toLowerCase();
-    const bothScored = homeScore > 0 && awayScore > 0;
-    if (sel === 'yes' || sel.includes('yes')) return bothScored;
-    if (sel === 'no' || sel.includes('no')) return !bothScored;
-    return false;
+  evaluateBTTSBet (selection, homeScore, awayScore) {
+    const sel = selection.toLowerCase()
+    const bothScored = homeScore > 0 && awayScore > 0
+    if (sel === 'yes' || sel.includes('yes')) return bothScored
+    if (sel === 'no' || sel.includes('no')) return !bothScored
+    return false
   }
 
-  evaluateHandicapBet(selection, homeScore, awayScore) {
-    const handicapMatch = selection.match(/([-+]?\d+\.?\d*)/);
-    if (!handicapMatch) return false;
-    const handicap = parseFloat(handicapMatch[1]);
-    const sel = selection.toLowerCase();
-    if (sel.includes('home')) return (homeScore + handicap) > awayScore;
-    if (sel.includes('away')) return (awayScore + handicap) > homeScore;
-    return false;
+  evaluateHandicapBet (selection, homeScore, awayScore) {
+    const handicapMatch = selection.match(/([-+]?\d+\.?\d*)/)
+    if (!handicapMatch) return false
+    const handicap = parseFloat(handicapMatch[1])
+    const sel = selection.toLowerCase()
+    if (sel.includes('home')) return (homeScore + handicap) > awayScore
+    if (sel.includes('away')) return (awayScore + handicap) > homeScore
+    return false
   }
 
-  evaluateTotalsBet(selection, homeScore, awayScore) {
-    const totalMatch = selection.match(/(\d+\.?\d*)/);
-    if (!totalMatch) return false;
-    const total = parseFloat(totalMatch[1]);
-    const totalScore = homeScore + awayScore;
-    const sel = selection.toLowerCase();
-    if (sel.includes('over')) return totalScore > total;
-    if (sel.includes('under')) return totalScore < total;
-    return false;
+  evaluateTotalsBet (selection, homeScore, awayScore) {
+    const totalMatch = selection.match(/(\d+\.?\d*)/)
+    if (!totalMatch) return false
+    const total = parseFloat(totalMatch[1])
+    const totalScore = homeScore + awayScore
+    const sel = selection.toLowerCase()
+    if (sel.includes('over')) return totalScore > total
+    if (sel.includes('under')) return totalScore < total
+    return false
   }
 
-  evaluateCorrectScoreBet(selection, homeScore, awayScore) {
+  evaluateCorrectScoreBet (selection, homeScore, awayScore) {
     // Expected format "1-0", "2-1", etc.
     // Clean selection to just numbers
-    const parts = selection.replace(/[^0-9-:]/g, '').split(/[-:]/);
-    if (parts.length !== 2) return false;
-    const selHome = parseInt(parts[0]);
-    const selAway = parseInt(parts[1]);
-    return homeScore === selHome && awayScore === selAway;
+    const parts = selection.replace(/[^0-9-:]/g, '').split(/[-:]/)
+    if (parts.length !== 2) return false
+    const selHome = parseInt(parts[0])
+    const selAway = parseInt(parts[1])
+    return homeScore === selHome && awayScore === selAway
   }
 
-  evaluateHTFTBet(selection, results) {
-    const { homeScore, awayScore, homeScoreHT, awayScoreHT } = results;
-    if (homeScoreHT === null || awayScoreHT === null) return false; // Cannot settle without HT scores
+  evaluateHTFTBet (selection, results) {
+    const { homeScore, awayScore, homeScoreHT, awayScoreHT } = results
+    if (homeScoreHT === null || awayScoreHT === null) return false // Cannot settle without HT scores
 
-    const getResult = (h, a) => h > a ? '1' : h < a ? '2' : 'X';
-    const htResult = getResult(homeScoreHT, awayScoreHT);
-    const ftResult = getResult(homeScore, awayScore);
+    const getResult = (h, a) => h > a ? '1' : h < a ? '2' : 'X'
+    const htResult = getResult(homeScoreHT, awayScoreHT)
+    const ftResult = getResult(homeScore, awayScore)
 
     // Map selection to HT/FT codes (e.g., "1/1", "X/2")
     // Selection might be "Home/Home", "Draw/Away" or "1/1"
     const mapCode = (str) => {
-      str = str.toLowerCase();
-      if (str.includes('home') || str === '1') return '1';
-      if (str.includes('away') || str === '2') return '2';
-      if (str.includes('draw') || str === 'x') return 'X';
-      return '';
-    };
+      str = str.toLowerCase()
+      if (str.includes('home') || str === '1') return '1'
+      if (str.includes('away') || str === '2') return '2'
+      if (str.includes('draw') || str === 'x') return 'X'
+      return ''
+    }
 
-    const parts = selection.split('/');
-    if (parts.length !== 2) return false;
-    const selHT = mapCode(parts[0]);
-    const selFT = mapCode(parts[1]);
+    const parts = selection.split('/')
+    if (parts.length !== 2) return false
+    const selHT = mapCode(parts[0])
+    const selFT = mapCode(parts[1])
 
-    return htResult === selHT && ftResult === selFT;
+    return htResult === selHT && ftResult === selFT
   }
 
-  evaluateCornersBet(selection, results) {
-    const { homeCorners, awayCorners } = results;
-    if (homeCorners === null || awayCorners === null) return false;
-    const totalCorners = homeCorners + awayCorners;
-    
+  evaluateCornersBet (selection, results) {
+    const { homeCorners, awayCorners } = results
+    if (homeCorners === null || awayCorners === null) return false
+    const totalCorners = homeCorners + awayCorners
+
     // Check for Over/Under
-    const totalMatch = selection.match(/(\d+\.?\d*)/);
+    const totalMatch = selection.match(/(\d+\.?\d*)/)
     if (totalMatch) {
-      const total = parseFloat(totalMatch[1]);
-      const sel = selection.toLowerCase();
-      if (sel.includes('over')) return totalCorners > total;
-      if (sel.includes('under')) return totalCorners < total;
+      const total = parseFloat(totalMatch[1])
+      const sel = selection.toLowerCase()
+      if (sel.includes('over')) return totalCorners > total
+      if (sel.includes('under')) return totalCorners < total
     }
-    return false;
+    return false
   }
 
-  evaluateCardsBet(selection, results) {
-    const { homeCards, awayCards } = results;
-    if (homeCards === null || awayCards === null) return false;
-    const totalCards = homeCards + awayCards;
-    
-    const totalMatch = selection.match(/(\d+\.?\d*)/);
+  evaluateCardsBet (selection, results) {
+    const { homeCards, awayCards } = results
+    if (homeCards === null || awayCards === null) return false
+    const totalCards = homeCards + awayCards
+
+    const totalMatch = selection.match(/(\d+\.?\d*)/)
     if (totalMatch) {
-      const total = parseFloat(totalMatch[1]);
-      const sel = selection.toLowerCase();
-      if (sel.includes('over')) return totalCards > total;
-      if (sel.includes('under')) return totalCards < total;
+      const total = parseFloat(totalMatch[1])
+      const sel = selection.toLowerCase()
+      if (sel.includes('over')) return totalCards > total
+      if (sel.includes('under')) return totalCards < total
     }
-    return false;
+    return false
   }
 
-  evaluateGoalscorerBet(selection, market, results) {
-    const { firstGoalscorer, anytimeGoalscorers, lastGoalscorer } = results;
-    const sel = selection.toLowerCase();
-    
+  evaluateGoalscorerBet (selection, market, results) {
+    const { firstGoalscorer, anytimeGoalscorers, lastGoalscorer } = results
+    const sel = selection.toLowerCase()
+
     if (market.includes('first')) {
-      return firstGoalscorer && firstGoalscorer.toLowerCase().includes(sel);
+      return firstGoalscorer && firstGoalscorer.toLowerCase().includes(sel)
     }
     if (market.includes('last')) {
-      return lastGoalscorer && lastGoalscorer.toLowerCase().includes(sel);
+      return lastGoalscorer && lastGoalscorer.toLowerCase().includes(sel)
     }
     if (market.includes('anytime')) {
       // Check if goalscorer list string contains name, or check first/last as fallback
-      const allScorers = (anytimeGoalscorers || '') + ',' + (firstGoalscorer || '') + ',' + (lastGoalscorer || '');
-      return allScorers.toLowerCase().includes(sel);
+      const allScorers = (anytimeGoalscorers || '') + ',' + (firstGoalscorer || '') + ',' + (lastGoalscorer || '')
+      return allScorers.toLowerCase().includes(sel)
     }
-    return false;
+    return false
   }
 
-  evaluateOddEvenBet(selection, homeScore, awayScore) {
-    const total = homeScore + awayScore;
-    const isOdd = total % 2 !== 0;
-    const sel = selection.toLowerCase();
-    if (sel === 'odd') return isOdd;
-    if (sel === 'even') return !isOdd;
-    return false;
+  evaluateOddEvenBet (selection, homeScore, awayScore) {
+    const total = homeScore + awayScore
+    const isOdd = total % 2 !== 0
+    const sel = selection.toLowerCase()
+    if (sel === 'odd') return isOdd
+    if (sel === 'even') return !isOdd
+    return false
   }
 
-  evaluateMultiGoalsBet(selection, homeScore, awayScore) {
+  evaluateMultiGoalsBet (selection, homeScore, awayScore) {
     // Format "1-3 Goals", "4+ Goals"
-    const total = homeScore + awayScore;
-    const rangeMatch = selection.match(/(\d+)-(\d+)/);
+    const total = homeScore + awayScore
+    const rangeMatch = selection.match(/(\d+)-(\d+)/)
     if (rangeMatch) {
-      const min = parseInt(rangeMatch[1]);
-      const max = parseInt(rangeMatch[2]);
-      return total >= min && total <= max;
+      const min = parseInt(rangeMatch[1])
+      const max = parseInt(rangeMatch[2])
+      return total >= min && total <= max
     }
     if (selection.includes('+')) {
-      const minMatch = selection.match(/(\d+)\+/);
+      const minMatch = selection.match(/(\d+)\+/)
       if (minMatch) {
-        const min = parseInt(minMatch[1]);
-        return total >= min;
+        const min = parseInt(minMatch[1])
+        return total >= min
       }
     }
-    return false;
+    return false
   }
 
-  evaluateWinningMarginBet(selection, homeScore, awayScore, match) {
-    const diff = homeScore - awayScore;
-    const absDiff = Math.abs(diff);
-    const sel = selection.toLowerCase();
-    
+  evaluateWinningMarginBet (selection, homeScore, awayScore, match) {
+    const diff = homeScore - awayScore
+    const sel = selection.toLowerCase()
+
     // Exact margin: "Home by 1", "Away by 2", "Draw" (margin 0)
-    if (sel.includes('draw') || sel === '0') return diff === 0;
-    
-    const marginMatch = selection.match(/(\d+)/);
-    if (!marginMatch) return false;
-    const margin = parseInt(marginMatch[1]);
+    if (sel.includes('draw') || sel === '0') return diff === 0
+
+    const marginMatch = selection.match(/(\d+)/)
+    if (!marginMatch) return false
+    const margin = parseInt(marginMatch[1])
 
     if (sel.includes('home') || (match && sel.includes(match.homeTeam.toLowerCase()))) {
-      return diff === margin;
+      return diff === margin
     }
     if (sel.includes('away') || (match && sel.includes(match.awayTeam.toLowerCase()))) {
-      return diff === -margin;
+      return diff === -margin
     }
-    return false;
+    return false
   }
 
-  evaluatePenaltyBet(selection, results) {
-    const { penaltyAwarded } = results;
-    const sel = selection.toLowerCase();
-    if (sel === 'yes') return penaltyAwarded === true;
-    if (sel === 'no') return penaltyAwarded === false;
-    return false;
+  evaluatePenaltyBet (selection, results) {
+    const { penaltyAwarded } = results
+    const sel = selection.toLowerCase()
+    if (sel === 'yes') return penaltyAwarded === true
+    if (sel === 'no') return penaltyAwarded === false
+    return false
   }
 }
 
-module.exports = new BetSettlementService();
+module.exports = new BetSettlementService()

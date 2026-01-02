@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const transactionSchema = new mongoose.Schema({
   userId: {
@@ -57,24 +57,24 @@ const transactionSchema = new mongoose.Schema({
     default: Date.now,
     index: true
   }
-});
+})
 
 // Compound indexes for efficient queries
-transactionSchema.index({ userId: 1, type: 1 });
-transactionSchema.index({ userId: 1, status: 1 });
-transactionSchema.index({ userId: 1, createdAt: -1 });
+transactionSchema.index({ userId: 1, type: 1 })
+transactionSchema.index({ userId: 1, status: 1 })
+transactionSchema.index({ userId: 1, createdAt: -1 })
 
 // Static method to get transactions by user
-transactionSchema.statics.getByUser = function(userId, type = null, status = null) {
-  const query = { userId };
-  if (type) query.type = type;
-  if (status) query.status = status;
-  
-  return this.find(query).sort({ createdAt: -1 });
-};
+transactionSchema.statics.getByUser = function (userId, type = null, status = null) {
+  const query = { userId }
+  if (type) query.type = type
+  if (status) query.status = status
+
+  return this.find(query).sort({ createdAt: -1 })
+}
 
 // Static method to create deposit transaction
-transactionSchema.statics.createDeposit = function(userId, amount, method, currency, walletAddress) {
+transactionSchema.statics.createDeposit = function (userId, amount, method, currency, walletAddress) {
   return this.create({
     userId,
     type: 'deposit',
@@ -83,11 +83,11 @@ transactionSchema.statics.createDeposit = function(userId, amount, method, curre
     currency,
     walletAddress,
     description: `Deposit via ${method.toUpperCase()}`
-  });
-};
+  })
+}
 
 // Static method to create withdrawal transaction
-transactionSchema.statics.createWithdrawal = function(userId, amount, method, currency, walletAddress) {
+transactionSchema.statics.createWithdrawal = function (userId, amount, method, currency, walletAddress) {
   return this.create({
     userId,
     type: 'withdrawal',
@@ -96,35 +96,35 @@ transactionSchema.statics.createWithdrawal = function(userId, amount, method, cu
     currency,
     walletAddress,
     description: `Withdrawal via ${method.toUpperCase()}`
-  });
-};
+  })
+}
 
 // Static method to complete transaction
-transactionSchema.statics.completeTransaction = function(transactionId, transactionHash = null) {
+transactionSchema.statics.completeTransaction = function (transactionId, transactionHash = null) {
   const updateData = {
     status: 'completed',
     completedAt: new Date()
-  };
-  
-  if (transactionHash) {
-    updateData.transactionHash = transactionHash;
   }
-  
-  return this.findByIdAndUpdate(transactionId, updateData, { new: true });
-};
+
+  if (transactionHash) {
+    updateData.transactionHash = transactionHash
+  }
+
+  return this.findByIdAndUpdate(transactionId, updateData, { new: true })
+}
 
 // Static method to fail transaction
-transactionSchema.statics.failTransaction = function(transactionId, reason = null) {
+transactionSchema.statics.failTransaction = function (transactionId, reason = null) {
   const updateData = {
     status: 'failed',
     completedAt: new Date()
-  };
-  
-  if (reason) {
-    updateData.description = reason;
   }
-  
-  return this.findByIdAndUpdate(transactionId, updateData, { new: true });
-};
 
-module.exports = mongoose.model('Transaction', transactionSchema);
+  if (reason) {
+    updateData.description = reason
+  }
+
+  return this.findByIdAndUpdate(transactionId, updateData, { new: true })
+}
+
+module.exports = mongoose.model('Transaction', transactionSchema)

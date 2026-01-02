@@ -1,14 +1,14 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const Database = require('better-sqlite3')
+const path = require('path')
 
-const dbPath = process.env.SQLITE_PATH || path.join(__dirname, '..', 'data.sqlite');
-const db = new Database(dbPath, { verbose: null });
+const dbPath = process.env.SQLITE_PATH || path.join(__dirname, '..', 'data.sqlite')
+const db = new Database(dbPath, { verbose: null })
 
 // Pragmas for performance
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
-db.pragma('temp_store = MEMORY');
-db.pragma('mmap_size = 30000000000');
+db.pragma('journal_mode = WAL')
+db.pragma('synchronous = NORMAL')
+db.pragma('temp_store = MEMORY')
+db.pragma('mmap_size = 30000000000')
 
 // Initialize tables minimalistically
 db.exec(`
@@ -40,6 +40,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
-`);
+`)
 
-module.exports = { db };
+module.exports = { db }

@@ -1,5 +1,5 @@
-const Queue = require('bull');
-const logger = require('./logger');
+const Queue = require('bull')
+const logger = require('./logger')
 
 // Create a Redis-based queue for cron jobs
 const cronQueue = new Queue('cron jobs', {
@@ -17,46 +17,46 @@ const cronQueue = new Queue('cron jobs', {
       delay: 2000
     }
   }
-});
+})
 
 // Process jobs with concurrency limit
 cronQueue.process('fetchOdds', 1, async (job) => {
-  const { OddsApiService } = require('../services/oddsApiService');
-  const oddsApiService = new OddsApiService();
-  
+  // const { OddsApiService } = require('../services/oddsApiService')
+  // const oddsApiService = new OddsApiService()
+
   try {
-    logger.info('Processing odds fetch job...');
+    logger.info('Processing odds fetch job...')
     // Your existing odds fetching logic here
-    await job.progress(100);
-    return { success: true };
+    await job.progress(100)
+    return { success: true }
   } catch (error) {
-    logger.error('Error processing odds fetch job:', error);
-    throw error;
+    logger.error('Error processing odds fetch job:', error)
+    throw error
   }
-});
+})
 
 cronQueue.process('updateMatchStatuses', 1, async (job) => {
   try {
-    logger.info('Processing match status update job...');
+    logger.info('Processing match status update job...')
     // Your existing match status update logic here
-    await job.progress(100);
-    return { success: true };
+    await job.progress(100)
+    return { success: true }
   } catch (error) {
-    logger.error('Error processing match status update job:', error);
-    throw error;
+    logger.error('Error processing match status update job:', error)
+    throw error
   }
-});
+})
 
 cronQueue.process('cleanupOldData', 1, async (job) => {
   try {
-    logger.info('Processing cleanup job...');
+    logger.info('Processing cleanup job...')
     // Your existing cleanup logic here
-    await job.progress(100);
-    return { success: true };
+    await job.progress(100)
+    return { success: true }
   } catch (error) {
-    logger.error('Error processing cleanup job:', error);
-    throw error;
+    logger.error('Error processing cleanup job:', error)
+    throw error
   }
-});
+})
 
-module.exports = cronQueue;
+module.exports = cronQueue

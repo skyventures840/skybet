@@ -10,6 +10,6 @@ const config = {
   frontendUrl: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:3000'],
   env: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info'
-};
+}
 
-module.exports = config;
+module.exports = config
