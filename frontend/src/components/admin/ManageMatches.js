@@ -788,13 +788,13 @@ const ManageMatches = () => {
 
                   <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
                     <div className="bg-gray-700 p-2 rounded">
-                      <div className="text-gray-400 text-xs">Score</div>
+                      <div className="text-gray-300 text-xs">Score</div>
                       <div className="text-white font-mono">
                         {match.homeScore != null && match.awayScore != null ? `${match.homeScore} - ${match.awayScore}` : 'N/A'}
                       </div>
                     </div>
                     <div className="bg-gray-700 p-2 rounded">
-                      <div className="text-gray-400 text-xs">Odds</div>
+                      <div className="text-gray-300 text-xs">Odds</div>
                       <div>
                         {match.odds && Object.keys(match.odds).length > 0 ? (
                           <span className="text-green-400">✓ Set</span>
@@ -891,11 +891,11 @@ const ManageMatches = () => {
 
       {isModalOpen && (
         <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 overflow-y-auto">
-          <div className="modal-content bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl mx-auto my-8 flex flex-col max-h-[90vh]">
-            <div className="modal-header p-4 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-900 z-10 rounded-t-lg">
-              <h3 className="text-xl font-bold text-white">{currentMatch ? 'Edit Match' : 'Add New Match'}</h3>
+          <div className="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto my-8 flex flex-col max-h-[90vh]">
+            <div className="modal-header p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-black" style={{ color: 'black' }}>{currentMatch ? 'Edit Match' : 'Add New Match'}</h3>
               <button 
-                className="modal-close text-gray-400 hover:text-gray-200 text-2xl font-bold"
+                className="modal-close text-gray-600 hover:text-gray-900 text-2xl font-bold"
                 onClick={closeModal}
               >
                 ×
@@ -903,11 +903,11 @@ const ManageMatches = () => {
             </div>
             <div className="modal-body p-6 overflow-y-auto custom-scrollbar">
             {saveMessage && (
-              <div className="mb-4 text-green-400 text-sm">{saveMessage}</div>
+              <div className="mb-4 text-green-600 text-sm">{saveMessage}</div>
             )}
             <form onSubmit={handleCreateOrUpdateMatch} className="space-y-4">
               <div className="form-group">
-                <label style={{ color: 'white' }}>League:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>League:</label>
                 {!showAddLeague ? (
                   <div className="flex gap-2">
                     <select
@@ -921,10 +921,11 @@ const ManageMatches = () => {
                           setFormData({ ...formData, leagueName: e.target.value });
                         }
                       }}
+                      className="bg-white text-black border border-gray-300 rounded px-2 py-1"
                       required
                     >
                       <option value="">Select League</option>
-                      <option value="__add_new__" className="font-bold text-cyan-400">+ Add New League</option>
+                      <option value="__add_new__" className="font-bold text-cyan-600">+ Add New League</option>
                       {leagues.map(l => (
                         <option key={l._id} value={l.name}>{l.name}</option>
                       ))}
@@ -937,11 +938,12 @@ const ManageMatches = () => {
                       value={newLeagueName}
                       onChange={e => setNewLeagueName(e.target.value)}
                       placeholder="Enter new league name"
+                      className="bg-white text-black border border-gray-300 rounded px-2 py-1"
                       required
                     />
                     <button
                       type="button"
-                      className="btn-cancel"
+                      className="btn-cancel text-black border border-gray-300 px-2 py-1 rounded"
                       onClick={() => {
                         setShowAddLeague(false);
                         setNewLeagueName('');
@@ -954,21 +956,22 @@ const ManageMatches = () => {
               </div>
               {/* Video URL */}
               <div className="form-group">
-                <label style={{ color: 'white' }}>Match Video (MP4/WebM)</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Match Video (MP4/WebM)</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="form-group">
-                    <label style={{ color: 'white' }}>Video URL:</label>
+                    <label className="text-black" style={{ color: 'black' }}>Video URL:</label>
                     <input
                       type="url"
                       name="videoUrl"
                       placeholder="https://your-backend-url.onrender.com/uploads/videos/your-video.mp4"
                       value={formData.videoUrl}
                       onChange={handleInputChange}
+                      className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                     />
                   </div>
                   <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>Or upload video file:</label>
+                  <label className="block text-sm font-bold mb-2 text-black" style={{ color: 'black' }}>Or upload video file:</label>
                   <input
                     type="file"
                         accept="video/mp4,video/webm,video/ogg"
@@ -1021,9 +1024,9 @@ const ManageMatches = () => {
                             }
                           }
                         }}
-                        className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-gray-600 file:text-white hover:file:bg-gray-700"
+                        className="block w-full text-sm text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-black hover:file:bg-gray-300"
                       />
-                      <div className="text-xs text-gray-400 mt-1">You can upload before or after saving; the URL is stored with the match.</div>
+                      <div className="text-xs text-gray-500 mt-1">You can upload before or after saving; the URL is stored with the match.</div>
                     </div>
                   </div>
                 </div>
@@ -1032,19 +1035,19 @@ const ManageMatches = () => {
               <div className="md:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>Poster URL (thumbnail):</label>
+                <label className="block text-sm font-bold mb-2 text-black" style={{ color: 'black' }}>Poster URL (thumbnail):</label>
                 <input
                   type="url"
                       name="videoPosterUrl"
                       placeholder="https://your-backend-url.onrender.com/uploads/posters/poster.jpg"
                       value={formData.videoPosterUrl}
                       onChange={handleInputChange}
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-white leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                     />
                   </div>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
-                      <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>Or upload poster image:</label>
+                      <label className="block text-sm font-bold mb-2 text-black">Or upload poster image:</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -1097,77 +1100,82 @@ const ManageMatches = () => {
                             }
                           }
                         }}
-                        className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-gray-600 file:text-white hover:file:bg-gray-700"
+                        className="block w-full text-sm text-black file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-black hover:file:bg-gray-300"
                       />
-                      <div className="text-xs text-gray-400 mt-1">You can upload before or after saving; the URL is stored with the match.</div>
+                      <div className="text-xs text-gray-500 mt-1">You can upload before or after saving; the URL is stored with the match.</div>
                     </div>
                   </div>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>League ID (auto):</label>
+                <label className="block text-sm font-bold mb-2 text-black">League ID (auto):</label>
                 <input
                   type="text"
                   value={autoLeagueId}
                   readOnly
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-white leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-gray-100 border-gray-300"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold mb-2" style={{ color: 'white' }}>External ID (auto):</label>
+                <label className="block text-sm font-bold mb-2 text-black">External ID (auto):</label>
                 <input
                   type="text"
                   value={autoExternalId}
                   readOnly
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-white leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-gray-100 border-gray-300"
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Sport:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Sport:</label>
                 <input
                   type="text"
                   name="sport"
                   value={formData.sport}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                   required
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Home Team:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Home Team:</label>
                 <input
                   type="text"
                   name="homeTeam"
                   value={formData.homeTeam}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                   required
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Away Team:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Away Team:</label>
                 <input
                   type="text"
                   name="awayTeam"
                   value={formData.awayTeam}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                   required
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Start Time:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Start Time:</label>
                 <input
                   type="datetime-local"
                   name="startTime"
                   value={formData.startTime}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                   required
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Status:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Status:</label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                 >
                   <option value="upcoming">Upcoming</option>
                   <option value="live">Live</option>
@@ -1177,33 +1185,35 @@ const ManageMatches = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Home Score:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Home Score:</label>
                 <input
                   type="number"
                   name="homeScore"
                   value={formData.homeScore || ''}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                 />
               </div>
               <div className="form-group">
-                <label style={{ color: 'white' }}>Away Score:</label>
+                <label className="text-black font-bold" style={{ color: 'black' }}>Away Score:</label>
                 <input
                   type="number"
                   name="awayScore"
                   value={formData.awayScore || ''}
                   onChange={handleInputChange}
+                  className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                 />
               </div>
               {/* Odds Management with Tabs */}
-              <div className="form-group border-t border-gray-600 pt-4">
-                <label className="text-lg font-bold mb-2 block" style={{ color: 'white' }}>Market Management</label>
+              <div className="form-group border-t border-gray-300 pt-4">
+                <label className="text-lg font-bold mb-2 block text-black">Market Management</label>
                 
                 {/* Tabs Navigation */}
-                <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-600 pb-2">
-                  <button type="button" onClick={() => setActiveOddsTab('main')} className={`px-4 py-2 rounded ${activeOddsTab === 'main' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Main Markets</button>
-                  <button type="button" onClick={() => setActiveOddsTab('corners_cards')} className={`px-4 py-2 rounded ${activeOddsTab === 'corners_cards' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Corners & Cards</button>
-                  <button type="button" onClick={() => setActiveOddsTab('custom')} className={`px-4 py-2 rounded ${activeOddsTab === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Custom</button>
-                  <button type="button" onClick={() => setActiveOddsTab('results')} className={`px-4 py-2 rounded ${activeOddsTab === 'results' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Settlement Results</button>
+                <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-300 pb-2">
+                  <button type="button" onClick={() => setActiveOddsTab('main')} className={`px-4 py-2 rounded ${activeOddsTab === 'main' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Main Markets</button>
+                  <button type="button" onClick={() => setActiveOddsTab('corners_cards')} className={`px-4 py-2 rounded ${activeOddsTab === 'corners_cards' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Corners & Cards</button>
+                  <button type="button" onClick={() => setActiveOddsTab('custom')} className={`px-4 py-2 rounded ${activeOddsTab === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Custom</button>
+                  <button type="button" onClick={() => setActiveOddsTab('results')} className={`px-4 py-2 rounded ${activeOddsTab === 'results' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Settlement Results</button>
                 </div>
 
                 {/* Main Markets Tab */}
@@ -1211,59 +1221,59 @@ const ManageMatches = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* 1X2 */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>1X2 (Full Time Result / Match Winner)</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>1X2 (Full Time Result / Match Winner)</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="homeWin" placeholder="Home win (1)" value={formData.odds.homeWin || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="draw" placeholder="Draw (X)" value={formData.odds.draw || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="awayWin" placeholder="Away win (2)" value={formData.odds.awayWin || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="homeWin" placeholder="Home win (1)" value={formData.odds.homeWin || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="draw" placeholder="Draw (X)" value={formData.odds.draw || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="awayWin" placeholder="Away win (2)" value={formData.odds.awayWin || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
                       {/* Double Chance */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Double Chance</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Double Chance</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="doubleChance_1X" placeholder="Home or Draw (1X)" value={formData.odds.doubleChance_1X || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="doubleChance_12" placeholder="Home or Away (12)" value={formData.odds.doubleChance_12 || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="doubleChance_X2" placeholder="Away or Draw (X2)" value={formData.odds.doubleChance_X2 || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="doubleChance_1X" placeholder="Home or Draw (1X)" value={formData.odds.doubleChance_1X || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="doubleChance_12" placeholder="Home or Away (12)" value={formData.odds.doubleChance_12 || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="doubleChance_X2" placeholder="Away or Draw (X2)" value={formData.odds.doubleChance_X2 || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
                       {/* BTTS */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Both Teams to Score (BTTS)</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Both Teams to Score (BTTS)</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="btts_Yes" placeholder="Yes (both score)" value={formData.odds.btts_Yes || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="btts_No" placeholder="No" value={formData.odds.btts_No || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="btts_Yes" placeholder="Yes (both score)" value={formData.odds.btts_Yes || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="btts_No" placeholder="No" value={formData.odds.btts_No || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
                       {/* Odd/Even */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Odd/Even Goals</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Odd/Even Goals</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="oddEven_Odd" placeholder="Odd" value={formData.odds.oddEven_Odd || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="oddEven_Even" placeholder="Even" value={formData.odds.oddEven_Even || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="oddEven_Odd" placeholder="Odd" value={formData.odds.oddEven_Odd || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="oddEven_Even" placeholder="Even" value={formData.odds.oddEven_Even || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
                        {/* Penalty */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Penalty Yes/No</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Penalty Yes/No</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="penalty_Yes" placeholder="Yes" value={formData.odds.penalty_Yes || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="penalty_No" placeholder="No" value={formData.odds.penalty_No || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.01" name="penalty_Yes" placeholder="Yes" value={formData.odds.penalty_Yes || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="penalty_No" placeholder="No" value={formData.odds.penalty_No || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
                       {/* Goals Over/Under */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Over/Under Goals</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Over/Under Goals</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.5" name="total" placeholder="Line (e.g. 2.5)" value={formData.odds.total || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="over" placeholder="Over Odds" value={formData.odds.over || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                          <input type="number" step="0.01" name="under" placeholder="Under Odds" value={formData.odds.under || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <input type="number" step="0.5" name="total" placeholder="Line (e.g. 2.5)" value={formData.odds.total || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="over" placeholder="Over Odds" value={formData.odds.over || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="under" placeholder="Under Odds" value={formData.odds.under || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
                     </div>
@@ -1273,23 +1283,23 @@ const ManageMatches = () => {
                     {/* Extended Markets */}
                     <div className="grid grid-cols-1 gap-4">
                       {/* Handicap (Dynamic) */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Handicap (Asian/European)</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Handicap (Asian/European)</label>
                         <button type="button" onClick={() => addDynamicOddItem('handicaps', { line: '', homeOdds: '', awayOdds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Handicap Line</button>
                         <div className="space-y-2">
                           {(formData.odds.handicaps || []).map((item, idx) => (
                             <div key={idx} className="flex gap-2 items-center">
                               <div className="w-1/3">
-                                <label className="text-xs block" style={{ color: 'white' }}>Line (e.g. -1.5)</label>
-                                <input type="number" step="0.25" placeholder="Line" value={item.line || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'line', e.target.value)} className="w-full border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                                <label className="text-xs block text-black" style={{ color: 'black' }}>Line (e.g. -1.5)</label>
+                                <input type="number" step="0.25" placeholder="Line" value={item.line || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'line', e.target.value)} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                               </div>
                               <div className="w-1/3">
-                                 <label className="text-xs block" style={{ color: 'white' }}>Home Odds</label>
-                                 <input type="number" step="0.01" placeholder="Home" value={item.homeOdds || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'homeOdds', e.target.value)} className="w-full border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                                 <label className="text-xs block text-black" style={{ color: 'black' }}>Home Odds</label>
+                                 <input type="number" step="0.01" placeholder="Home" value={item.homeOdds || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'homeOdds', e.target.value)} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                               </div>
                               <div className="w-1/3">
-                                 <label className="text-xs block" style={{ color: 'white' }}>Away Odds</label>
-                                 <input type="number" step="0.01" placeholder="Away" value={item.awayOdds || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'awayOdds', e.target.value)} className="w-full border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                                 <label className="text-xs block text-black" style={{ color: 'black' }}>Away Odds</label>
+                                 <input type="number" step="0.01" placeholder="Away" value={item.awayOdds || ''} onChange={(e) => handleDynamicOddsChange('handicaps', idx, 'awayOdds', e.target.value)} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                               </div>
                               <button type="button" onClick={() => removeDynamicOddItem('handicaps', idx)} className="text-red-500 font-bold px-2 self-end mb-1">X</button>
                             </div>
@@ -1298,14 +1308,14 @@ const ManageMatches = () => {
                       </div>
 
                       {/* Correct Score */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Correct Score</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Correct Score</label>
                         <button type="button" onClick={() => addDynamicOddItem('correctScore', { score: '', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Score</button>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                           {(formData.odds.correctScore || []).map((item, idx) => (
                             <div key={idx} className="flex gap-2">
-                              <input type="text" placeholder="Score (1-0)" value={item.score || ''} onChange={(e) => handleDynamicOddsChange('correctScore', idx, 'score', e.target.value)} className="flex-1 border border-gray-400 rounded p-1" style={{ color: 'white' }} />
-                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('correctScore', idx, 'odds', e.target.value)} className="w-20 border border-gray-400 rounded p-1" style={{ color: 'white' }} />
+                              <input type="text" placeholder="Score (1-0)" value={item.score || ''} onChange={(e) => handleDynamicOddsChange('correctScore', idx, 'score', e.target.value)} className="flex-1 bg-white text-black border border-gray-300 rounded p-1" />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('correctScore', idx, 'odds', e.target.value)} className="w-20 bg-white text-black border border-gray-300 rounded p-1" />
                               <button type="button" onClick={() => removeDynamicOddItem('correctScore', idx)} className="text-red-500 font-bold px-2">X</button>
                             </div>
                           ))}
@@ -1313,19 +1323,19 @@ const ManageMatches = () => {
                       </div>
 
                       {/* Goalscorers */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Goalscorer Markets</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Goalscorer Markets</label>
                         <button type="button" onClick={() => addDynamicOddItem('goalScorers', { player: '', type: 'anytime', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Scorer</button>
                         <div className="space-y-2">
                           {(formData.odds.goalScorers || []).map((item, idx) => (
                             <div key={idx} className="flex gap-2 items-center">
-                              <input type="text" placeholder="Player Name" value={item.player || ''} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'player', e.target.value)} className="flex-1 border rounded p-1" style={{ color: 'white' }} />
-                              <select value={item.type} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'type', e.target.value)} className="border rounded p-1 w-24" style={{ color: 'white' }}>
+                              <input type="text" placeholder="Player Name" value={item.player || ''} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'player', e.target.value)} className="flex-1 bg-white text-black border border-gray-300 rounded p-1" />
+                              <select value={item.type} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'type', e.target.value)} className="bg-white text-black border border-gray-300 rounded p-1 w-24">
                                   <option value="first">First</option>
                                   <option value="anytime">Anytime</option>
                                   <option value="last">Last</option>
                               </select>
-                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'odds', e.target.value)} className="w-20 border rounded p-1" style={{ color: 'white' }} />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('goalScorers', idx, 'odds', e.target.value)} className="w-20 bg-white text-black border border-gray-300 rounded p-1" />
                               <button type="button" onClick={() => removeDynamicOddItem('goalScorers', idx)} className="text-red-500 font-bold px-2">X</button>
                             </div>
                           ))}
@@ -1333,8 +1343,8 @@ const ManageMatches = () => {
                       </div>
 
                        {/* HT/FT */}
-                       <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-2" style={{ color: 'white' }}>Half-Time/Full-Time (HT/FT)</label>
+                       <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-2 text-black" style={{ color: 'black' }}>Half-Time/Full-Time (HT/FT)</label>
                         <div className="grid grid-cols-3 gap-2">
                           {['HH', 'HD', 'HA', 'DH', 'DD', 'DA', 'AH', 'AD', 'AA'].map(key => {
                               const labels = {
@@ -1344,8 +1354,8 @@ const ManageMatches = () => {
                               };
                               return (
                                   <div key={key}>
-                                      <label className="text-xs block" style={{ color: 'white' }}>{labels[key]}</label>
-                                      <input type="number" step="0.01" name={`ht_ft_${key}`} value={formData.odds[`ht_ft_${key}`] || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                                      <label className="text-xs block text-black" style={{ color: 'black' }}>{labels[key]}</label>
+                                      <input type="number" step="0.01" name={`ht_ft_${key}`} value={formData.odds[`ht_ft_${key}`] || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                                   </div>
                               );
                           })}
@@ -1353,14 +1363,14 @@ const ManageMatches = () => {
                       </div>
 
                       {/* Multi Goals */}
-                      <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Multi Goals / Goal Bands</label>
+                      <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Multi Goals / Goal Bands</label>
                         <button type="button" onClick={() => addDynamicOddItem('multiGoals', { range: '', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Range</button>
                         <div className="space-y-2">
                           {(formData.odds.multiGoals || []).map((item, idx) => (
                             <div key={idx} className="flex gap-2">
-                              <input type="text" placeholder="Range (e.g. 2-3)" value={item.range || ''} onChange={(e) => handleDynamicOddsChange('multiGoals', idx, 'range', e.target.value)} className="flex-1 border rounded p-1" style={{ color: 'white' }} />
-                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('multiGoals', idx, 'odds', e.target.value)} className="w-24 border rounded p-1" style={{ color: 'white' }} />
+                              <input type="text" placeholder="Range (e.g. 2-3)" value={item.range || ''} onChange={(e) => handleDynamicOddsChange('multiGoals', idx, 'range', e.target.value)} className="flex-1 bg-white text-black border border-gray-300 rounded p-1" />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('multiGoals', idx, 'odds', e.target.value)} className="w-24 bg-white text-black border border-gray-300 rounded p-1" />
                               <button type="button" onClick={() => removeDynamicOddItem('multiGoals', idx)} className="text-red-500 font-bold px-2">X</button>
                             </div>
                           ))}
@@ -1368,14 +1378,14 @@ const ManageMatches = () => {
                       </div>
 
                        {/* Winning Margin */}
-                       <div className="form-group p-2 bg-gray-800 rounded">
-                        <label className="font-bold block mb-1" style={{ color: 'white' }}>Winning Margin</label>
+                       <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                        <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Winning Margin</label>
                         <button type="button" onClick={() => addDynamicOddItem('winningMargin', { margin: '', odds: '' })} className="bg-green-600 text-white px-2 py-1 rounded text-xs mb-2">+ Add Margin</button>
                         <div className="space-y-2">
                           {(formData.odds.winningMargin || []).map((item, idx) => (
                             <div key={idx} className="flex gap-2">
-                              <input type="text" placeholder="Margin (e.g. Home by 1)" value={item.margin || ''} onChange={(e) => handleDynamicOddsChange('winningMargin', idx, 'margin', e.target.value)} className="flex-1 border rounded p-1" style={{ color: 'white' }} />
-                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('winningMargin', idx, 'odds', e.target.value)} className="w-24 border rounded p-1" style={{ color: 'white' }} />
+                              <input type="text" placeholder="Margin (e.g. Home by 1)" value={item.margin || ''} onChange={(e) => handleDynamicOddsChange('winningMargin', idx, 'margin', e.target.value)} className="flex-1 bg-white text-black border border-gray-300 rounded p-1" />
+                              <input type="number" step="0.01" placeholder="Odds" value={item.odds || ''} onChange={(e) => handleDynamicOddsChange('winningMargin', idx, 'odds', e.target.value)} className="w-24 bg-white text-black border border-gray-300 rounded p-1" />
                               <button type="button" onClick={() => removeDynamicOddItem('winningMargin', idx)} className="text-red-500 font-bold px-2">X</button>
                             </div>
                           ))}
@@ -1389,22 +1399,22 @@ const ManageMatches = () => {
                 {activeOddsTab === 'corners_cards' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Corners */}
-                    <div className="form-group p-2 bg-gray-800 rounded">
-                      <label className="font-bold block mb-1" style={{ color: 'white' }}>Corners Over/Under</label>
+                    <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                      <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Corners Over/Under</label>
                       <div className="space-y-2">
-                        <input type="number" step="0.5" name="corners_line" placeholder="Line (e.g. 9.5)" value={formData.odds.corners_line || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                        <input type="number" step="0.01" name="corners_over" placeholder="Over Odds" value={formData.odds.corners_over || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                        <input type="number" step="0.01" name="corners_under" placeholder="Under Odds" value={formData.odds.corners_under || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        <input type="number" step="0.5" name="corners_line" placeholder="Line (e.g. 9.5)" value={formData.odds.corners_line || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="corners_over" placeholder="Over Odds" value={formData.odds.corners_over || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="corners_under" placeholder="Under Odds" value={formData.odds.corners_under || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                       </div>
                     </div>
 
                     {/* Cards */}
-                    <div className="form-group p-2 bg-gray-800 rounded">
-                      <label className="font-bold block mb-1" style={{ color: 'white' }}>Cards Over/Under</label>
+                    <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                      <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Cards Over/Under</label>
                       <div className="space-y-2">
-                        <input type="number" step="0.5" name="cards_line" placeholder="Line (e.g. 3.5)" value={formData.odds.cards_line || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                        <input type="number" step="0.01" name="cards_over" placeholder="Over Odds" value={formData.odds.cards_over || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
-                        <input type="number" step="0.01" name="cards_under" placeholder="Under Odds" value={formData.odds.cards_under || ''} onChange={handleOddsChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                        <input type="number" step="0.5" name="cards_line" placeholder="Line (e.g. 3.5)" value={formData.odds.cards_line || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="cards_over" placeholder="Over Odds" value={formData.odds.cards_over || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="cards_under" placeholder="Under Odds" value={formData.odds.cards_under || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                       </div>
                     </div>
                   </div>
@@ -1414,21 +1424,20 @@ const ManageMatches = () => {
                 {activeOddsTab === 'custom' && (
                   <div className="space-y-4">
                      <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-lg" style={{ color: 'white' }}>Custom Markets</h3>
+                        <h3 className="font-bold text-lg text-black" style={{ color: 'black' }}>Custom Markets</h3>
                         <button type="button" onClick={addCustomMarket} className="bg-blue-600 text-white px-3 py-1 rounded text-sm">+ New Market</button>
                      </div>
-                     <p className="text-sm italic mb-2" style={{ color: 'gray' }}>Create your own markets with custom options.</p>
+                     <p className="text-sm italic mb-2 text-gray-600">Create your own markets with custom options.</p>
                      
                      {(formData.odds.customMarkets || []).map((market, mIdx) => (
-                       <div key={market.id || mIdx} className="bg-gray-800 p-4 rounded border border-gray-600">
+                       <div key={market.id || mIdx} className="bg-gray-100 p-4 rounded border border-gray-300">
                           <div className="flex justify-between items-center mb-2">
                              <input 
                                 type="text" 
                                 placeholder="Market Name (e.g. Method of Victory)" 
                                 value={market.name || ''} 
                                 onChange={(e) => updateCustomMarketName(mIdx, e.target.value)}
-                                className="font-bold text-lg bg-transparent border-b border-gray-400 focus:outline-none w-1/2"
-                                style={{ color: 'white' }}
+                                className="font-bold text-lg bg-white text-black border border-gray-300 rounded p-1 focus:outline-none w-1/2"
                              />
                              <div className="flex gap-2">
                                 <button type="button" onClick={() => addCustomMarketOption(mIdx)} className="bg-green-600 text-white px-2 py-1 rounded text-xs">+ Add Option</button>
@@ -1438,14 +1447,13 @@ const ManageMatches = () => {
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                              {(market.options || []).map((opt, oIdx) => (
-                                <div key={oIdx} className="flex gap-2 items-center bg-gray-700 p-2 rounded border border-gray-600">
+                                <div key={oIdx} className="flex gap-2 items-center bg-white p-2 rounded border border-gray-300">
                                    <input 
                                       type="text" 
                                       placeholder="Option Name" 
                                       value={opt.name || ''} 
                                       onChange={(e) => updateCustomMarketOption(mIdx, oIdx, 'name', e.target.value)}
-                                      className="flex-1 border rounded p-1 text-sm"
-                                      style={{ color: 'white' }}
+                                      className="flex-1 bg-white text-black border border-gray-300 rounded p-1 text-sm"
                                    />
                                    <input 
                                       type="number" 
@@ -1453,8 +1461,7 @@ const ManageMatches = () => {
                                       placeholder="Odds" 
                                       value={opt.odds || ''} 
                                       onChange={(e) => updateCustomMarketOption(mIdx, oIdx, 'odds', e.target.value)}
-                                      className="w-20 border rounded p-1 text-sm"
-                                      style={{ color: 'white' }}
+                                      className="w-20 bg-white text-black border border-gray-300 rounded p-1 text-sm"
                                    />
                                    <button type="button" onClick={() => removeCustomMarketOption(mIdx, oIdx)} className="text-red-500 font-bold px-2">X</button>
                                 </div>
@@ -1468,73 +1475,73 @@ const ManageMatches = () => {
                 {/* Settlement Results Tab */}
                 {activeOddsTab === 'results' && (
                   <div className="space-y-4">
-                    <p className="text-sm mb-2" style={{ color: '#d1d5db' }}>Enter the final results here for settlement purposes. These values will determine winning bets.</p>
+                    <p className="text-sm mb-2 text-gray-600">Enter the final results here for settlement purposes. These values will determine winning bets.</p>
                     
                     {/* Final Scores & Half Time Scores */}
-                    <div className="form-group p-2 bg-gray-800 rounded">
-                      <label className="font-bold block mb-2" style={{ color: 'white' }}>Match Scores</label>
+                    <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                      <label className="font-bold block mb-2 text-black">Match Scores</label>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Home Score (FT)</label>
-                          <input type="number" name="homeScore" value={formData.predeterminedResult?.homeScore || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Home Score (FT)</label>
+                          <input type="number" name="homeScore" value={formData.predeterminedResult?.homeScore || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Away Score (FT)</label>
-                          <input type="number" name="awayScore" value={formData.predeterminedResult?.awayScore || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Away Score (FT)</label>
+                          <input type="number" name="awayScore" value={formData.predeterminedResult?.awayScore || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Home Score (HT)</label>
-                          <input type="number" name="homeScoreHT" value={formData.predeterminedResult?.homeScoreHT || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Home Score (HT)</label>
+                          <input type="number" name="homeScoreHT" value={formData.predeterminedResult?.homeScoreHT || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Away Score (HT)</label>
-                          <input type="number" name="awayScoreHT" value={formData.predeterminedResult?.awayScoreHT || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Away Score (HT)</label>
+                          <input type="number" name="awayScoreHT" value={formData.predeterminedResult?.awayScoreHT || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
                     </div>
 
                     {/* Corners & Cards & Penalty Results */}
-                    <div className="form-group p-2 bg-gray-800 rounded">
-                      <label className="font-bold block mb-2" style={{ color: 'white' }}>Corners, Cards & Events</label>
+                    <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                      <label className="font-bold block mb-2 text-black">Corners, Cards & Events</label>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Home Corners</label>
-                          <input type="number" name="homeCorners" value={formData.predeterminedResult?.homeCorners || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Home Corners</label>
+                          <input type="number" name="homeCorners" value={formData.predeterminedResult?.homeCorners || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Away Corners</label>
-                          <input type="number" name="awayCorners" value={formData.predeterminedResult?.awayCorners || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Away Corners</label>
+                          <input type="number" name="awayCorners" value={formData.predeterminedResult?.awayCorners || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Home Cards</label>
-                          <input type="number" name="homeCards" value={formData.predeterminedResult?.homeCards || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Home Cards</label>
+                          <input type="number" name="homeCards" value={formData.predeterminedResult?.homeCards || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Away Cards</label>
-                          <input type="number" name="awayCards" value={formData.predeterminedResult?.awayCards || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} />
+                          <label className="text-xs block text-black">Away Cards</label>
+                          <input type="number" name="awayCards" value={formData.predeterminedResult?.awayCards || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                         <div className="flex items-center mt-4">
                           <input type="checkbox" name="penaltyAwarded" checked={formData.predeterminedResult?.penaltyAwarded || false} onChange={(e) => handleResultChange({ target: { name: 'penaltyAwarded', value: e.target.checked } })} className="mr-2" />
-                          <label className="text-xs block" style={{ color: 'white' }}>Penalty Awarded?</label>
+                          <label className="text-xs block text-black">Penalty Awarded?</label>
                         </div>
                       </div>
                     </div>
 
                     {/* Goalscorers Results */}
-                    <div className="form-group p-2 bg-gray-800 rounded">
-                      <label className="font-bold block mb-2" style={{ color: 'white' }}>Goalscorer Results</label>
+                    <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
+                      <label className="font-bold block mb-2 text-black">Goalscorer Results</label>
                       <div className="space-y-2">
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>First Goalscorer (Name)</label>
-                          <input type="text" name="firstGoalscorer" value={formData.predeterminedResult?.firstGoalscorer || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} placeholder="e.g. Lionel Messi" />
+                          <label className="text-xs block text-black">First Goalscorer (Name)</label>
+                          <input type="text" name="firstGoalscorer" value={formData.predeterminedResult?.firstGoalscorer || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" placeholder="e.g. Lionel Messi" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Anytime Goalscorers (Comma separated)</label>
-                          <input type="text" name="anytimeGoalscorers" value={formData.predeterminedResult?.anytimeGoalscorers || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} placeholder="e.g. Lionel Messi, Neymar, Mbappe" />
+                          <label className="text-xs block text-black">Anytime Goalscorers (Comma separated)</label>
+                          <input type="text" name="anytimeGoalscorers" value={formData.predeterminedResult?.anytimeGoalscorers || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" placeholder="e.g. Lionel Messi, Neymar, Mbappe" />
                         </div>
                         <div>
-                          <label className="text-xs block" style={{ color: 'white' }}>Last Goalscorer (Name)</label>
-                          <input type="text" name="lastGoalscorer" value={formData.predeterminedResult?.lastGoalscorer || ''} onChange={handleResultChange} className="w-full border rounded p-1" style={{ color: 'white' }} placeholder="e.g. Mbappe" />
+                          <label className="text-xs block text-black">Last Goalscorer (Name)</label>
+                          <input type="text" name="lastGoalscorer" value={formData.predeterminedResult?.lastGoalscorer || ''} onChange={handleResultChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" placeholder="e.g. Mbappe" />
                         </div>
                       </div>
                     </div>
@@ -1543,10 +1550,10 @@ const ManageMatches = () => {
               </div>
 
               {/* Match Scripting Section - Moved to Results Tab, keeping Scheduled Events */}
-              <div className="border-t border-gray-600 pt-4 mt-4 mb-4">
+              <div className="border-t border-gray-300 pt-4 mt-4 mb-4">
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-sm font-bold" style={{ color: 'white' }}>Scheduled Events (Live Simulation)</label>
+                    <label className="block text-sm font-bold text-black">Scheduled Events (Live Simulation)</label>
                     <button type="button" onClick={addScheduledEvent} className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700">+ Add Event</button>
                   </div>
                   
@@ -1555,47 +1562,47 @@ const ManageMatches = () => {
                   )}
 
                   {scheduledEvents.map((event, index) => (
-                    <div key={index} className="flex gap-2 mb-2 items-center bg-gray-100 p-2 rounded border border-gray-600">
+                    <div key={index} className="flex gap-2 mb-2 items-center bg-gray-100 p-2 rounded border border-gray-300">
                       <div className="w-16">
-                        <label className="text-xs block" style={{ color: 'white' }}>Min</label>
+                        <label className="text-xs block text-black">Min</label>
                         <input
                           type="number"
                           placeholder="Min"
                           value={event.minute}
                           onChange={(e) => updateScheduledEvent(index, 'minute', Number(e.target.value))}
-                          className="w-full p-1 text-white rounded border border-gray-400"
+                          className="w-full p-1 bg-white text-black rounded border border-gray-300"
                         />
                       </div>
                       <div className="w-24">
-                        <label className="text-xs block" style={{ color: 'white' }}>Type</label>
+                        <label className="text-xs block text-black">Type</label>
                         <select
                           value={event.type}
                           onChange={(e) => updateScheduledEvent(index, 'type', e.target.value)}
-                          className="w-full p-1 text-white rounded border border-gray-400"
+                          className="w-full p-1 bg-white text-black rounded border border-gray-300"
                         >
                           <option value="goal">Goal</option>
                           <option value="card">Card</option>
                         </select>
                       </div>
                       <div className="w-24">
-                         <label className="text-xs block" style={{ color: 'white' }}>Team</label>
+                         <label className="text-xs block text-black">Team</label>
                         <select
                           value={event.team}
                           onChange={(e) => updateScheduledEvent(index, 'team', e.target.value)}
-                          className="w-full p-1 text-white rounded border border-gray-400"
+                          className="w-full p-1 bg-white text-black rounded border border-gray-300"
                         >
                           <option value="home">Home</option>
                           <option value="away">Away</option>
                         </select>
                       </div>
                       <div className="flex-1">
-                         <label className="text-xs block" style={{ color: 'white' }}>Player/Desc</label>
+                         <label className="text-xs block text-black">Player/Desc</label>
                         <input
                           type="text"
                           placeholder="Player Name"
                           value={event.player}
                           onChange={(e) => updateScheduledEvent(index, 'player', e.target.value)}
-                          className="w-full p-1 text-white rounded border border-gray-400"
+                          className="w-full p-1 bg-white text-black rounded border border-gray-300"
                         />
                       </div>
                       <button type="button" onClick={() => removeScheduledEvent(index)} className="text-red-500 font-bold px-2 self-end mb-1">X</button>
@@ -1626,52 +1633,55 @@ const ManageMatches = () => {
       )}
 
       {isResultModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Update Match Result</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-black">Update Match Result</h3>
               <button
-                className="modal-close"
+                className="text-gray-600 hover:text-gray-900 text-2xl font-bold"
                 onClick={closeResultModal}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="p-6 overflow-y-auto custom-scrollbar">
               <form onSubmit={handleUpdateResult} className="space-y-4">
-                <div className="text-sm mb-2" style={{ color: 'white' }}>
+                <div className="text-sm mb-2 text-gray-700">
                   {currentMatch && (
                     <span>
                       {currentMatch.homeTeam} vs {currentMatch.awayTeam}
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-100 p-4 rounded border border-gray-300">
                   <div className="form-group">
-                    <label style={{ color: 'white' }}>Home Score:</label>
+                    <label className="text-black block mb-1">Home Score:</label>
                     <input
                       type="number"
                       min="0"
                       value={resultHomeScore}
                       onChange={(e) => setResultHomeScore(e.target.value)}
                       required
+                      className="w-full bg-white text-black border border-gray-300 rounded p-1"
                     />
                   </div>
                   <div className="form-group">
-                    <label style={{ color: 'white' }}>Away Score:</label>
+                    <label className="text-black block mb-1">Away Score:</label>
                     <input
                       type="number"
                       min="0"
                       value={resultAwayScore}
                       onChange={(e) => setResultAwayScore(e.target.value)}
                       required
+                      className="w-full bg-white text-black border border-gray-300 rounded p-1"
                     />
                   </div>
                   <div className="form-group">
-                    <label style={{ color: 'white' }}>Completed:</label>
+                    <label className="text-black block mb-1">Completed:</label>
                     <select
                       value={resultCompleted ? 'true' : 'false'}
                       onChange={(e) => setResultCompleted(e.target.value === 'true')}
+                      className="w-full bg-white text-black border border-gray-300 rounded p-1"
                     >
                       <option value="true">Yes</option>
                       <option value="false">No</option>
@@ -1680,119 +1690,131 @@ const ManageMatches = () => {
                 </div>
 
                 {/* Extended Results: Half Time */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-bold mb-2" style={{ color: 'white' }}>Half Time Scores</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border-t border-gray-300 pt-4 mt-4">
+                  <h4 className="font-bold mb-2 text-black">Half Time Scores</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-100 p-4 rounded border border-gray-300">
                     <div className="form-group">
-                      <label style={{ color: 'white' }}>HT Home Score:</label>
+                      <label className="text-black block mb-1">HT Home Score:</label>
                       <input
                         type="number"
                         min="0"
                         value={resultHomeScoreHT}
                         onChange={(e) => setResultHomeScoreHT(e.target.value)}
                         placeholder="Optional"
+                        className="w-full bg-white text-black border border-gray-300 rounded p-1"
                       />
                     </div>
                     <div className="form-group">
-                      <label style={{ color: 'white' }}>HT Away Score:</label>
+                      <label className="text-black block mb-1">HT Away Score:</label>
                       <input
                         type="number"
                         min="0"
                         value={resultAwayScoreHT}
                         onChange={(e) => setResultAwayScoreHT(e.target.value)}
                         placeholder="Optional"
+                        className="w-full bg-white text-black border border-gray-300 rounded p-1"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Extended Results: Stats */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-bold mb-2" style={{ color: 'white' }}>Match Stats</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="border-t border-gray-300 pt-4 mt-4">
+                  <h4 className="font-bold mb-2 text-black">Match Stats</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-100 p-4 rounded border border-gray-300">
                     <div className="form-group">
-                      <label style={{ color: 'white' }}>Home Corners:</label>
+                      <label className="text-black block mb-1">Home Corners:</label>
                       <input
                         type="number"
                         min="0"
                         value={resultHomeCorners}
                         onChange={(e) => setResultHomeCorners(e.target.value)}
                         placeholder="Opt"
+                        className="w-full bg-white text-black border border-gray-300 rounded p-1"
                       />
                     </div>
                     <div className="form-group">
-                      <label style={{ color: 'white' }}>Away Corners:</label>
+                      <label className="text-black block mb-1">Away Corners:</label>
                       <input
                         type="number"
                         min="0"
                         value={resultAwayCorners}
                         onChange={(e) => setResultAwayCorners(e.target.value)}
                         placeholder="Opt"
+                        className="w-full bg-white text-black border border-gray-300 rounded p-1"
                       />
                     </div>
                     <div className="form-group">
-                      <label style={{ color: 'white' }}>Home Cards:</label>
+                      <label className="text-black block mb-1">Home Cards:</label>
                       <input
                         type="number"
                         min="0"
                         value={resultHomeCards}
                         onChange={(e) => setResultHomeCards(e.target.value)}
                         placeholder="Opt"
+                        className="w-full bg-white text-black border border-gray-300 rounded p-1"
                       />
                     </div>
                     <div className="form-group">
-                      <label style={{ color: 'white' }}>Away Cards:</label>
+                      <label className="text-black block mb-1">Away Cards:</label>
                       <input
                         type="number"
                         min="0"
                         value={resultAwayCards}
                         onChange={(e) => setResultAwayCards(e.target.value)}
                         placeholder="Opt"
+                        className="w-full bg-white text-black border border-gray-300 rounded p-1"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Extended Results: Events */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-bold mb-2" style={{ color: 'white' }}>Key Events</h4>
-                  <div className="mb-4">
-                    <label className="flex items-center gap-2" style={{ color: 'white', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={resultPenaltyAwarded}
-                        onChange={(e) => setResultPenaltyAwarded(e.target.checked)}
-                      />
-                      <span>Penalty Awarded?</span>
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="form-group">
-                      <label style={{ color: 'white' }}>First Goalscorer:</label>
-                      <input
-                        type="text"
-                        value={resultFirstGoalscorer}
-                        onChange={(e) => setResultFirstGoalscorer(e.target.value)}
-                        placeholder="Player Name"
-                      />
+                <div className="border-t border-gray-300 pt-4 mt-4">
+                  <h4 className="font-bold mb-2 text-black">Key Events</h4>
+                  <div className="bg-gray-100 p-4 rounded border border-gray-300">
+                    <div className="mb-4">
+                      <label className="flex items-center gap-2 text-black cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={resultPenaltyAwarded}
+                          onChange={(e) => setResultPenaltyAwarded(e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span>Penalty Awarded?</span>
+                      </label>
                     </div>
-                    <div className="form-group">
-                      <label style={{ color: 'white' }}>Last Goalscorer:</label>
-                      <input
-                        type="text"
-                        value={resultLastGoalscorer}
-                        onChange={(e) => setResultLastGoalscorer(e.target.value)}
-                        placeholder="Player Name"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: 'white' }}>Anytime Scorers:</label>
-                      <input
-                        type="text"
-                        value={resultAnytimeGoalscorers}
-                        onChange={(e) => setResultAnytimeGoalscorers(e.target.value)}
-                        placeholder="Comma separated"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="form-group">
+                        <label className="text-black block mb-1">First Goalscorer:</label>
+                        <input
+                          type="text"
+                          value={resultFirstGoalscorer}
+                          onChange={(e) => setResultFirstGoalscorer(e.target.value)}
+                          placeholder="Player Name"
+                          className="w-full bg-white text-black border border-gray-300 rounded p-1"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="text-black block mb-1">Last Goalscorer:</label>
+                        <input
+                          type="text"
+                          value={resultLastGoalscorer}
+                          onChange={(e) => setResultLastGoalscorer(e.target.value)}
+                          placeholder="Player Name"
+                          className="w-full bg-white text-black border border-gray-300 rounded p-1"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="text-black block mb-1">Anytime Scorers:</label>
+                        <input
+                          type="text"
+                          value={resultAnytimeGoalscorers}
+                          onChange={(e) => setResultAnytimeGoalscorers(e.target.value)}
+                          placeholder="Comma separated"
+                          className="w-full bg-white text-black border border-gray-300 rounded p-1"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

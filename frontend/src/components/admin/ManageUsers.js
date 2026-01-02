@@ -258,8 +258,8 @@ const ManageUsers = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-6 text-white">Edit User</h3>
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-2xl font-bold mb-6 text-black">Edit User</h3>
             <form onSubmit={handleUpdateUser} className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-black text-sm font-bold mb-2">Username:</label>
@@ -268,7 +268,7 @@ const ManageUsers = () => {
                   name="username"
                   value={formData.username}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   required
                 />
               </div>
@@ -279,7 +279,7 @@ const ManageUsers = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   required
                 />
               </div>
@@ -291,7 +291,7 @@ const ManageUsers = () => {
                   name="balance"
                   value={formData.balance}
                   onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-700 border-gray-600"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   required
                 />
               </div>

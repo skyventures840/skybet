@@ -32,19 +32,19 @@ const ViewStatistics = () => {
       {stats ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-gray-700 p-4 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-2">Total Users</h3>
+            <h3 className="text-xl font-semibold mb-2 text-white">Total Users</h3>
             <p className="text-gray-300 text-2xl">{stats.totalUsers}</p>
           </div>
           <div className="bg-gray-700 p-4 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-2">Total Matches</h3>
+            <h3 className="text-xl font-semibold mb-2 text-white">Total Matches</h3>
             <p className="text-gray-300 text-2xl">{stats.totalMatches}</p>
           </div>
           <div className="bg-gray-700 p-4 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-2">Active Bets</h3>
+            <h3 className="text-xl font-semibold mb-2 text-white">Active Bets</h3>
             <p className="text-gray-300 text-2xl">{stats.activeBets}</p>
           </div>
           <div className="bg-gray-700 p-4 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-2">Total Revenue (Example)</h3>
+            <h3 className="text-xl font-semibold mb-2 text-white">Total Revenue (Example)</h3>
             <p className="text-gray-300 text-2xl">${stats.totalRevenue ? stats.totalRevenue.toFixed(2) : '0.00'}</p>
           </div>
           {/* Add more statistics as needed */}

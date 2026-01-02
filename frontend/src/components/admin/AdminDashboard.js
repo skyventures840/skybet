@@ -1139,18 +1139,18 @@ const AdminDashboard = () => {
 
       {/* Bet Edit Modal */}
       {betEditModal.open && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Edit Bet</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-black">Edit Bet</h3>
               <button 
-                className="modal-close"
+                className="text-gray-600 hover:text-gray-900 text-2xl font-bold"
                 onClick={() => setBetEditModal({ open: false, bet: null })}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="p-6 overflow-y-auto custom-scrollbar">
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
@@ -1177,8 +1177,8 @@ const AdminDashboard = () => {
                   alert('Failed to update bet: ' + (error.response?.data?.error || error.message));
                 }
               }}>
-                <div className="form-group">
-                  <label style={{ color: 'black' }}>Stake:</label>
+                <div className="mb-4">
+                  <label className="block text-black text-sm font-bold mb-2">Stake:</label>
                   <input 
                     name="stake"
                     type="number" 
@@ -1186,10 +1186,11 @@ const AdminDashboard = () => {
                     min="0.01"
                     defaultValue={betEditModal.bet?.stake}
                     required
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   />
                 </div>
-                <div className="form-group">
-                  <label style={{ color: 'black' }}>Odds:</label>
+                <div className="mb-4">
+                  <label className="block text-black text-sm font-bold mb-2">Odds:</label>
                   <input 
                     name="odds"
                     type="number" 
@@ -1197,31 +1198,43 @@ const AdminDashboard = () => {
                     min="1.01"
                     defaultValue={betEditModal.bet?.odds}
                     required
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   />
                 </div>
-                <div className="form-group">
-                  <label style={{ color: 'black' }}>Selection:</label>
+                <div className="mb-4">
+                  <label className="block text-black text-sm font-bold mb-2">Selection:</label>
                   <input 
                     name="selection"
                     type="text"
                     defaultValue={betEditModal.bet?.selection}
                     required
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   />
                 </div>
-                <div className="form-group">
-                  <label style={{ color: 'black' }}>Market:</label>
+                <div className="mb-4">
+                  <label className="block text-black text-sm font-bold mb-2">Market:</label>
                   <input 
                     name="market"
                     type="text"
                     defaultValue={betEditModal.bet?.market}
                     required
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   />
                 </div>
-                <div className="form-actions">
-                  <button type="button" onClick={() => setBetEditModal({ open: false, bet: null })}>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button 
+                    type="button" 
+                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                    onClick={() => setBetEditModal({ open: false, bet: null })}
+                  >
                     Cancel
                   </button>
-                  <button type="submit">Save Changes</button>
+                  <button 
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Save Changes
+                  </button>
                 </div>
               </form>
             </div>
@@ -1231,18 +1244,18 @@ const AdminDashboard = () => {
 
       {/* Bet Settle Modal */}
       {betSettleModal.open && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Settle Bet</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-black">Settle Bet</h3>
               <button 
-                className="modal-close"
+                className="text-gray-600 hover:text-gray-900 text-2xl font-bold"
                 onClick={() => setBetSettleModal({ open: false, bet: null })}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="p-6 overflow-y-auto custom-scrollbar">
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
@@ -1265,23 +1278,27 @@ const AdminDashboard = () => {
                   alert('Failed to settle bet: ' + (error.response?.data?.error || error.message));
                 }
               }}>
-                <div className="bet-info">
-                  <p><strong>User:</strong> {betSettleModal.bet?.userId?.username}</p>
-                  <p><strong>Match:</strong> {betSettleModal.bet?.homeTeam} vs {betSettleModal.bet?.awayTeam}</p>
-                  <p><strong>Selection:</strong> {betSettleModal.bet?.selection}</p>
-                  <p><strong>Stake:</strong> ${betSettleModal.bet?.stake}</p>
-                  <p><strong>Potential Win:</strong> ${betSettleModal.bet?.potentialWin}</p>
+                <div className="mb-4 text-black">
+                  <p className="mb-1"><strong>User:</strong> {betSettleModal.bet?.userId?.username}</p>
+                  <p className="mb-1"><strong>Match:</strong> {betSettleModal.bet?.homeTeam} vs {betSettleModal.bet?.awayTeam}</p>
+                  <p className="mb-1"><strong>Selection:</strong> {betSettleModal.bet?.selection}</p>
+                  <p className="mb-1"><strong>Stake:</strong> ${betSettleModal.bet?.stake}</p>
+                  <p className="mb-1"><strong>Potential Win:</strong> ${betSettleModal.bet?.potentialWin}</p>
                 </div>
-                <div className="form-group">
-                  <label style={{ color: 'black' }}>Status:</label>
-                  <select name="status" required>
+                <div className="mb-4">
+                  <label className="block text-black text-sm font-bold mb-2">Status:</label>
+                  <select 
+                    name="status" 
+                    required
+                    className="shadow border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
+                  >
                     <option value="won">Won</option>
                     <option value="lost">Lost</option>
                     <option value="void">Void</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label style={{ color: 'black' }}>Actual Win Amount:</label>
+                <div className="mb-4">
+                  <label className="block text-black text-sm font-bold mb-2">Actual Win Amount:</label>
                   <input 
                     name="actualWin"
                     type="number" 
@@ -1289,16 +1306,26 @@ const AdminDashboard = () => {
                     min="0"
                     placeholder="Enter actual win amount"
                     defaultValue={betSettleModal.bet?.potentialWin}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                   />
-                  <small style={{ color: '#666', fontSize: '12px' }}>
+                  <small className="text-gray-600 text-xs mt-1 block">
                     Leave empty or 0 for lost/void bets. For won bets, enter the actual payout amount.
                   </small>
                 </div>
-                <div className="form-actions">
-                  <button type="button" onClick={() => setBetSettleModal({ open: false, bet: null })}>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button 
+                    type="button" 
+                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                    onClick={() => setBetSettleModal({ open: false, bet: null })}
+                  >
                     Cancel
                   </button>
-                  <button type="submit">Settle Bet</button>
+                  <button 
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Settle Bet
+                  </button>
                 </div>
               </form>
             </div>
@@ -1307,18 +1334,18 @@ const AdminDashboard = () => {
       )}
 
       {betResultModal.open && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Update Result</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
+              <h3 className="text-xl font-bold text-black">Update Result</h3>
               <button 
-                className="modal-close"
+                className="text-gray-600 hover:text-gray-900 text-2xl font-bold"
                 onClick={() => setBetResultModal({ open: false, bet: null })}
               >
                 ×
               </button>
             </div>
-            <div className="modal-body">
+            <div className="p-6 overflow-y-auto custom-scrollbar">
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 try {
@@ -1336,47 +1363,59 @@ const AdminDashboard = () => {
                   alert('Failed to update result: ' + (err?.response?.data?.error || err.message));
                 }
               }}>
-                <div className="bet-info">
-                  <p><strong>Match:</strong> {betResultModal.bet?.homeTeam} vs {betResultModal.bet?.awayTeam}</p>
-                  <p><strong>League:</strong> {betResultModal.bet?.league}</p>
+                <div className="mb-4 text-black">
+                  <p className="mb-1"><strong>Match:</strong> {betResultModal.bet?.homeTeam} vs {betResultModal.bet?.awayTeam}</p>
+                  <p className="mb-1"><strong>League:</strong> {betResultModal.bet?.league}</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Home Score:</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="mb-4">
+                    <label className="block text-black text-sm font-bold mb-2">Home Score:</label>
                     <input
                       type="number"
                       min="0"
                       value={resultHomeScore}
                       onChange={(e) => setResultHomeScore(e.target.value)}
                       required
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                     />
                   </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Away Score:</label>
+                  <div className="mb-4">
+                    <label className="block text-black text-sm font-bold mb-2">Away Score:</label>
                     <input
                       type="number"
                       min="0"
                       value={resultAwayScore}
                       onChange={(e) => setResultAwayScore(e.target.value)}
                       required
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                     />
                   </div>
-                  <div className="form-group">
-                    <label style={{ color: 'black' }}>Completed:</label>
+                  <div className="mb-4">
+                    <label className="block text-black text-sm font-bold mb-2">Completed:</label>
                     <select
                       value={resultCompleted ? 'true' : 'false'}
                       onChange={(e) => setResultCompleted(e.target.value === 'true')}
+                      className="shadow border rounded w-full py-2 px-3 text-black leading-tight focus:outline-none focus:shadow-outline bg-white border-gray-300"
                     >
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </select>
                   </div>
                 </div>
-                <div className="form-actions">
-                  <button type="button" onClick={() => setBetResultModal({ open: false, bet: null })}>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button 
+                    type="button" 
+                    className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                    onClick={() => setBetResultModal({ open: false, bet: null })}
+                  >
                     Cancel
                   </button>
-                  <button type="submit">Save Result</button>
+                  <button 
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Save Result
+                  </button>
                 </div>
               </form>
             </div>
