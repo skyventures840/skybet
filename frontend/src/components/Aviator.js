@@ -113,6 +113,13 @@ const Aviator = () => {
   
   const dispatch = useDispatch();
   const user = useSelector(state => state.user);
+  const isLoggedIn = useSelector(state => state.auth?.loggedIn);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, navigate]);
 
   // User State
   const [balanceMode] = useState('real');

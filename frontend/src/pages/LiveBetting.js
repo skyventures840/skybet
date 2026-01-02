@@ -92,9 +92,22 @@ const LiveBetting = () => {
                 const status = withinWindow ? 'live' : 'finished';
 
                 // Build live time string: show minutes only for soccer; otherwise generic LIVE
-                const liveTime = withinWindow
-                  ? (sportKey === 'soccer' ? `LIVE ${Math.min(diffMins, 120)}'` : 'LIVE')
-                  : undefined;
+                let liveTime = undefined;
+                if (withinWindow) {
+                    if (sportKey === 'soccer' || sportKey === 'football') {
+                        if (diffMins <= 45) {
+                            liveTime = `${diffMins}'`;
+                        } else if (diffMins <= 60) {
+                            liveTime = 'HT';
+                        } else if (diffMins <= 105) {
+                            liveTime = `${diffMins - 15}'`;
+                        } else {
+                            liveTime = '90+';
+                        }
+                    } else {
+                        liveTime = 'LIVE';
+                    }
+                }
 
                 const fullLeagueTitle = computeFullLeagueTitle({
                   sportKeyOrName: sportKeyFull,

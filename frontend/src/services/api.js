@@ -286,7 +286,7 @@ api.interceptors.response.use(
     // Auto-invalidate caches after mutating requests to keep UI fresh
     const method = (response?.config?.method || 'get').toLowerCase();
     const url = response?.config?.url || '';
-  if (method === 'post' || method === 'put' || method === 'delete') {
+    if (method === 'post' || method === 'put' || method === 'delete') {
       if (url.startsWith('/admin/matches') || url.startsWith('/matches')) {
         enhancedCache.invalidateByPrefix('/matches');
         responseCache.invalidate('/matches');
@@ -298,14 +298,11 @@ api.interceptors.response.use(
       if (url.startsWith('/admin/leagues') || url.startsWith('/sports')) {
         enhancedCache.invalidateByPrefix('/sports');
         enhancedCache.invalidateByPrefix('/admin/leagues');
-        responseCache.invalidate('/sports');
-        responseCache.invalidate('/admin/leagues');
       }
       if (url.startsWith('/admin/users') || url.startsWith('/users')) {
         enhancedCache.invalidateByPrefix('/admin/users');
         responseCache.invalidate('/admin/users');
       }
-      // Invalidate bets caches on mutations to ensure My Bets reflects changes instantly
       if (url.startsWith('/bets') || url.startsWith('/admin/bets')) {
         enhancedCache.invalidateByPrefix('/bets');
         responseCache.invalidate('/bets');
@@ -315,21 +312,16 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('API Error - Response Data:', error.response.data);
-      console.error('API Error - Status:', error.response.status);
-      console.error('API Error - Headers:', error.response.headers);
 
+    if (error.response) {
       if (error.response.status === 401) {
-        // Handle unauthorized errors, e.g., redirect to login
-        console.log('Unauthorized, redirecting to login...');
+        // Clear auth data and redirect to login
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
-      
+
       // Handle 429 rate limiting with retry
       if (error.response.status === 429 && !originalRequest._retry) {
         originalRequest._retry = true;
@@ -338,21 +330,12 @@ api.interceptors.response.use(
         const retryDelay = Math.min(1000 * Math.pow(2, originalRequest._retryCount || 0), 10000);
         originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
         
-        console.log(`Rate limited. Retrying in ${retryDelay}ms... (attempt ${originalRequest._retryCount})`);
-        
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         
         // Retry the request
         return api(originalRequest);
       }
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('API Error - No Response:', error.request);
-      // Don't throw the error immediately, let the calling component handle it
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('API Error - Message:', error.message);
     }
     return Promise.reject(error);
   }

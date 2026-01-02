@@ -189,9 +189,11 @@ function App() {
 
   if (isAviatorPage) {
     return (
-      <div className="app" style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        <Aviator />
-      </div>
+      <PrivateRoute auth={{ isLoggedIn }}>
+        <div className="app" style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+          <Aviator />
+        </div>
+      </PrivateRoute>
     );
   }
 
@@ -257,7 +259,6 @@ function App() {
                 <Route path="/match/:matchId" element={<MatchDetail />} />
                 <Route path="/match/:matchId/markets" element={<MatchMarkets />} />
                 <Route path="/wheel" element={<WheelOfFortune />} />
-                <Route path="/aviator" element={<Aviator />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, memo } from 'react';
+import React, { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import VideoPlayerScheduled from './VideoPlayerScheduled';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,66 @@ import LockedOdds from './LockedOdds';
 import { assessOddsRisk } from '../utils/riskManagement';
 import { computeFullLeagueTitle } from '../utils/leagueTitle';
 import { addBet } from '../store/slices/activeBetSlice';
+
+const LiveTimer = ({ startTime, sport, liveTime }) => {
+    const [displayTime, setDisplayTime] = useState('');
+
+    useEffect(() => {
+        // If we have a start time, prefer local calculation for smoother updates
+        // unless liveTime provides specific status info we might miss (like 'HT' from a real feed)
+        // But since currently backend uses same logic, local is better for "fast rendering".
+        
+        if (!startTime && liveTime) {
+            setDisplayTime(liveTime);
+            return;
+        }
+
+        if (!startTime) return;
+
+        const updateTime = () => {
+            const now = new Date();
+            const start = new Date(startTime);
+            const diffMs = now - start;
+            const diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 0) {
+                setDisplayTime('');
+                return;
+            }
+
+            // Soccer specific logic
+            if (sport === 'soccer' || sport === 'football' || (sport && sport.includes('soccer'))) {
+                if (diffMins <= 45) {
+                    setDisplayTime(`${diffMins}'`);
+                } else if (diffMins <= 60) {
+                    setDisplayTime('HT');
+                } else if (diffMins <= 105) {
+                    setDisplayTime(`${diffMins - 15}'`);
+                } else {
+                    setDisplayTime('90+');
+                }
+            } else {
+                // Default for other sports
+                setDisplayTime(`${diffMins}'`);
+            }
+        };
+
+        updateTime();
+        // Update every 1 second for accurate feel, though minute only changes every 60s
+        const interval = setInterval(updateTime, 1000); 
+
+        return () => clearInterval(interval);
+    }, [startTime, sport, liveTime]);
+
+    if (!displayTime) return <span>LIVE</span>;
+
+    return (
+        <div className="live-time-display">
+            <span className="time-icon"></span>
+            <span>{displayTime}</span>
+        </div>
+    );
+};
 
 const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     if (!match) return null;
@@ -16,14 +76,7 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     const [showVideoSection, setShowVideoSection] = useState(false);
     
     // Debug logging for odds data
-    console.log('[DEBUG] MatchCard rendered with match:', {
-        id: match.id,
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        odds: match.odds,
-        oddsType: typeof match.odds,
-        oddsKeys: match.odds ? Object.keys(match.odds) : 'no odds'
-    });
+    // console.log('[DEBUG] MatchCard rendered with match:', { ... });
 
     // Memoized calculations for better performance
     const isLiveMatch = useMemo(() => 
@@ -70,40 +123,9 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
     const getLiveTimeDisplay = () => {
         if (!isLiveMatch) return null;
         
-        // If match has liveTime property, use it
-        if (match.liveTime) {
-            return (
-                <div className="live-time-display">
-                    <span className="time-icon"></span>
-                    <span>{match.liveTime}</span>
-                </div>
-            );
-        }
-        
-        // If match has startTime, calculate live time
-        if (match.startTime) {
-            const startTime = new Date(match.startTime);
-            const now = new Date();
-            const diffMs = now - startTime;
-            const diffMins = Math.floor(diffMs / 60000);
-            
-            if (diffMins > 0) {
-                return (
-                    <div className="live-time-display">
-                        <span className="time-icon"></span>
-                        <span>LIVE {diffMins}'</span>
-                    </div>
-                );
-            }
-        }
-        
-        return (
-            <div className="live-time-display">
-                <span className="time-icon"></span>
-                <span>LIVE</span>
-            </div>
-        );
+        return <LiveTimer startTime={match.startTime} sport={sport || match.sport} liveTime={match.liveTime} />;
     };
+
 
     // Get live score display
     const getLiveScoreDisplay = () => {
