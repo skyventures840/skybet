@@ -153,8 +153,7 @@ class EnhancedOddsFetcher {
         'spreads_q1', 'spreads_q2', 'spreads_q3', 'spreads_q4', 'spreads_h1', 'spreads_h2',
         'totals_q1', 'totals_q2', 'totals_q3', 'totals_q4', 'totals_h1', 'totals_h2',
         'player_points', 'player_rebounds', 'player_assists', 'player_threes',
-        'player_blocks', 'player_steals', 'player_turnovers', 'player_pra',
-        'player_pr', 'player_pa', 'player_ra'
+        'player_blocks', 'player_steals', 'player_turnovers'
       ],
       'basketball_ncaab': [
         'alternate_spreads', 'alternate_totals', 'team_totals',
@@ -740,17 +739,58 @@ class EnhancedOddsFetcher {
 
       // Step 1: Fetch comprehensive odds (basic + additional markets)
       const games = await this.fetchComprehensiveOdds(sportKey, sportTitle);
-      result.basicOdds = games.length;
-      result.totalGames = games.length;
+      
+      // Validate that fetched games actually have the mandatory basic markets
+      const basicMarketsList = this.getBasicMarkets(sportKey);
+      const validGames = games.filter(game => {
+        const hasBookmakers = Array.isArray(game.bookmakers) && game.bookmakers.length > 0;
+        if (!hasBookmakers) return false;
+        
+        // Check if at least one bookmaker has at least one of the basic markets
+        // We don't enforce ALL basic markets because some might be missing for specific games (e.g. no spreads yet)
+        // But we want to ensure we have *some* odds.
+        return game.bookmakers.some(bm => 
+          Array.isArray(bm.markets) && bm.markets.some(m => basicMarketsList.includes(m.key))
+        );
+      });
 
-      if (games.length === 0) {
-        logger.warn(`No games found for ${sportKey}, skipping additional markets`);
+      if (games.length > 0 && validGames.length < games.length) {
+        logger.warn(`⚠️  ${games.length - validGames.length} games fetched without basic markets for ${sportKey}`);
+      }
+
+      result.basicOdds = validGames.length;
+      result.totalGames = games.length; // Keep total count of games found
+
+      if (validGames.length === 0) {
+        if (games.length > 0) {
+           logger.warn(`No games with valid basic markets found for ${sportKey} (found ${games.length} raw games), skipping additional markets`);
+        } else {
+           logger.warn(`No games found for ${sportKey}, skipping additional markets`);
+        }
         return result;
+      }
+
+      // Use only valid games for additional markets
+      const gamesToProcess = validGames;
+
+      // Filter out fallback games from additional markets fetch
+      const gamesForAdditionalMarkets = gamesToProcess.filter(g => !g.id.toString().startsWith('fallback_'));
+      
+      if (gamesForAdditionalMarkets.length < gamesToProcess.length) {
+          logger.info(`Skipping additional markets for ${gamesToProcess.length - gamesForAdditionalMarkets.length} fallback games`);
       }
 
       // Step 2: Check additional market support using a sample event id
       const additionalMarkets = this.getAdditionalMarkets(sportKey);
-      const sampleEventId = games[0]?.id || null;
+      
+      // Only check support if we have real games
+      if (gamesForAdditionalMarkets.length === 0) {
+        logger.info(`No real games available for ${sportKey}, skipping additional markets fetch`);
+        result.additionalMarkets = 0;
+        return result;
+      }
+
+      const sampleEventId = gamesForAdditionalMarkets[0]?.id || null;
       const supportCheck = await this.checkAdditionalMarketSupport(sportKey, additionalMarkets, sampleEventId);
       result.marketSupport = supportCheck;
 
@@ -759,7 +799,7 @@ class EnhancedOddsFetcher {
       }
 
       // Step 3: Fetch additional markets using event-specific endpoints
-      const additionalResult = await this.fetchAdditionalMarkets(sportKey, games, additionalMarkets);
+      const additionalResult = await this.fetchAdditionalMarkets(sportKey, gamesForAdditionalMarkets, additionalMarkets);
       result.additionalMarkets = additionalResult.marketsAdded;
 
       // Rate limiting between sports
@@ -990,6 +1030,10 @@ async function main() {
 
     logger.info('\n🎉 Enhanced odds fetching completed successfully!');
     
+    // Allow pending async database operations to complete (e.g. _storeOddsAsync)
+    logger.info('Waiting for pending database operations...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
     await mongoose.disconnect();
     logger.info('Disconnected from MongoDB');
 
