@@ -2,6 +2,7 @@ const Bet = require('../models/Bet')
 const User = require('../models/User')
 const Match = require('../models/Match')
 const Results = require('../models/Results')
+const Scores = require('../models/Scores')
 const MultiBet = require('../models/MultiBet')
 const logger = require('../utils/logger')
 const { bus } = require('../utils/cache')
@@ -66,7 +67,7 @@ class BetSettlementService {
   /**
    * Combine completed matches from Results and Scores, avoiding duplicates
    */
-  combineCompletedMatches (results, matchesDB = []) {
+  combineCompletedMatches (results, matchesDB = [], scores = []) {
     const matchMap = new Map()
 
     // Process Results from API
@@ -92,6 +93,21 @@ class BetSettlementService {
           lastGoalscorer: result.lastGoalscorer
         }
       })
+    })
+
+    // Process Scores from API (Targeted fetches)
+    scores.forEach(score => {
+      if (!matchMap.has(score.eventId)) {
+        matchMap.set(score.eventId, {
+          eventId: score.eventId,
+          homeTeam: score.home_team,
+          awayTeam: score.away_team,
+          scores: score.scores,
+          completed: score.completed,
+          sport_key: score.sport_key,
+          source: 'scores'
+        })
+      }
     })
 
     // Process Matches from DB (Custom/Predetermined)

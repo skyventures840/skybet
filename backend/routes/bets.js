@@ -9,7 +9,31 @@ const { body, validationResult } = require('express-validator')
 const Odds = require('../models/Odds')
 const Results = require('../models/Results')
 const { cache, keyFor } = require('../utils/cache')
-// Removed unused matchDataEnricher import
+const { OddsApiService } = require('../services/oddsApiService')
+
+// Initialize OddsApiService
+const oddsApiService = new OddsApiService()
+
+// Helper to trigger match update
+const triggerMatchUpdate = async (matchId) => {
+  try {
+    // Find sport key
+    const odd = await Odds.findOne({ gameId: matchId }).select('sport_key').lean()
+    if (odd && odd.sport_key) {
+      // Fire and forget - don't await to avoid blocking response
+      // Use daysFrom=3 to cover recent matches
+      oddsApiService.getScores(odd.sport_key, 3, [matchId])
+        .then(scores => {
+          if (scores && scores.length > 0) {
+            console.log(`Triggered update for match ${matchId}, fetched ${scores.length} scores`)
+          }
+        })
+        .catch(err => console.error(`Error triggering match update for ${matchId}:`, err.message))
+    }
+  } catch (error) {
+    console.error('Error in triggerMatchUpdate:', error)
+  }
+}
 
 // Performance optimization: Create indexes for frequently queried fields
 const ensureIndexes = async () => {
@@ -334,6 +358,9 @@ router.post('/', auth, [
     await bet.save()
     // console.log(`Bet saved successfully: ${bet._id} (took ${Date.now() - startTime}ms)`);
 
+    // Trigger match update (Fire and forget)
+    triggerMatchUpdate(matchId.toString())
+
     // Balance already debited via debitForBet
 
     // Broadcast new bet via WebSocket (Non-blocking / Fire-and-forget)
@@ -513,6 +540,11 @@ router.post('/bulk', auth, [
         })
       }
     }
+
+    // Trigger match updates
+    // Use Set to avoid duplicate triggers for same match
+    const matchIdsToUpdate = [...new Set(savedBets.map(b => b.matchId))]
+    matchIdsToUpdate.forEach(id => triggerMatchUpdate(id))
 
     // console.log(`Successfully placed ${savedBets.length} bets`);
 

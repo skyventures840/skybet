@@ -429,8 +429,8 @@ const startCronJobs = async () => {
     }
   }, 15 * 60 * 1000) // 15 minutes delay
 
-  // Periodic check for pending bets scores/results every 5 minutes
-  cron.schedule('*/5 * * * *', async () => {
+  // Periodic check for pending bets scores/results every 1 minute (Optimized for settlement)
+  cron.schedule('*/1 * * * *', async () => {
     if (!mongoose.connection || mongoose.connection.readyState !== 1) {
       logger.warn('MongoDB not connected; skipping pending bets update')
       return
@@ -444,6 +444,9 @@ const startCronJobs = async () => {
     isScoresFetching = true
     try {
       await updatePendingBetsScores()
+      
+      // Broadcast updates to frontend immediately after fetching
+      await broadcastLiveMatchesUpdate()
     } catch (error) {
       logger.error('Error during pending bets update:', error)
     } finally {

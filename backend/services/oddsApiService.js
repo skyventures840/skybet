@@ -655,7 +655,7 @@ class OddsApiService {
           const updateObj = {
             'liveData.period': score.game_time?.period,
             'liveData.displayClock': score.game_time?.display_clock,
-            status: this._determineGameStatus(score),
+            status: this._determineMatchStatus(score),
             lastUpdated: new Date()
           }
 
