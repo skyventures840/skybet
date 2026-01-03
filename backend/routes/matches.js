@@ -1146,7 +1146,8 @@ router.get('/:matchId/markets', async (req, res) => {
       league: match.league,
       status: match.status || 'upcoming',
       last_update: match.updatedAt || new Date().toISOString(),
-      bookmakers: [bookmaker]
+      bookmakers: [bookmaker],
+      odds: oddsData // Include raw odds for frontend custom grouping
     }
 
     console.log('Sending response:', {
