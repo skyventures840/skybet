@@ -1234,9 +1234,9 @@ const ManageMatches = () => {
                       <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
                         <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Double Chance</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="doubleChance_1X" placeholder="Home or Draw (1X)" value={formData.odds.doubleChance_1X || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                          <input type="number" step="0.01" name="doubleChance_12" placeholder="Home or Away (12)" value={formData.odds.doubleChance_12 || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                          <input type="number" step="0.01" name="doubleChance_X2" placeholder="Away or Draw (X2)" value={formData.odds.doubleChance_X2 || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="doubleChanceHomeDraw" placeholder="Home or Draw (1X)" value={formData.odds.doubleChanceHomeDraw || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="doubleChanceHomeAway" placeholder="Home or Away (12)" value={formData.odds.doubleChanceHomeAway || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="doubleChanceDrawAway" placeholder="Away or Draw (X2)" value={formData.odds.doubleChanceDrawAway || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
@@ -1244,8 +1244,8 @@ const ManageMatches = () => {
                       <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
                         <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Both Teams to Score (BTTS)</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="btts_Yes" placeholder="Yes (both score)" value={formData.odds.btts_Yes || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                          <input type="number" step="0.01" name="btts_No" placeholder="No" value={formData.odds.btts_No || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="bttsYes" placeholder="Yes (both score)" value={formData.odds.bttsYes || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="bttsNo" placeholder="No" value={formData.odds.bttsNo || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
@@ -1253,8 +1253,8 @@ const ManageMatches = () => {
                       <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
                         <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Odd/Even Goals</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="oddEven_Odd" placeholder="Odd" value={formData.odds.oddEven_Odd || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                          <input type="number" step="0.01" name="oddEven_Even" placeholder="Even" value={formData.odds.oddEven_Even || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="oddEvenOdd" placeholder="Odd" value={formData.odds.oddEvenOdd || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="oddEvenEven" placeholder="Even" value={formData.odds.oddEvenEven || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
@@ -1262,8 +1262,8 @@ const ManageMatches = () => {
                       <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
                         <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Penalty Yes/No</label>
                         <div className="space-y-2">
-                          <input type="number" step="0.01" name="penalty_Yes" placeholder="Yes" value={formData.odds.penalty_Yes || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                          <input type="number" step="0.01" name="penalty_No" placeholder="No" value={formData.odds.penalty_No || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="penaltyYes" placeholder="Yes" value={formData.odds.penaltyYes || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                          <input type="number" step="0.01" name="penaltyNo" placeholder="No" value={formData.odds.penaltyNo || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                         </div>
                       </div>
 
@@ -1355,7 +1355,7 @@ const ManageMatches = () => {
                               return (
                                   <div key={key}>
                                       <label className="text-xs block text-black" style={{ color: 'black' }}>{labels[key]}</label>
-                                      <input type="number" step="0.01" name={`ht_ft_${key}`} value={formData.odds[`ht_ft_${key}`] || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                                      <input type="number" step="0.01" name={`htFt${key}`} value={formData.odds[`htFt${key}`] || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                                   </div>
                               );
                           })}
@@ -1402,9 +1402,9 @@ const ManageMatches = () => {
                     <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
                       <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Corners Over/Under</label>
                       <div className="space-y-2">
-                        <input type="number" step="0.5" name="corners_line" placeholder="Line (e.g. 9.5)" value={formData.odds.corners_line || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                        <input type="number" step="0.01" name="corners_over" placeholder="Over Odds" value={formData.odds.corners_over || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                        <input type="number" step="0.01" name="corners_under" placeholder="Under Odds" value={formData.odds.corners_under || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.5" name="cornersLine" placeholder="Line (e.g. 9.5)" value={formData.odds.cornersLine || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="cornersOver" placeholder="Over Odds" value={formData.odds.cornersOver || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="cornersUnder" placeholder="Under Odds" value={formData.odds.cornersUnder || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                       </div>
                     </div>
 
@@ -1412,9 +1412,9 @@ const ManageMatches = () => {
                     <div className="form-group p-2 bg-gray-100 border border-gray-300 rounded">
                       <label className="font-bold block mb-1 text-black" style={{ color: 'black' }}>Cards Over/Under</label>
                       <div className="space-y-2">
-                        <input type="number" step="0.5" name="cards_line" placeholder="Line (e.g. 3.5)" value={formData.odds.cards_line || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                        <input type="number" step="0.01" name="cards_over" placeholder="Over Odds" value={formData.odds.cards_over || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
-                        <input type="number" step="0.01" name="cards_under" placeholder="Under Odds" value={formData.odds.cards_under || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.5" name="cardsLine" placeholder="Line (e.g. 3.5)" value={formData.odds.cardsLine || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="cardsOver" placeholder="Over Odds" value={formData.odds.cardsOver || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
+                        <input type="number" step="0.01" name="cardsUnder" placeholder="Under Odds" value={formData.odds.cardsUnder || ''} onChange={handleOddsChange} className="w-full bg-white text-black border border-gray-300 rounded p-1" />
                       </div>
                     </div>
                   </div>

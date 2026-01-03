@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { updateBalance, updateBalanceBonus } from '../store/slices/userSlice';
 import apiService from '../services/api';
+import { toast } from 'react-toastify';
 import { chatPhrases } from '../data/chatPhrases';
 import BettingPanel from './BettingPanel';
 import './Aviator.css';
@@ -410,12 +411,12 @@ const Aviator = () => {
     } catch (err) {
       console.error(err);
       const errorMessage = err.response?.data?.error || "Failed to place bet";
-      if (errorMessage === 'Insufficient balance') {
-         setError('Insufficient balance to place bet');
+      if (errorMessage && errorMessage.toLowerCase().includes('insufficient balance')) {
+         toast.error('Insufficient balance to place bet');
       } else {
          setError(errorMessage);
+         setTimeout(() => setError(null), 3000);
       }
-      setTimeout(() => setError(null), 3000);
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import './Aviator.css'; // We'll share the CSS or add new specific CSS
 
 const BettingPanel = ({ 
@@ -35,7 +36,7 @@ const BettingPanel = ({
          const autoOptions = autoCashOutEnabled ? { targetMultiplier } : null;
          onPlaceBet(id, betAmount, autoOptions);
       } else {
-         alert("Insufficient balance!");
+         toast.error("Insufficient balance!");
       }
     } else if (betStatus === 'BET_ACTIVE') {
         if (gameState === 'FLYING') {

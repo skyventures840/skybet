@@ -73,232 +73,277 @@ const MatchDetail = () => {
             
             const markets = {};
             let marketIndex = 0;
+            const oddsData = matchData.odds;
+            const consumedKeys = new Set();
+            const allKeys = Object.keys(oddsData);
             
-            // Convert odds Map to markets
-            if (matchData.odds && typeof matchData.odds === 'object') {
-                const oddsData = matchData.odds;
+            // Helper to mark keys as consumed
+            const consume = (...keys) => keys.forEach(k => consumedKeys.add(k));
+
+            // --- 1. Match Winner ---
+            if (oddsData.homeWin || oddsData.awayWin || oddsData.draw) {
+                const options = [];
+                if (oddsData.homeWin) options.push({ name: matchData.homeTeam, odds: oddsData.homeWin });
+                if (oddsData.draw) options.push({ name: 'Draw', odds: oddsData.draw });
+                if (oddsData.awayWin) options.push({ name: matchData.awayTeam, odds: oddsData.awayWin });
                 
-                // Match Winner market
-                if (oddsData.homeWin || oddsData.awayWin || oddsData.draw) {
-                    const marketKey = `market_${marketIndex}`;
-                    const options = [];
-                    
-                    if (oddsData.homeWin && oddsData.homeWin > 0) {
-                        options.push({ name: matchData.homeTeam, odds: oddsData.homeWin });
+                if (options.length > 0) {
+                    markets[`market_${marketIndex++}`] = { name: 'Match Winner', options };
+                    consume('homeWin', 'draw', 'awayWin');
+                }
+            }
+
+            // --- 2. Grouped Markets (Double Chance, BTTS, etc.) ---
+            const groupedMarkets = [
+                {
+                    name: 'Double Chance',
+                    matcher: k => k.toLowerCase().includes('doublechance'),
+                    mapper: (key, val) => {
+                        const lower = key.toLowerCase();
+                        if (lower.includes('homedraw') || lower.includes('1x')) return { name: 'Home/Draw', odds: val };
+                        if (lower.includes('homeaway') || lower.includes('12')) return { name: 'Home/Away', odds: val };
+                        if (lower.includes('drawaway') || lower.includes('x2')) return { name: 'Draw/Away', odds: val };
+                        return null;
                     }
-                    if (oddsData.draw && oddsData.draw > 0) {
-                        options.push({ name: 'Draw', odds: oddsData.draw });
+                },
+                {
+                    name: 'Both Teams to Score',
+                    matcher: k => k.toLowerCase().includes('btts'),
+                    mapper: (key, val) => {
+                        const lower = key.toLowerCase();
+                        if (lower.includes('yes')) return { name: 'Yes', odds: val };
+                        if (lower.includes('no')) return { name: 'No', odds: val };
+                        return null;
                     }
-                    if (oddsData.awayWin && oddsData.awayWin > 0) {
-                        options.push({ name: matchData.awayTeam, odds: oddsData.awayWin });
+                },
+                {
+                    name: 'Penalty Awarded',
+                    matcher: k => k.toLowerCase().includes('penalty'),
+                    mapper: (key, val) => {
+                        const lower = key.toLowerCase();
+                        if (lower.includes('yes')) return { name: 'Yes', odds: val };
+                        if (lower.includes('no')) return { name: 'No', odds: val };
+                        return null;
                     }
-                    
-                    if (options.length > 0) {
-                        markets[marketKey] = {
-                            name: 'Match Winner',
-                            options: options
+                },
+                {
+                    name: 'Odd/Even',
+                    matcher: k => k.toLowerCase().includes('oddeven'),
+                    mapper: (key, val) => {
+                        const lower = key.toLowerCase();
+                        if (lower.includes('odd')) return { name: 'Odd', odds: val };
+                        if (lower.includes('even')) return { name: 'Even', odds: val };
+                        return null;
+                    }
+                },
+                {
+                    name: 'Half-Time/Full-Time',
+                    matcher: k => k.toLowerCase().startsWith('htft') || k.toLowerCase().startsWith('ht_ft'),
+                    mapper: (key, val) => {
+                         const mapCode = { 
+                            'HH': 'Home/Home', 'HD': 'Home/Draw', 'HA': 'Home/Away', 
+                            'DH': 'Draw/Home', 'DD': 'Draw/Draw', 'DA': 'Draw/Away', 
+                            'AH': 'Away/Home', 'AD': 'Away/Draw', 'AA': 'Away/Away' 
                         };
-                        marketIndex++;
+                        const upperKey = key.toUpperCase();
+                        let name = null;
+                        Object.keys(mapCode).forEach(code => {
+                            if (upperKey.endsWith(code)) name = mapCode[code];
+                        });
+                        return name ? { name, odds: val } : null;
                     }
                 }
+            ];
+
+            groupedMarkets.forEach(group => {
+                const keys = allKeys.filter(k => group.matcher(k));
+                const options = [];
+                keys.forEach(key => {
+                    if (consumedKeys.has(key)) return;
+                    const val = oddsData[key];
+                    if (!val) return;
+                    
+                    const option = group.mapper(key, val);
+                    if (option) {
+                        options.push(option);
+                    }
+                    consume(key); // Always consume matched keys to prevent duplicates
+                });
                 
-                // Totals market (Over/Under)
-                if (oddsData.over || oddsData.under) {
-                    const marketKey = `market_${marketIndex}`;
-                    const options = [];
-                    
-                    if (oddsData.over && oddsData.over > 0) {
-                        const totalLine = oddsData.total || '2.5';
-                        options.push({ name: `Over (${totalLine})`, odds: oddsData.over });
-                    }
-                    if (oddsData.under && oddsData.under > 0) {
-                        const totalLine = oddsData.total || '2.5';
-                        options.push({ name: `Under (${totalLine})`, odds: oddsData.under });
-                    }
-                    
-                    if (options.length > 0) {
-                        markets[marketKey] = {
-                            name: 'Totals',
-                            options: options
-                        };
-                        marketIndex++;
-                    }
+                if (options.length > 0) {
+                    markets[`market_${marketIndex++}`] = { name: group.name, options };
                 }
+            });
+
+            // --- 3. Totals (Over/Under) ---
+            if (oddsData.over || oddsData.under) {
+                const options = [];
+                const line = oddsData.total || '2.5';
+                if (oddsData.over) options.push({ name: `Over ${line}`, odds: oddsData.over });
+                if (oddsData.under) options.push({ name: `Under ${line}`, odds: oddsData.under });
                 
-                // Handicap market - removed as separate market, handicap line will be shown in team names with brackets
+                if (options.length > 0) {
+                    markets[`market_${marketIndex++}`] = { name: 'Totals', options };
+                    consume('over', 'under', 'total');
+                }
+            }
+
+            // --- 5. Corners ---
+            const cornerKeys = allKeys.filter(k => k.toLowerCase().startsWith('corners'));
+            if (cornerKeys.length > 0) {
+                const options = [];
+                const lineKey = cornerKeys.find(k => k.toLowerCase().includes('line'));
+                const line = lineKey ? oddsData[lineKey] : null;
                 
-                // NEW: Handle Dynamic Handicaps (Array)
-                if (Array.isArray(oddsData.handicaps) && oddsData.handicaps.length > 0) {
-                    const marketKey = `market_${marketIndex}`;
-                    const options = [];
+                cornerKeys.forEach(key => {
+                    if (key === lineKey) return; // Skip line key for options
+                    const val = oddsData[key];
+                    if (!val) return;
                     
-                    oddsData.handicaps.forEach(item => {
-                         if (item.line && item.homeOdds && item.awayOdds) {
-                             const line = parseFloat(item.line);
-                             const homeLine = line > 0 ? `+${line}` : `${line}`;
-                             const awayLine = -line > 0 ? `+${-line}` : `${-line}`;
+                    const lower = key.toLowerCase();
+                    let name = 'Unknown';
+                    if (lower.includes('over')) name = line ? `Over ${line}` : 'Over';
+                    else if (lower.includes('under')) name = line ? `Under ${line}` : 'Under';
+                    
+                    options.push({ name, odds: val });
+                });
+                
+                if (options.length > 0) {
+                    markets[`market_${marketIndex++}`] = { name: 'Corners', options };
+                }
+                consume(...cornerKeys);
+            }
+
+            // --- 6. Cards ---
+            const cardKeys = allKeys.filter(k => k.toLowerCase().startsWith('cards'));
+            if (cardKeys.length > 0) {
+                const options = [];
+                const lineKey = cardKeys.find(k => k.toLowerCase().includes('line'));
+                const line = lineKey ? oddsData[lineKey] : null;
+                
+                cardKeys.forEach(key => {
+                    if (key === lineKey) return;
+                    const val = oddsData[key];
+                    if (!val) return;
+                    
+                    const lower = key.toLowerCase();
+                    let name = 'Unknown';
+                    if (lower.includes('over')) name = line ? `Over ${line}` : 'Over';
+                    else if (lower.includes('under')) name = line ? `Under ${line}` : 'Under';
+                    
+                    options.push({ name, odds: val });
+                });
+                
+                if (options.length > 0) {
+                    markets[`market_${marketIndex++}`] = { name: 'Cards', options };
+                }
+                consume(...cardKeys);
+            }
+
+
+
+            // --- 10. Array Markets (Correct Score, etc.) ---
+            const arrayMarkets = [
+                { key: 'correctScore', name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, odds: item.odds }] : [] },
+                { key: 'multiGoals', name: 'Multi Goals', processor: (item) => item.range && item.odds ? [{ name: item.range, odds: item.odds }] : [] },
+                { key: 'winningMargin', name: 'Winning Margin', processor: (item) => item.margin && item.odds ? [{ name: item.margin, odds: item.odds }] : [] },
+                { key: 'handicaps', name: 'Handicap', processor: (item) => {
+                     if (item.line && item.homeOdds && item.awayOdds) {
+                        const line = parseFloat(item.line);
+                        const homeLine = line > 0 ? `+${line}` : `${line}`;
+                        const awayLine = -line > 0 ? `+${-line}` : `${-line}`;
+                        return [
+                            { name: `${matchData.homeTeam} (${homeLine})`, odds: item.homeOdds },
+                            { name: `${matchData.awayTeam} (${awayLine})`, odds: item.awayOdds }
+                        ];
+                    }
+                    return [];
+                }},
+                { key: 'goalScorers', name: 'Goalscorers', processor: null } // Special handling
+            ];
+
+            arrayMarkets.forEach(m => {
+                if (Array.isArray(oddsData[m.key]) && oddsData[m.key].length > 0) {
+                    if (m.key === 'goalScorers') {
+                        // Special handling for goalscorers
+                         const types = ['First', 'Anytime', 'Last'];
+                         types.forEach(type => {
+                             const typeOptions = oddsData.goalScorers
+                                .filter(item => item.type && item.type.toLowerCase() === type.toLowerCase() && item.player && item.odds)
+                                .map(item => ({ name: `${item.player}`, odds: item.odds })); // Removed (${type}) redundant in header context
                              
-                             options.push({ name: `${matchData.homeTeam} (${homeLine})`, odds: item.homeOdds });
-                             options.push({ name: `${matchData.awayTeam} (${awayLine})`, odds: item.awayOdds });
-                         }
-                    });
-
-                    if (options.length > 0) {
-                        markets[marketKey] = {
-                            name: 'Handicap',
-                            options: options
-                        };
-                        marketIndex++;
+                             if (typeOptions.length > 0) {
+                                 markets[`market_${marketIndex++}`] = { name: `${type} Goalscorer`, options: typeOptions };
+                             }
+                         });
+                    } else {
+                        const options = [];
+                        oddsData[m.key].forEach(item => {
+                            options.push(...m.processor(item));
+                        });
+                        if (options.length > 0) {
+                            markets[`market_${marketIndex++}`] = { name: m.name, options };
+                        }
                     }
+                    consume(m.key);
                 }
+            });
 
-                // NEW: Correct Score Market
-                if (Array.isArray(oddsData.correctScore) && oddsData.correctScore.length > 0) {
-                     const marketKey = `market_${marketIndex}`;
-                     const options = oddsData.correctScore
-                        .filter(item => item.score && item.odds)
-                        .map(item => ({ name: item.score, odds: item.odds }));
-
-                     if (options.length > 0) {
-                         markets[marketKey] = { name: 'Correct Score', options };
-                         marketIndex++;
-                     }
-                }
-
-                // NEW: Multi Goals Market
-                if (Array.isArray(oddsData.multiGoals) && oddsData.multiGoals.length > 0) {
-                     const marketKey = `market_${marketIndex}`;
-                     const options = oddsData.multiGoals
-                        .filter(item => item.range && item.odds)
-                        .map(item => ({ name: item.range, odds: item.odds }));
-
-                     if (options.length > 0) {
-                         markets[marketKey] = { name: 'Multi Goals', options };
-                         marketIndex++;
-                     }
-                }
-                
-                // NEW: Winning Margin Market
-                if (Array.isArray(oddsData.winningMargin) && oddsData.winningMargin.length > 0) {
-                     const marketKey = `market_${marketIndex}`;
-                     const options = oddsData.winningMargin
-                        .filter(item => item.margin && item.odds)
-                        .map(item => ({ name: item.margin, odds: item.odds }));
-
-                     if (options.length > 0) {
-                         markets[marketKey] = { name: 'Winning Margin', options };
-                         marketIndex++;
-                     }
-                }
-
-                // NEW: Goalscorers Market
-                if (Array.isArray(oddsData.goalScorers) && oddsData.goalScorers.length > 0) {
-                     const types = ['First', 'Anytime', 'Last'];
-                     types.forEach(type => {
-                         const options = oddsData.goalScorers
-                            .filter(item => item.type && item.type.toLowerCase() === type.toLowerCase() && item.player && item.odds)
-                            .map(item => ({ name: `${item.player} (${type})`, odds: item.odds }));
-                         
-                         if (options.length > 0) {
-                             const marketKey = `market_${marketIndex}`;
-                             markets[marketKey] = { name: `${type} Goalscorer`, options };
-                             marketIndex++;
-                         }
-                     });
-                }
-                
-                // NEW: Odd/Even Market
-                if (oddsData.oddEven_Odd || oddsData.oddEven_Even) {
-                    const marketKey = `market_${marketIndex}`;
-                    const options = [];
-                    if (oddsData.oddEven_Odd) options.push({ name: 'Odd', odds: oddsData.oddEven_Odd });
-                    if (oddsData.oddEven_Even) options.push({ name: 'Even', odds: oddsData.oddEven_Even });
-                    
-                    if (options.length > 0) {
-                        markets[marketKey] = { name: 'Odd/Even Goals', options };
-                        marketIndex++;
-                    }
-                }
-
-                // NEW: HT/FT Market
-                const htFtKeys = Object.keys(oddsData).filter(k => k.startsWith('htFt_'));
-                if (htFtKeys.length > 0) {
-                     const marketKey = `market_${marketIndex}`;
-                     const options = [];
-                     const mapCode = { 'HH': 'Home/Home', 'HD': 'Home/Draw', 'HA': 'Home/Away', 'DH': 'Draw/Home', 'DD': 'Draw/Draw', 'DA': 'Draw/Away', 'AH': 'Away/Home', 'AD': 'Away/Draw', 'AA': 'Away/Away' };
-                     
-                     htFtKeys.forEach(key => {
-                         const code = key.replace('htFt_', '');
-                         const name = mapCode[code] || code;
-                         if (oddsData[key]) {
-                             options.push({ name: name, odds: oddsData[key] });
-                         }
-                     });
-                     
-                     if (options.length > 0) {
-                          markets[marketKey] = { name: 'Half-Time/Full-Time', options };
-                          marketIndex++;
-                      }
-                 }
- 
-                 // NEW: Corners Market
-                 if (oddsData.corners_over && oddsData.corners_under && oddsData.corners_line) {
-                      const marketKey = `market_${marketIndex}`;
-                      const line = oddsData.corners_line;
-                      const options = [
-                          { name: `Over ${line}`, odds: oddsData.corners_over },
-                          { name: `Under ${line}`, odds: oddsData.corners_under }
-                      ];
-                      markets[marketKey] = { name: 'Corners Over/Under', options };
-                      marketIndex++;
-                 }
-
-                 // NEW: Cards Market
-                 if (oddsData.cards_over && oddsData.cards_under && oddsData.cards_line) {
-                      const marketKey = `market_${marketIndex}`;
-                      const line = oddsData.cards_line;
-                      const options = [
-                          { name: `Over ${line}`, odds: oddsData.cards_over },
-                          { name: `Under ${line}`, odds: oddsData.cards_under }
-                      ];
-                      markets[marketKey] = { name: 'Cards Over/Under', options };
-                      marketIndex++;
-                 }
-
-                 // NEW: Custom Markets (Generic Builder)
-                 if (Array.isArray(oddsData.customMarkets) && oddsData.customMarkets.length > 0) {
-                      oddsData.customMarkets.forEach(customMarket => {
-                          if (customMarket.name && Array.isArray(customMarket.options) && customMarket.options.length > 0) {
-                              const validOptions = customMarket.options
-                                  .filter(opt => opt.name && opt.odds)
-                                  .map(opt => ({ name: opt.name, odds: opt.odds }));
-                              
-                              if (validOptions.length > 0) {
-                                  const marketKey = `market_${marketIndex}`;
-                                  markets[marketKey] = { name: customMarket.name, options: validOptions };
-                                  marketIndex++;
-                              }
-                          }
-                      });
-                 }
-
-                 // Add any other odds fields as individual markets
-                 // Exclude line values that are not bettable odds (handicapLine, total, etc.)
-                 const excludedKeys = ['homeWin', 'awayWin', 'draw', 'over', 'under', 'total', 'homeHandicap', 'awayHandicap', 'handicapLine', 'handicap_line', 'Total', 'Over', 'Under', 'handicaps', 'correctScore', 'multiGoals', 'winningMargin', 'goalScorers', 'corners_line', 'corners_over', 'corners_under', 'cards_line', 'cards_over', 'cards_under', 'customMarkets'];
-                 Object.entries(oddsData).forEach(([key, value]) => {
-                     if (!excludedKeys.includes(key) && !key.startsWith('htFt_') && !key.startsWith('oddEven_') && value && value > 0) {
-                         const marketKey = `market_${marketIndex}`;
-                        markets[marketKey] = {
-                            name: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
-                            options: [{ name: key, odds: value }]
-                        };
-                        marketIndex++;
+            // --- 11. Custom Markets Array (Explicit) ---
+            if (Array.isArray(oddsData.customMarkets)) {
+                oddsData.customMarkets.forEach(customMarket => {
+                    if (customMarket.name && Array.isArray(customMarket.options)) {
+                        const validOptions = customMarket.options
+                            .filter(opt => opt.name && opt.odds)
+                            .map(opt => ({ name: opt.name, odds: opt.odds }));
+                        
+                        if (validOptions.length > 0) {
+                            markets[`market_${marketIndex++}`] = { name: customMarket.name, options: validOptions };
+                        }
                     }
                 });
+                consume('customMarkets');
             }
+
+            // --- 12. Generic Fallback (The "Catch-All") ---
+            // Explicitly exclude known structural keys that shouldn't be markets
+            const alwaysExclude = ['_id', 'id', 'createdAt', 'updatedAt', 'matchId'];
             
-            console.log('Created markets from database format:', markets);
-            
+            allKeys.forEach(key => {
+                if (consumedKeys.has(key)) return;
+                if (alwaysExclude.includes(key)) return;
+                
+                const val = oddsData[key];
+                if (!val && val !== 0) return; // Skip empty/null
+                if (typeof val === 'object') return; // Skip arrays/objects we missed (safety)
+
+                // Formatting logic for leftover keys
+                // e.g. "extraMarket_Yes" -> "Extra Market" (Header), "Yes" (Option) ?
+                // Or just "Extra Market Yes" -> value
+                
+                // Strategy: Convert camelCase/underscore key to readable string
+                const formattedName = key
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/_/g, ' ')
+                    .replace(/^\w/, c => c.toUpperCase())
+                    .trim();
+                
+                // If it's a leftover single value, we create a market for it?
+                // Or group it?
+                // User requirement: "naming system should not have underscore"
+                
+                // For a single key-value pair like "weirdKey: 1.5", 
+                // we probably want Market: "Weird Key", Option: "Weird Key" -> 1.5?
+                // Or just "Weird Key" -> 1.5.
+                
+                markets[`market_${marketIndex++}`] = {
+                    name: formattedName,
+                    options: [{ name: formattedName, odds: val }]
+                };
+            });
+
+            console.log('Final Markets Generated:', markets);
+
             return {
                 _id: matchData._id,
                 id: matchData._id,
@@ -466,10 +511,6 @@ const MatchDetail = () => {
         availableMarketKeys.forEach(marketKey => {
             expandedState[marketKey] = true;
         });
-        // Also expand the additional markets section
-        if (hasAdditionalMarkets) {
-            expandedState['additional'] = true;
-        }
         setExpandedMarkets(expandedState);
         setAllMarketsExpanded(true);
     };
@@ -487,13 +528,10 @@ const MatchDetail = () => {
         }
         
         console.log('Raw match markets:', match.markets);
-        console.log('Match object keys:', Object.keys(match));
         
         // Get all markets first and filter them properly
         const allMarkets = Object.entries(match.markets)
             .map(([marketKey, market]) => {
-                console.log(`Processing market ${marketKey}:`, market);
-                
                 // Filter options to only include those with valid odds
                 const validOptions = (market.options || []).filter(option => 
                     option.odds && option.odds > 0
@@ -510,38 +548,28 @@ const MatchDetail = () => {
         
         console.log('Filtered markets with valid options:', allMarkets);
         
-        // Return only the first 6 markets for the main display
-        return allMarkets.slice(0, 6);
+        // Return ALL markets (no limit)
+        return allMarkets;
     };
 
     const availableMarkets = getAvailableMarkets();
     
     // For additional markets, get the rest beyond the first 6
-    const getAllMarkets = () => {
-        if (!match?.markets) return [];
-        
-        return Object.entries(match.markets)
-            .map(([marketKey, market]) => {
-                // Filter options to only include those with valid odds
-                const validOptions = (market.options || []).filter(option => 
-                    option.odds && option.odds > 0
-                );
-                
-                return {
-                    key: marketKey,
-                    ...market,
-                    options: validOptions
-                };
-            })
-            // Only include markets that have at least one valid option
-            .filter(market => market.options && market.options.length > 0);
-    };
-
-    const allMarkets = getAllMarkets();
-    // Additional markets are those beyond the first 6, already filtered by getAllMarkets()
-    const additionalMarkets = allMarkets.slice(6);
+    // Deprecated: getAllMarkets was redundant with getAvailableMarkets returning everything now.
+    // Keeping logic consistent: availableMarkets contains EVERYTHING.
+    // const allMarkets = availableMarkets; // Removed unused variable
     
-    const hasAdditionalMarkets = additionalMarkets.length > 0;
+    // Since availableMarkets now has everything, additionalMarkets is empty.
+    const additionalMarkets = []; 
+    
+    const hasAdditionalMarkets = false;
+
+    // Initialize all markets as expanded by default
+    useEffect(() => {
+        if (availableMarkets.length > 0 && Object.keys(expandedMarkets).length === 0 && !allMarketsExpanded) {
+            expandAllMarkets();
+        }
+    }, [availableMarkets.length]);
 
     // Debug logging for market count verification
     useEffect(() => {

@@ -9,6 +9,9 @@ import io from 'socket.io-client';
 import WheelOfFortune from './components/WheelOfFortune';
 import Aviator from './components/Aviator';
 
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 // Core components (loaded immediately)
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -191,6 +194,7 @@ function App() {
     return (
       <PrivateRoute auth={{ isLoggedIn }}>
         <div className="app" style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+          <ToastContainer position="top-center" theme="dark" />
           <Aviator />
         </div>
       </PrivateRoute>
@@ -199,6 +203,7 @@ function App() {
 
   return (
     <div className="app">
+      <ToastContainer position="top-right" theme="dark" />
       <div className="page-content">
         <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
