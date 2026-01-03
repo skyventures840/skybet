@@ -39,12 +39,12 @@ const api = axios.create({
 });
 
 const apiPublic = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: false,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 8000,
+    baseURL: API_BASE_URL,
+    withCredentials: false,
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    timeout: 15000, // Increased timeout for public requests
 });
 
 // Simple in-memory cache with TTL to speed up initial loads
@@ -217,7 +217,7 @@ async function instantGet(path, ttl = 30000) {
   return resp;
 }
 
-async function instantGetPublic(path, ttl = 30000) {
+async function instantGetPublic(path, ttl = 30000, timeout = 15000) {
   const memHit = responseCache.get(path);
   if (memHit) {
     return memHit;
@@ -237,7 +237,7 @@ async function instantGetPublic(path, ttl = 30000) {
       inflightRequests.set(path, controller);
       const etag = entry.etag || null;
       const headers = etag ? { 'If-None-Match': etag } : {};
-      apiPublic.get(path, { headers, signal: controller.signal, timeout: 8000 })
+      apiPublic.get(path, { headers, signal: controller.signal, timeout })
         .then(resp => {
           if (resp && resp.status === 304) {
             enhancedCache.touch(path);
@@ -258,7 +258,7 @@ async function instantGetPublic(path, ttl = 30000) {
     }
     return synthetic;
   }
-  const resp = await apiPublic.get(path);
+  const resp = await apiPublic.get(path, { timeout });
   const etag = resp.headers && (resp.headers.etag || resp.headers.ETag);
   responseCache.set(path, resp, ttl);
   enhancedCache.setEntry(path, resp.data, etag || null);
@@ -470,7 +470,7 @@ const apiService = {
   getMatchMarkets: (matchId, opts = {}) => {
     const full = opts.full === true;
     const path = full ? `/matches/${matchId}/markets?full=true` : `/matches/${matchId}/markets`;
-    return instantGetPublic(path, 120000);
+    return instantGetPublic(path, 120000, 30000);
   },
   // Admin: match status updates
   setMatchStatus: (matchId, { status, homeScore, awayScore }) =>

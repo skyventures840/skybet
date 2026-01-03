@@ -10,11 +10,18 @@ export const normalizeMarketKey = (keyRaw) => {
   // Map direct aliases to core keys
   if (['h2h','moneyline','ml','h2h_lay','winner','match_winner','1x2'].includes(base)) return 'winner';
   // Collapse single-side 1x2 variants into one Winner market
-  if (['home_win','away_win','draw','draw_result','homewin','awaywin'].includes(base)) return 'winner';
+  if (['home_win','away_win','draw','draw_result','homewin','awaywin','1','x','2'].includes(base)) return 'winner';
   // Map basic totals aliases to unified totals
-  if (['total','total_goals','total_points','over','under'].includes(base)) return 'totals';
+  if (['total','total_goals','total_points','over','under','tm','tu'].includes(base)) return 'totals';
   // Map handicap/spread aliases to unified spreads
   if (['handicap','asian_handicap','point_spread','spread','line_spread','homehandicap','awayhandicap','handicapline','handicap_line'].includes(base)) return 'spreads';
+  
+  // Map BTTS variants
+  if (['both_teams_to_score','btts','bttsyes','bttsno','btts_yes','btts_no'].includes(base)) return 'both_teams_to_score';
+  
+  // Map Double Chance variants
+  if (['double_chance','doublechance','dc','dc1x','dc12','dc2x','1x','12','2x'].includes(base)) return 'double_chance';
+  
   if (base === 'outrights_lay') return 'outrights';
   // Synonyms for goal/try scorer keys
   if (base === 'player_first_goal_scorer') return 'player_goal_scorer_first';
@@ -30,6 +37,8 @@ const MARKET_TITLE_MAP = {
   totals: 'Totals',
   outrights: 'Outrights',
   outrights_lay: 'Outrights',
+  both_teams_to_score: 'Both Teams to Score',
+  double_chance: 'Double Chance',
 
   // Halves/Periods/Quarters (Moneyline)
   h2h_h1: 'Moneyline 1st Half',
