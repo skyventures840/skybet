@@ -108,6 +108,11 @@ const MatchCard = memo(({ match, index }) => (
         {match.outcome === '1' ? 'Home Win' : 
          match.outcome === 'X' ? 'Draw' : 'Away Win'}
       </span>
+      {match.result && (match.result.homeScore !== undefined) && (
+        <span className="ml-2 font-bold text-gray-900">
+          ({match.result.homeScore}-{match.result.awayScore})
+        </span>
+      )}
       <span className="ml-2 text-green-600 font-bold">
         @ {match.odds.toFixed(2)}
       </span>
@@ -120,30 +125,87 @@ const MyBets = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Fetch multi-bets from API
-  const fetchMultiBets = useCallback(async () => {
+  // Fetch bets from both APIs and merge
+  const fetchBets = useCallback(async () => {
     try {
       setLoading(true);
       setError(''); // Clear previous errors
       
-      const response = await apiService.getMultiBets();
-      
-      if (response.data.success) {
-        setMultiBets(response.data.data || []);
-      } else {
-        setError(response.data.message || 'Failed to fetch multi-bets');
+      // Fetch both Ordinary/Express bets (Bet model) and legacy MultiBets (MultiBet model)
+      const [userBetsResponse, multiBetsResponse] = await Promise.allSettled([
+        apiService.getUserBets({ limit: 50 }), // Fetch recent bets
+        apiService.getMultiBets({ limit: 50 })
+      ]);
+
+      let allBets = [];
+
+      // Process User Bets (Ordinary & New Express)
+      if (userBetsResponse.status === 'fulfilled' && userBetsResponse.value?.data?.bets) {
+        const mappedUserBets = userBetsResponse.value.data.bets.map(bet => {
+          // Normalize status
+          let status = 'Pending';
+          if (bet.status === 'won') status = 'Win';
+          if (bet.status === 'lost') status = 'Loss';
+          if (bet.status === 'void') status = 'Void';
+          if (bet.status === 'cancelled') status = 'Cancelled';
+          
+          return {
+            _id: bet.id, // bet.id is returned from backend
+            betslipId: bet.id.substring(0, 8).toUpperCase(),
+            submittedAt: bet.createdAt,
+            status: status,
+            stake: bet.stake,
+            currency: 'USD', // Default to USD as it's not always in response
+            combinedOdds: typeof bet.odds === 'object' ? bet.odds.selected : bet.odds,
+            potentialPayout: bet.potentialWin,
+            totalMatches: bet.matches ? bet.matches.length : 1,
+            matches: (bet.matches || []).map(m => ({
+              ...m,
+              league: m.league || bet.match?.competition || 'Unknown League',
+              result: m.result || (bet.result && bet.result.homeScore !== undefined ? bet.result : null)
+            })),
+            isMultiBet: bet.market === 'parlay' || (bet.matches && bet.matches.length > 1),
+            source: 'bet'
+          };
+        });
+        allBets = [...allBets, ...mappedUserBets];
+      }
+
+      // Process Legacy MultiBets
+      if (multiBetsResponse.status === 'fulfilled' && multiBetsResponse.value?.data?.success) {
+        const mappedMultiBets = (multiBetsResponse.value.data.data || []).map(bet => ({
+          ...bet,
+          betslipId: bet._id.substring(0, 8).toUpperCase(),
+          submittedAt: bet.createdAt || bet.submittedAt, // Fallback
+          // Status is already Title Case in MultiBet model usually
+          matches: bet.matches.map(m => ({
+            ...m,
+            // Ensure result structure consistency if needed
+          })),
+          source: 'multibet'
+        }));
+        allBets = [...allBets, ...mappedMultiBets];
+      }
+
+      // Sort by date descending
+      allBets.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+      setMultiBets(allBets);
+
+      // Handle errors if both failed
+      if (userBetsResponse.status === 'rejected' && multiBetsResponse.status === 'rejected') {
+        setError('Failed to fetch bets');
       }
     } catch (err) {
-      console.error('Fetch multi-bets error:', err);
-      const msg = err.response?.data?.message || err.message || 'Failed to fetch multi-bets';
-      setError(msg);
+      console.error('Fetch bets error:', err);
+      setError('An error occurred while fetching bets');
     } finally {
       setLoading(false);
     }
   }, []);
   
   useEffect(() => {
-    fetchMultiBets();
+    fetchBets();
   }, []);
   
   // Handle bet cancellation
@@ -152,12 +214,21 @@ const MyBets = () => {
       return;
     }
 
+    const bet = multiBets.find(b => b._id === betId);
+    if (!bet) return;
+
     try {
       setLoading(true);
-      const response = await apiService.cancelMultiBet(betId);
+      let response;
+      if (bet.source === 'multibet') {
+        response = await apiService.cancelMultiBet(betId);
+      } else {
+        response = await apiService.cancelBet(betId);
+      }
+
       if (response.data.success) {
         // Refresh bets list
-        fetchMultiBets();
+        fetchBets();
       } else {
         setError(response.data.message || 'Failed to cancel bet');
         setLoading(false);
@@ -168,7 +239,7 @@ const MyBets = () => {
       setError(msg);
       setLoading(false);
     }
-  }, [fetchMultiBets]);
+  }, [fetchBets, multiBets]);
 
   // Memoized status info to avoid recreating objects
   const getStatusInfo = useMemo(() => {

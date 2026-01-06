@@ -400,6 +400,7 @@ const apiService = {
     const path = queryString ? `/bets/my-bets?${queryString}` : '/bets/my-bets';
     return instantGet(path, 120000);
   },
+  cancelBet: (id) => api.delete(`/bets/${id}`),
   getBetStatsSummary: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     const path = queryString ? `/bets/stats/summary?${queryString}` : '/bets/stats/summary';

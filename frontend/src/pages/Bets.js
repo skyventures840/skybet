@@ -436,6 +436,9 @@ const Bets = () => {
     let type = null; // 'over' | 'under' | '1' | 'x' | '2' | 'yes' | 'no'
     let side = null; // 'home' | 'away' | 'draw'
     let refPoint = null;
+    let bandMin = null;
+    let bandMax = null;
+    let player = null;
 
     const parenMatch = raw.match(/\(([-+]?\d+(?:\.\d+)?)\)/);
     const numberMatch = raw.match(/(-?\d+(?:\.\d+)?)/);
@@ -475,7 +478,43 @@ const Bets = () => {
       }
     }
 
-    return { kind, type, side, point: refPoint, raw };
+    if (/\bcorners?\b/i.test(low)) {
+      if (/\b(over|ov|o)\b/i.test(low)) { kind = 'corners_totals'; type = 'over'; }
+      if (/\b(under|und|u)\b/i.test(low)) { kind = 'corners_totals'; type = 'under'; }
+    }
+
+    if (/\bcards?\b/i.test(low)) {
+      if (/\b(over|ov|o)\b/i.test(low)) { kind = 'cards_totals'; type = 'over'; }
+      if (/\b(under|und|u)\b/i.test(low)) { kind = 'cards_totals'; type = 'under'; }
+    }
+
+    if (/\bodd\b/i.test(low) || /\beven\b/i.test(low)) {
+      if (/\bodd\b/i.test(low)) { kind = 'odd_even'; type = 'odd'; }
+      if (/\beven\b/i.test(low)) { kind = 'odd_even'; type = 'even'; }
+    }
+
+    const bandMatch = raw.match(/\b(\d+)\s*-\s*(\d+)\b/);
+    const plusMatch = raw.match(/\b(\d+)\s*\+\b/);
+    if (bandMatch) {
+      kind = 'multi_goals';
+      bandMin = Number(bandMatch[1]);
+      bandMax = Number(bandMatch[2]);
+    } else if (plusMatch) {
+      kind = 'multi_goals';
+      bandMin = Number(plusMatch[1]);
+      bandMax = null;
+    }
+
+    if (/\bgoalscorer\b/i.test(low)) {
+      kind = 'goalscorer';
+      if (/first/i.test(low)) type = 'first';
+      else if (/anytime/i.test(low)) type = 'anytime';
+      else if (/last/i.test(low)) type = 'last';
+      const nameMatch = raw.match(/:\s*([A-Za-z\s.'-]+)/) || raw.match(/\bby\s+([A-Za-z\s.'-]+)\b/);
+      if (nameMatch) player = nameMatch[1].trim();
+    }
+
+    return { kind, type, side, point: refPoint, bandMin, bandMax, player, raw };
   };
 
   // Derive outcome text from match result, aligned to the pick context
@@ -526,6 +565,56 @@ const Bets = () => {
       return bothScored ? 'Yes' : 'No';
     }
 
+    if (pick.kind === 'corners_totals') {
+      const homeCorners = Number(match?.result?.homeCorners ?? 0);
+      const awayCorners = Number(match?.result?.awayCorners ?? 0);
+      const total = homeCorners + awayCorners;
+      const p = pick.point != null ? pick.point : null;
+      if (p == null) {
+        const inferred = Math.floor(total) + 0.5;
+        return total > inferred ? `Over(${inferred})` : `Under(${inferred})`;
+      }
+      return total > p ? `Over(${p})` : `Under(${p})`;
+    }
+
+    if (pick.kind === 'cards_totals') {
+      const homeCards = Number(match?.result?.homeCards ?? 0);
+      const awayCards = Number(match?.result?.awayCards ?? 0);
+      const total = homeCards + awayCards;
+      const p = pick.point != null ? pick.point : null;
+      if (p == null) {
+        const inferred = Math.floor(total) + 0.5;
+        return total > inferred ? `Over(${inferred})` : `Under(${inferred})`;
+      }
+      return total > p ? `Over(${p})` : `Under(${p})`;
+    }
+
+    if (pick.kind === 'odd_even') {
+      const total = hs + as;
+      return total % 2 === 0 ? 'Even' : 'Odd';
+    }
+
+    if (pick.kind === 'multi_goals') {
+      const total = hs + as;
+      if (pick.bandMin != null && pick.bandMax != null) {
+        if (total >= pick.bandMin && total <= pick.bandMax) return `${pick.bandMin}-${pick.bandMax}`;
+        return String(total);
+      }
+      if (pick.bandMin != null && pick.bandMax == null) {
+        if (total >= pick.bandMin) return `${pick.bandMin}+`;
+        return String(total);
+      }
+    }
+
+    if (pick.kind === 'goalscorer') {
+      const first = match?.result?.firstGoalscorer;
+      const last = match?.result?.lastGoalscorer;
+      const anytime = match?.result?.anytimeGoalscorers;
+      if (pick.type === 'first') return first || null;
+      if (pick.type === 'last') return last || null;
+      if (pick.type === 'anytime') return anytime || null;
+    }
+
     // Fallback: general outcome from scores
     if (hs > as) return 'Home Win';
     if (hs < as) return 'Away Win';
@@ -570,6 +659,45 @@ const Bets = () => {
     if (pick.kind === 'btts' && (pick.type === 'yes' || pick.type === 'no')) {
       const lowTarget = (pick.type).toLowerCase();
       return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'corners_totals' && (pick.type === 'over' || pick.type === 'under')) {
+      const p = pick.point != null ? pick.point : null;
+      const target = p != null ? `${pick.type}(${p})` : pick.type;
+      const lowTarget = target.toLowerCase().replace(/\s+/g, '');
+      return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'cards_totals' && (pick.type === 'over' || pick.type === 'under')) {
+      const p = pick.point != null ? pick.point : null;
+      const target = p != null ? `${pick.type}(${p})` : pick.type;
+      const lowTarget = target.toLowerCase().replace(/\s+/g, '');
+      return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'odd_even' && (pick.type === 'odd' || pick.type === 'even')) {
+      const lowTarget = pick.type.toLowerCase();
+      return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'multi_goals') {
+      if (pick.bandMin != null && pick.bandMax != null) {
+        const target = `${pick.bandMin}-${pick.bandMax}`;
+        return lowOutcome === target.toLowerCase() ? 'won' : 'lost';
+      }
+      if (pick.bandMin != null && pick.bandMax == null) {
+        const target = `${pick.bandMin}+`;
+        return lowOutcome === target.toLowerCase() ? 'won' : 'lost';
+      }
+    }
+
+    if (pick.kind === 'goalscorer') {
+      if (pick.type === 'first' && pick.player) return lowOutcome.includes(pick.player.toLowerCase()) ? 'won' : 'lost';
+      if (pick.type === 'last' && pick.player) return lowOutcome.includes(pick.player.toLowerCase()) ? 'won' : 'lost';
+      if (pick.type === 'anytime' && pick.player) return lowOutcome.includes(pick.player.toLowerCase()) ? 'won' : 'lost';
+      if (pick.type && !pick.player) {
+        return outcomeText ? 'won' : 'lost';
+      }
     }
 
     // Unknown pick type: conservatively compare generic outcome to selection text
@@ -812,6 +940,11 @@ const Bets = () => {
                       >
                         <div className="bet-summary-info">
                           <div className="bet-summary-title">#{bet.id?.slice(-6) || 'N/A'} • {formatDate(bet.createdAt)}</div>
+                          {!isExpanded && !isMultibet && displayMatches[0]?.result?.homeScore != null && (
+                            <div className="bet-summary-score">
+                              FT: {displayMatches[0].result.homeScore}-{displayMatches[0].result.awayScore}
+                            </div>
+                          )}
                         </div>
                         <div className="bet-summary-amounts">
                           <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
