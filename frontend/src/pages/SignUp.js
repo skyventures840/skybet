@@ -41,6 +41,7 @@ const SignUp = () => {
         // Persist user and token for consistency across services
         localStorage.setItem('user', JSON.stringify({ token, user }));
         localStorage.setItem('token', token);
+        try { localStorage.setItem('login_time', String(Date.now())); } catch (e) { void e; }
 
         // Dispatch login to Redux store (auto-login)
         dispatch(loginSuccess({ token, user }));

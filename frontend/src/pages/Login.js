@@ -35,6 +35,7 @@ const Login = () => {
           
           try {
             localStorage.setItem('user', JSON.stringify({ token, user }));
+            localStorage.setItem('login_time', String(Date.now()));
           } catch (e) {
             console.warn('Failed to save to localStorage:', e);
             // If quota exceeded, try to clear and save only essential data
@@ -44,6 +45,7 @@ const Login = () => {
                 localStorage.clear(); 
                 // Try saving again
                 localStorage.setItem('user', JSON.stringify({ token, user }));
+                localStorage.setItem('login_time', String(Date.now()));
               } catch (retryErr) {
                  // If still failing, save minimal user data
                  console.warn('Retrying with minimal user data');
@@ -55,6 +57,7 @@ const Login = () => {
                    balance: user.balance
                  };
                  localStorage.setItem('user', JSON.stringify({ token, user: minimalUser }));
+                 localStorage.setItem('login_time', String(Date.now()));
               }
             }
           }

@@ -315,7 +315,18 @@ api.interceptors.response.use(
 
     if (error.response) {
       if (error.response.status === 401) {
-        // Clear auth data and redirect to login
+        const isBackground = !!originalRequest?.signal;
+        if (isBackground) {
+          return Promise.reject(error);
+        }
+        const lastLoginAtRaw = localStorage.getItem('login_time');
+        const lastLoginAt = lastLoginAtRaw ? parseInt(lastLoginAtRaw, 10) : 0;
+        const withinGrace = lastLoginAt && (Date.now() - lastLoginAt) < 7000;
+        if (withinGrace && !originalRequest._retry401) {
+          originalRequest._retry401 = true;
+          await new Promise(resolve => setTimeout(resolve, 300));
+          return api(originalRequest);
+        }
         localStorage.removeItem('user');
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
@@ -323,19 +334,7 @@ api.interceptors.response.use(
       }
 
       // Handle 429 rate limiting with retry
-      if (error.response.status === 429 && !originalRequest._retry) {
-        originalRequest._retry = true;
-        
-        // Calculate retry delay with exponential backoff
-        const retryDelay = Math.min(1000 * Math.pow(2, originalRequest._retryCount || 0), 10000);
-        originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        
-        // Retry the request
-        return api(originalRequest);
-      }
+      // Removed duplicate global 429 retry to avoid compounded delays
     }
     return Promise.reject(error);
   }
@@ -510,7 +509,7 @@ async function getWithRetry(path, maxAttempts = 3) {
       const status = err?.response?.status;
       const isTimeout = err?.code === 'ECONNABORTED';
       const isNetwork = !err?.response;
-      const retryable = isTimeout || isNetwork || (status && (status === 408 || status === 429 || status >= 500));
+      const retryable = isTimeout || isNetwork || (status && (status === 408 || status >= 500));
       if (!retryable) break;
       const delay = 500 * Math.pow(2, attempt);
       await new Promise(r => setTimeout(r, delay));

@@ -1006,7 +1006,7 @@ const Home = () => {
   };
 
   // Group matches by sport first, then by subcategory with canonicalization and deduplication
-  const groupMatchesBySportAndSubcategory = () => {
+  const groupMatches = (matchesToGroup) => {
     const groupedBySport = {};
     const subcategoryUniqueMatches = {};
 
@@ -1049,7 +1049,7 @@ const Home = () => {
       return sportMappings[sport?.toLowerCase()] || sport || 'Other Sports';
     };
 
-    filteredMatches.forEach(match => {
+    matchesToGroup.forEach(match => {
       const sportKey = match.sport || 'other';
       const sportDisplayName = getSportDisplayName(sportKey);
       const subcategoryKey = computeCanonicalSubcategory(match);
@@ -1078,30 +1078,48 @@ const Home = () => {
       }
     });
 
-    Object.entries(groupedBySport).forEach(([, sportData]) => {
-      console.log(`[DEBUG] Sport "${sportData.displayName}": ${sportData.totalMatches} total matches`);
-      Object.entries(sportData.subcategories).forEach(([subcategory, matches]) => {
-        console.log(`  - Subcategory "${subcategory}": ${matches.length} matches`);
-      });
-    });
-
     return groupedBySport;
   };
 
-  // Memoize grouped matches to avoid regenerating object each render
-  const groupedMatches = useMemo(() => groupMatchesBySportAndSubcategory(), [filteredMatches]);
+  // Split matches into Live and Upcoming
+  const liveMatchesList = useMemo(() => 
+    filteredMatches.filter(m => {
+      const start = new Date(m.startTime);
+      const now = new Date();
+      // Considered live if status is 'live' OR (start time passed AND not finished)
+      return m.status === 'live' || (start <= now && m.status !== 'finished');
+    }), 
+  [filteredMatches]);
+
+  const upcomingMatchesList = useMemo(() => 
+    filteredMatches.filter(m => {
+      const start = new Date(m.startTime);
+      const now = new Date();
+      return m.status !== 'live' && (start > now || m.status === 'upcoming');
+    }), 
+  [filteredMatches]);
+
+  // Memoize grouped matches
+  const groupedLiveMatches = useMemo(() => groupMatches(liveMatchesList), [liveMatchesList]);
+  const groupedUpcomingMatches = useMemo(() => groupMatches(upcomingMatchesList), [upcomingMatchesList]);
+  
+  // Use upcoming for the main list state (default expansion etc)
+  // We can merge keys for expansion state if needed, or maintain separately
   
   // State for managing expanded/collapsed sports
   const [expandedSports, setExpandedSports] = useState({});
   
-  // Initialize all sports as expanded by default
+  // Initialize all sports as expanded by default (for both lists)
   React.useEffect(() => {
     const initialExpandedState = {};
-    Object.keys(groupedMatches).forEach(sportKey => {
-      initialExpandedState[sportKey] = true;
+    Object.keys(groupedLiveMatches).forEach(sportKey => {
+      initialExpandedState[`live-${sportKey}`] = true;
+    });
+    Object.keys(groupedUpcomingMatches).forEach(sportKey => {
+      initialExpandedState[`upcoming-${sportKey}`] = true;
     });
     setExpandedSports(initialExpandedState);
-  }, [groupedMatches]);
+  }, [groupedLiveMatches, groupedUpcomingMatches]);
   
   // Toggle function for expanding/collapsing sports
   const toggleSportExpansion = (sportKey) => {
@@ -1114,16 +1132,12 @@ const Home = () => {
   // Debug: Log the grouped matches to see what subcategories are created
   console.log('🏠 [HOME] Raw matches count:', matches.length);
   console.log('🏠 [HOME] Filtered matches count:', filteredMatches.length);
-  console.log('🏠 [HOME] Grouped matches by sport:', Object.keys(groupedMatches));
-  console.log('🏠 [HOME] Total sport groups:', Object.entries(groupedMatches).length);
-  Object.entries(groupedMatches).forEach(([, sportData]) => {
-    console.log(`🏠 [HOME] Sport "${sportData.displayName}": ${sportData.totalMatches} matches in ${Object.keys(sportData.subcategories).length} subcategories`);
-  });
+  console.log('🏠 [HOME] Live matches count:', liveMatchesList.length);
+  console.log('🏠 [HOME] Upcoming matches count:', upcomingMatchesList.length);
   
   // Alert to force visibility of debug info
-  if (matches.length > 0 && Object.entries(groupedMatches).length > 0) {
-    const totalMatches = Object.entries(groupedMatches).reduce((total, [, sportData]) => total + sportData.totalMatches, 0);
-    console.log('🚨 [HOME] MATCHES LOADED! Should render', totalMatches, 'MatchCard components across', Object.entries(groupedMatches).length, 'sports');
+  if (matches.length > 0) {
+    console.log('🚨 [HOME] MATCHES LOADED!');
   }
 
   // Do not gate initial render behind loading; show page immediately without loading text
@@ -1209,45 +1223,95 @@ const Home = () => {
                 <SkeletonLoader type="match-card" count={6} />
               </div>
             ) : (
-              Object.entries(groupedMatches).length > 0 ? (
-                Object.entries(groupedMatches).map(([sportKey, sportData]) => (
-                  <div key={sportKey} className="sport-container">
-                    <div 
-                      className="sport-header" 
-                      onClick={() => toggleSportExpansion(sportKey)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <h3 className="sport-title">
-                        <span className="sport-icon" aria-hidden="true">{getSportIcon(sportKey)}</span>
-                        {sportData.displayName}
-                      </h3>
-                      <span className={`expand-arrow ${expandedSports[sportKey] ? 'expanded' : 'collapsed'}`}>
-                        {expandedSports[sportKey] ? '⌃' : '⌄'}
-                      </span>
+              <>
+                {/* Live Matches Section */}
+                {Object.entries(groupedLiveMatches).length > 0 && (
+                  <div className="live-matches-section" style={{ marginBottom: '2rem' }}>
+                    <div className="section-header" style={{ marginBottom: '1rem', borderBottom: '2px solid #e74c3c', paddingBottom: '0.5rem' }}>
+                       <h3 style={{ color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         <span className="live-indicator-dot" style={{ height: '10px', width: '10px', backgroundColor: '#e74c3c', borderRadius: '50%', display: 'inline-block' }}></span>
+                         Live Now
+                       </h3>
                     </div>
-                    
-                    <div className={`sport-subcategories ${expandedSports[sportKey] ? 'expanded' : 'collapsed'}`}>
-                      {Object.entries(sportData.subcategories).map(([subcategory, matches]) => (
-                        <div key={subcategory} className="subcategory-section">
-                          {matches.map((match, index) => (
-                            <MatchCard
-                              key={`${match.id}-${index}`}
-                              match={match}
-                              sport={sportKey}
-                              league={subcategory}
-                              showLeagueHeader={index === 0}
-                            />
+                    {Object.entries(groupedLiveMatches).map(([sportKey, sportData]) => (
+                      <div key={`live-${sportKey}`} className="sport-container">
+                        <div 
+                          className="sport-header" 
+                          onClick={() => toggleSportExpansion(`live-${sportKey}`)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <h3 className="sport-title">
+                            <span className="sport-icon" aria-hidden="true">{getSportIcon(sportKey)}</span>
+                            {sportData.displayName}
+                          </h3>
+                          <span className={`expand-arrow ${expandedSports[`live-${sportKey}`] ? 'expanded' : 'collapsed'}`}>
+                            {expandedSports[`live-${sportKey}`] ? '⌃' : '⌄'}
+                          </span>
+                        </div>
+                        
+                        <div className={`sport-subcategories ${expandedSports[`live-${sportKey}`] ? 'expanded' : 'collapsed'}`}>
+                          {Object.entries(sportData.subcategories).map(([subcategory, matches]) => (
+                            <div key={subcategory} className="subcategory-section">
+                              {matches.map((match, index) => (
+                                <MatchCard
+                                  key={`${match.id}-${index}`}
+                                  match={match}
+                                  sport={sportKey}
+                                  league={subcategory}
+                                  showLeagueHeader={index === 0}
+                                />
+                              ))}
+                            </div>
                           ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))
-              ) : (
-                <div className="no-matches">
-                  <p>No matches found</p>
-                </div>
-              )
+                )}
+
+                {/* Upcoming Matches Section */}
+                {Object.entries(groupedUpcomingMatches).length > 0 ? (
+                  Object.entries(groupedUpcomingMatches).map(([sportKey, sportData]) => (
+                    <div key={`upcoming-${sportKey}`} className="sport-container">
+                      <div 
+                        className="sport-header" 
+                        onClick={() => toggleSportExpansion(`upcoming-${sportKey}`)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <h3 className="sport-title">
+                          <span className="sport-icon" aria-hidden="true">{getSportIcon(sportKey)}</span>
+                          {sportData.displayName}
+                        </h3>
+                        <span className={`expand-arrow ${expandedSports[`upcoming-${sportKey}`] ? 'expanded' : 'collapsed'}`}>
+                          {expandedSports[`upcoming-${sportKey}`] ? '⌃' : '⌄'}
+                        </span>
+                      </div>
+                      
+                      <div className={`sport-subcategories ${expandedSports[`upcoming-${sportKey}`] ? 'expanded' : 'collapsed'}`}>
+                        {Object.entries(sportData.subcategories).map(([subcategory, matches]) => (
+                          <div key={subcategory} className="subcategory-section">
+                            {matches.map((match, index) => (
+                              <MatchCard
+                                key={`${match.id}-${index}`}
+                                match={match}
+                                sport={sportKey}
+                                league={subcategory}
+                                showLeagueHeader={index === 0}
+                              />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  Object.entries(groupedLiveMatches).length === 0 && (
+                    <div className="no-matches">
+                      <p>No matches found</p>
+                    </div>
+                  )
+                )}
+              </>
             )}
           </div>
         </div>

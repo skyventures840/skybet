@@ -37,11 +37,18 @@ const LiveTimer = ({ startTime, sport, liveTime }) => {
             if (sport === 'soccer' || sport === 'football' || (sport && sport.includes('soccer'))) {
                 if (diffMins <= 45) {
                     setDisplayTime(`${diffMins}'`);
-                } else if (diffMins <= 60) {
+                } else if (diffMins <= 50) {
+                    // First half added time (approx 5 mins)
+                    setDisplayTime('45+');
+                } else if (diffMins <= 65) {
+                    // Half time break (15 mins)
                     setDisplayTime('HT');
-                } else if (diffMins <= 105) {
-                    setDisplayTime(`${diffMins - 15}'`);
+                } else if (diffMins <= 110) {
+                    // Second half (starts at 45', real time 65')
+                    // Offset = 65 - 45 = 20 mins
+                    setDisplayTime(`${diffMins - 20}'`);
                 } else {
+                    // Full time added time
                     setDisplayTime('90+');
                 }
             } else {
