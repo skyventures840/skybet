@@ -4,6 +4,7 @@ const { auth } = require('../middleware/auth')
 const MultiBet = require('../models/MultiBet')
 const User = require('../models/User')
 const { validateMultiBet } = require('../utils/Validation')
+const { bus } = require('../utils/cache')
 
 router.post('/', auth, async (req, res) => {
   try {
@@ -56,6 +57,10 @@ router.post('/', auth, async (req, res) => {
 
     try {
       await multiBet.save()
+      
+      // Invalidate caches
+      bus.emit('multibets:changed')
+      bus.emit('users:changed')
     } catch (saveError) {
       // Refund if save fails
       console.error('Failed to save multi-bet, refunding user:', saveError)
@@ -225,6 +230,10 @@ router.delete('/:id', auth, async (req, res) => {
     await User.refundBet(req.user.id, multiBet.stake)
 
     await multiBet.remove()
+
+    // Invalidate caches
+    bus.emit('multibets:changed')
+    bus.emit('users:changed')
 
     res.json({
       success: true,

@@ -65,6 +65,69 @@ class BetSettlementService {
   }
 
   /**
+   * Update bets for a live match (update scores without settling)
+   * This allows users to see real-time scores on their betslips
+   */
+  async updateLiveMatchBets (match) {
+    try {
+      const results = this.extractResults(match)
+      
+      // If we don't have valid scores yet, skip
+      if (results.homeScore === null || results.awayScore === null) return
+
+      const resultData = {
+        homeScore: results.homeScore,
+        awayScore: results.awayScore,
+        // Calculate provisional outcome
+        finalOutcome: results.homeScore > results.awayScore ? '1' : results.homeScore < results.awayScore ? '2' : 'X'
+      }
+
+      // Update Single Bets
+      // We only update the result field, we do NOT change status from 'pending'
+      await Bet.updateMany(
+        { matchId: match.eventId, status: 'pending' },
+        {
+          $set: {
+            result: resultData
+          }
+        }
+      )
+
+      // Update MultiBets
+      await MultiBet.updateMany(
+        { 'matches.matchId': match.eventId, status: 'Pending' },
+        {
+          $set: {
+            'matches.$.result': resultData
+          }
+        }
+      )
+
+      // Emit change event so UI updates
+      try { bus.emit('bets:changed') } catch (e) {}
+      
+      // Determine match identifier for broadcasting
+      const matchIdStr = match.eventId || (match._id ? match._id.toString() : null)
+      
+      if (matchIdStr && global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
+        try {
+          global.websocketServer.broadcastMatchResult(matchIdStr, {
+            homeScore: results.homeScore,
+            awayScore: results.awayScore,
+            score: `${results.homeScore}:${results.awayScore}`,
+            status: 'live'
+          })
+        } catch (wsErr) {}
+      }
+
+      return true
+    } catch (error) {
+      logger.error(`Error updating live bets for match ${match.eventId}:`, error)
+      return false
+    }
+  }
+
+  /**
    * Combine completed matches from Results and Scores, avoiding duplicates
    */
   combineCompletedMatches (results, matchesDB = [], scores = []) {

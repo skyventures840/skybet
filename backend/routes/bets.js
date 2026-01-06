@@ -8,7 +8,7 @@ const { auth } = require('../middleware/auth')
 const { body, validationResult } = require('express-validator')
 const Odds = require('../models/Odds')
 const Results = require('../models/Results')
-const { cache, keyFor } = require('../utils/cache')
+const { cache, keyFor, bus } = require('../utils/cache')
 const { OddsApiService } = require('../services/oddsApiService')
 
 // Initialize OddsApiService
@@ -54,7 +54,7 @@ ensureIndexes()
 // Cache middleware for user-specific bet queries
 const cacheUserBets = (ttl = 60) => {
   return async (req, res, next) => {
-    const cacheKey = keyFor('user_bets', {
+    const cacheKey = keyFor('/api/bets/my-bets', {
       userId: req.user.id,
       page: req.query.page || 1,
       limit: req.query.limit || 20,
@@ -361,6 +361,10 @@ router.post('/', auth, [
     // Trigger match update (Fire and forget)
     triggerMatchUpdate(matchId.toString())
 
+    // Invalidate caches
+    bus.emit('bets:changed')
+    bus.emit('users:changed')
+
     // Balance already debited via debitForBet
 
     // Broadcast new bet via WebSocket (Non-blocking / Fire-and-forget)
@@ -472,92 +476,122 @@ router.post('/bulk', auth, [
     const savedBets = []
 
     // Create bets
-    for (const betItem of bets) {
-      const { matchId, market, selection, stake, odds } = betItem
-      const betStake = parseFloat(stake)
+    try {
+      for (const betItem of bets) {
+        const { matchId, market, selection, stake, odds } = betItem
+        const betStake = parseFloat(stake)
 
-      // Distribute bonus/real usage proportionally
-      const betBonusUsed = betStake * bonusRatio
-      const betRealUsed = betStake - betBonusUsed
+        // Distribute bonus/real usage proportionally
+        const betBonusUsed = betStake * bonusRatio
+        const betRealUsed = betStake - betBonusUsed
 
-      // Resolve match info
-      let homeTeam = null; let awayTeam = null; let league = null
-      const oddsDoc = await Odds.findOne({ gameId: matchId }).lean()
-      if (oddsDoc) {
-        homeTeam = oddsDoc.home_team
-        awayTeam = oddsDoc.away_team
-        league = oddsDoc.sport_title
-      } else if (enhancedMatchData[matchId]) {
-        homeTeam = enhancedMatchData[matchId].homeTeam
-        awayTeam = enhancedMatchData[matchId].awayTeam
-        league = enhancedMatchData[matchId].competition
-      }
+        // Resolve match info
+        let homeTeam = null; let awayTeam = null; let league = null
+        const oddsDoc = await Odds.findOne({ gameId: matchId }).lean()
+        if (oddsDoc) {
+          homeTeam = oddsDoc.home_team
+          awayTeam = oddsDoc.away_team
+          league = oddsDoc.sport_title
+        } else if (enhancedMatchData[matchId]) {
+          homeTeam = enhancedMatchData[matchId].homeTeam
+          awayTeam = enhancedMatchData[matchId].awayTeam
+          league = enhancedMatchData[matchId].competition
+        }
 
-      const betData = {
-        userId,
-        matchId: matchId.toString(),
-        homeTeam,
-        awayTeam,
-        league,
-        market,
-        selection,
-        stake: betStake,
-        odds,
-        potentialWin: betStake * odds,
-        bonusStakeUsed: betBonusUsed,
-        realStakeUsed: betRealUsed,
-        status: 'pending'
-      }
+        const betData = {
+          userId,
+          matchId: matchId.toString(),
+          homeTeam,
+          awayTeam,
+          league,
+          market,
+          selection,
+          stake: betStake,
+          odds,
+          potentialWin: betStake * odds,
+          bonusStakeUsed: betBonusUsed,
+          realStakeUsed: betRealUsed,
+          status: 'pending'
+        }
 
-      const bet = new Bet(betData)
-      await bet.save()
-      savedBets.push(bet)
+        const bet = new Bet(betData)
+        await bet.save()
+        savedBets.push(bet)
 
-      // Broadcast via WS (Non-blocking)
-      if (global.websocketServer) {
-        setImmediate(() => {
-          try {
-            const payload = {
-              bet: {
-                ...bet.toObject(),
-                userId: {
-                  _id: req.user._id,
-                  username: req.user.username,
-                  email: req.user.email
-                }
-              },
-              betId: bet._id.toString(),
-              userId: userId.toString()
+        // Broadcast via WS (Non-blocking)
+        if (global.websocketServer) {
+          setImmediate(() => {
+            try {
+              const payload = {
+                bet: {
+                  ...bet.toObject(),
+                  userId: {
+                    _id: req.user._id,
+                    username: req.user.username,
+                    email: req.user.email
+                  }
+                },
+                betId: bet._id.toString(),
+                userId: userId.toString()
+              }
+
+              global.websocketServer.broadcastToAll({
+                type: 'new_bet',
+                payload
+              })
+            } catch (wsErr) {
+              console.error('WS Broadcast error (bulk):', wsErr)
             }
-
-            global.websocketServer.broadcastToAll({
-              type: 'new_bet',
-              payload
-            })
-          } catch (wsErr) {
-            console.error('WS Broadcast error (bulk):', wsErr)
-          }
-        })
+          })
+        }
       }
+
+      // Trigger match updates
+      // Use Set to avoid duplicate triggers for same match
+      const matchIdsToUpdate = [...new Set(savedBets.map(b => b.matchId))]
+      matchIdsToUpdate.forEach(id => triggerMatchUpdate(id))
+
+      // Invalidate caches
+      bus.emit('bets:changed')
+      bus.emit('users:changed')
+
+      // console.log(`Successfully placed ${savedBets.length} bets`);
+
+      res.status(201).json({
+        success: true,
+        count: savedBets.length,
+        bets: savedBets.map(b => ({
+          id: b._id,
+          match: `${b.market} bet on ${b.selection}`,
+          stake: b.stake,
+          potentialWin: b.potentialWin
+        }))
+      })
+    } catch (saveError) {
+      console.error('Bulk save error, initiating refund:', saveError)
+
+      // Refund total stake
+      // Note: User.refundBet currently refunds to main balance regardless of split.
+      // This is a known limitation but prevents funds loss.
+      try {
+        await User.refundBet(userId, totalStake)
+      } catch (refundError) {
+        console.error('CRITICAL: Failed to refund user after bet failure:', refundError)
+        // This is a severe error requiring manual intervention
+      }
+
+      // Delete any bets that were saved in this batch
+      if (savedBets.length > 0) {
+        try {
+          const savedIds = savedBets.map(b => b._id)
+          await Bet.deleteMany({ _id: { $in: savedIds } })
+        } catch (cleanupError) {
+          console.error('Failed to cleanup partial bets:', cleanupError)
+        }
+      }
+
+      throw saveError
     }
-
-    // Trigger match updates
-    // Use Set to avoid duplicate triggers for same match
-    const matchIdsToUpdate = [...new Set(savedBets.map(b => b.matchId))]
-    matchIdsToUpdate.forEach(id => triggerMatchUpdate(id))
-
-    // console.log(`Successfully placed ${savedBets.length} bets`);
-
-    res.status(201).json({
-      success: true,
-      count: savedBets.length,
-      bets: savedBets.map(b => ({
-        id: b._id,
-        match: `${b.market} bet on ${b.selection}`,
-        stake: b.stake,
-        potentialWin: b.potentialWin
-      }))
-    })
   } catch (error) {
     console.error('=== Bulk place bet error ===', error)
     res.status(500).json({ error: 'Server error', details: error.message })

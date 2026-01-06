@@ -89,7 +89,8 @@ function getStats () {
 const invalidationPatterns = {
   'matches:changed': ['/api/matches', '/api/odds'],
   'sports:changed': ['/api/sports', '/api/matches'],
-  'bets:changed': ['/api/bets'],
+  'bets:changed': ['/api/bets', '/api/bets/my-bets', 'user_bets'],
+  'multibets:changed': ['/api/multibets'],
   'users:changed': ['/api/users'],
   'odds:changed': ['/api/odds', '/api/matches']
 }

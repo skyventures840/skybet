@@ -1121,6 +1121,38 @@ router.get('/:matchId/markets', async (req, res) => {
 
     // Add any other available markets
     Object.entries(oddsData).forEach(([key, value]) => {
+      // Handle array-based markets (Correct Score, Multi Goals, etc.)
+      if (Array.isArray(value)) {
+        if (key === 'correctScore') {
+          const outcomes = value
+            .filter(item => item.score && item.odds)
+            .map(item => ({ name: item.score, price: parseFloat(item.odds), point: null }))
+          if (outcomes.length > 0) {
+            console.log(`Adding array market: ${key} with ${outcomes.length} outcomes`)
+            bookmaker.markets.push({
+              key: 'correct_score',
+              title: 'Correct Score',
+              last_update: new Date().toISOString(),
+              outcomes
+            })
+          }
+        } else if (key === 'multiGoals') {
+          const outcomes = value
+            .filter(item => item.range && item.odds)
+            .map(item => ({ name: item.range, price: parseFloat(item.odds), point: null }))
+          if (outcomes.length > 0) {
+            console.log(`Adding array market: ${key} with ${outcomes.length} outcomes`)
+            bookmaker.markets.push({
+              key: 'multi_goals',
+              title: 'Multi Goals',
+              last_update: new Date().toISOString(),
+              outcomes
+            })
+          }
+        }
+        return
+      }
+
       if (!['1', '2', 'X', 'TM', 'TU', 'Total', '1X', '12', '2X'].includes(key) && value > 0) {
         console.log(`Adding additional market: ${key} = ${value}`)
         bookmaker.markets.push({

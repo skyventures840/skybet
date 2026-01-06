@@ -294,6 +294,47 @@ async function updatePendingBetsScores () {
 }
 
 /**
+ * @function updateLiveBetStatuses
+ * @description Updates bet results for all live matches
+ */
+async function updateLiveBetStatuses () {
+  try {
+    const liveMatches = await Match.find({ status: 'live' })
+    
+    for (const match of liveMatches) {
+      // Only proceed if we have valid scores
+      if (match.homeScore === undefined || match.homeScore === null || 
+          match.awayScore === undefined || match.awayScore === null) {
+        continue
+      }
+
+      // Construct object compatible with BetSettlementService
+      const matchForUpdate = {
+        eventId: match.externalId || match._id.toString(),
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        directResults: {
+          homeScore: match.homeScore,
+          awayScore: match.awayScore,
+          homeCorners: (match.predeterminedResult && match.predeterminedResult.homeCorners != null) ? match.predeterminedResult.homeCorners : undefined,
+          awayCorners: (match.predeterminedResult && match.predeterminedResult.awayCorners != null) ? match.predeterminedResult.awayCorners : undefined,
+          homeCards: (match.predeterminedResult && match.predeterminedResult.homeCards != null) ? match.predeterminedResult.homeCards : undefined,
+          awayCards: (match.predeterminedResult && match.predeterminedResult.awayCards != null) ? match.predeterminedResult.awayCards : undefined,
+          penaltyAwarded: (match.predeterminedResult && match.predeterminedResult.penaltyAwarded != null) ? match.predeterminedResult.penaltyAwarded : undefined,
+          firstGoalscorer: (match.predeterminedResult && match.predeterminedResult.firstGoalscorer) ? match.predeterminedResult.firstGoalscorer : undefined,
+          anytimeGoalscorers: (match.predeterminedResult && match.predeterminedResult.anytimeGoalscorers) ? match.predeterminedResult.anytimeGoalscorers : undefined,
+          lastGoalscorer: (match.predeterminedResult && match.predeterminedResult.lastGoalscorer) ? match.predeterminedResult.lastGoalscorer : undefined
+        }
+      }
+      
+      await betSettlementService.updateLiveMatchBets(matchForUpdate)
+    }
+  } catch (error) {
+    logger.error('Error updating live bet statuses:', error)
+  }
+}
+
+/**
  * @function processScheduledEvents
  * @description Processes scheduled events for live matches
  */
@@ -553,12 +594,14 @@ const startCronJobs = async () => {
     }
   })
 
-  // Process scheduled events every minute
+  // Process scheduled events and update live bet statuses every minute
   cron.schedule('*/1 * * * *', async () => {
     if (isEventProcessing) return
     isEventProcessing = true
     try {
       await processScheduledEvents()
+      // Update bet statuses for all live matches (including those just updated)
+      await updateLiveBetStatuses()
     } catch (error) {
       logger.error('Error in scheduled events cron job:', error)
     } finally {
