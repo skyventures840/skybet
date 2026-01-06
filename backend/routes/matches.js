@@ -33,8 +33,17 @@ const storage = multer.diskStorage({
 const upload = multer({ storage })
 
 // Helper: build a map of leagues -> { sportName, country, leagueName }
+let cachedLeagueMetaMap = null;
+let lastLeagueMetaUpdate = 0;
+const LEAGUE_META_TTL = 3600 * 1000; // 1 hour
+
 async function buildLeagueMetaMap () {
   try {
+    const now = Date.now();
+    if (cachedLeagueMetaMap && (now - lastLeagueMetaUpdate < LEAGUE_META_TTL)) {
+      return cachedLeagueMetaMap;
+    }
+
     const sports = await Sport.find({ active: true }).lean()
     const mapByLeagueName = new Map();
     (sports || []).forEach(s => {
@@ -49,10 +58,13 @@ async function buildLeagueMetaMap () {
         })
       })
     })
+    
+    cachedLeagueMetaMap = mapByLeagueName;
+    lastLeagueMetaUpdate = now;
     return mapByLeagueName
   } catch (err) {
     console.warn('Failed to build league meta map:', err.message)
-    return new Map()
+    return cachedLeagueMetaMap || new Map()
   }
 }
 
@@ -248,9 +260,6 @@ router.get('/', cacheResponse(300), async (req, res) => { // Increased cache TTL
     const limit = Math.min(parseInt(req.query.limit) || 50, 100) // Cap at 100
     const skip = (page - 1) * limit
 
-    // Cache league metadata for better performance
-    const leagueMetaMap = await buildLeagueMetaMap()
-
     // Get current time for filtering past matches
     const now = new Date()
 
@@ -274,8 +283,9 @@ router.get('/', cacheResponse(300), async (req, res) => { // Increased cache TTL
       commence_time: { $gte: now }
     }
 
-    // Get matches from both collections with pagination and lean queries
-    const [adminMatches, oddsData, totalAdminMatches, totalOddsData] = await Promise.all([
+    // Get matches from both collections and metadata in parallel
+    const [leagueMetaMap, adminMatches, oddsData, totalAdminMatches, totalOddsData] = await Promise.all([
+      buildLeagueMetaMap(),
       // Get admin-created matches with lean query for better performance
       Match.find(matchQuery)
         .lean() // Faster queries, returns plain objects

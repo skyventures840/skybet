@@ -140,7 +140,17 @@ betSchema.statics.getByMatch = function (matchId) {
 // Consolidated method with balance updates
 betSchema.statics.settleBets = async function (matchId, homeScore, awayScore) {
   const User = mongoose.model('User')
-  const bets = await this.find({ matchId, status: 'pending' })
+  // Ensure matchId is string
+  const matchIdStr = matchId.toString()
+  const bets = await this.find({ matchId: matchIdStr, status: 'pending' })
+
+  // Calculate match result data
+  const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+  const resultData = {
+    homeScore,
+    awayScore,
+    finalOutcome
+  }
 
   for (const bet of bets) {
     let won = false
@@ -210,7 +220,8 @@ betSchema.statics.settleBets = async function (matchId, homeScore, awayScore) {
     const update = {
       status: won ? 'won' : 'lost',
       actualWin: won ? bet.potentialWin : 0,
-      settledAt: new Date()
+      settledAt: new Date(),
+      result: resultData
     }
 
     await this.findByIdAndUpdate(bet._id, update)
@@ -230,9 +241,25 @@ betSchema.statics.settleBets = async function (matchId, homeScore, awayScore) {
       bus.emit('bets:update', {
         userId: String(bet.userId),
         betId: String(bet._id),
+        matchId: bet.matchId,
         status: update.status,
-        actualWin: update.actualWin
+        actualWin: update.actualWin,
+        settledAt: update.settledAt,
+        homeScore,
+        awayScore,
+        result: resultData
       })
+
+      // Also broadcast via global websocket server if available (matches betSettlementService behavior)
+      if (global.websocketServer && typeof global.websocketServer.broadcastBetStatusUpdate === 'function') {
+        global.websocketServer.broadcastBetStatusUpdate(
+          String(bet._id),
+          String(bet.userId),
+          update.status,
+          bet.matches || [],
+          resultData
+        )
+      }
     } catch (e) {
       // Ignore bus errors
     }

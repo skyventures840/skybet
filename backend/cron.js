@@ -26,6 +26,113 @@ try {
 // Fetch all supported markets per sport; leave live odds to lightweight h2h
 
 /**
+ * @function getMatchDuration
+ * @description Returns the standard duration of a match in milliseconds based on sport
+ * @param {string} sport - The sport key/name
+ * @returns {number} Duration in milliseconds
+ */
+function getMatchDuration (sport) {
+  const s = sport ? sport.toLowerCase() : ''
+  
+  // Soccer: 90 mins + 15 break + ~15 added = 120 mins
+  if (s.includes('soccer') || s.includes('football')) return 120 * 60 * 1000
+  
+  // Basketball: 4 quarters + breaks = ~2.5 hours
+  if (s.includes('basketball') || s.includes('nba')) return 150 * 60 * 1000
+  
+  // Tennis: Can vary widely, average 3 hours
+  if (s.includes('tennis')) return 180 * 60 * 1000
+  
+  // Cricket: T20 ~3.5h, ODI ~8h. Default to T20/generic 4 hours
+  if (s.includes('cricket')) return 240 * 60 * 1000
+  
+  // Ice Hockey: 3 periods + breaks = ~2.5 hours
+  if (s.includes('hockey') || s.includes('nhl')) return 150 * 60 * 1000
+  
+  // Baseball: ~3 hours
+  if (s.includes('baseball') || s.includes('mlb')) return 180 * 60 * 1000
+
+  // Default: 3 hours
+  return 180 * 60 * 1000
+}
+
+/**
+ * @function getCurrentMatchMinute
+ * @description Calculates current match minute based on sport rules
+ * @param {Date} startTime 
+ * @param {string} sport 
+ * @returns {number} Current minute
+ */
+function getCurrentMatchMinute (startTime, sport) {
+  const now = new Date()
+  const diffMs = now - new Date(startTime)
+  const diffMins = Math.floor(diffMs / 60000)
+  
+  const s = sport ? sport.toLowerCase() : ''
+  
+  if (s.includes('soccer') || s.includes('football')) {
+    if (diffMins <= 45) return diffMins
+    if (diffMins <= 60) return 45 // During HT, we consider it 45th minute (or 45+)
+    if (diffMins <= 105) return diffMins - 15
+    return diffMins - 15 // Keep counting up for 90+
+  }
+  
+  return diffMins
+}
+
+/**
+ * @function processScheduledEvents
+ * @description Processes scheduled events for custom matches
+ */
+async function processScheduledEvents () {
+  try {
+    const liveMatches = await Match.find({ 
+      status: 'live',
+      'scheduledEvents.processed': false 
+    })
+
+    for (const match of liveMatches) {
+      let modified = false
+      const currentMinute = getCurrentMatchMinute(match.startTime, match.sport)
+      
+      // Filter events that are due but not processed
+      const dueEvents = match.scheduledEvents.filter(e => !e.processed && e.minute <= currentMinute)
+      
+      for (const event of dueEvents) {
+        // Apply event effects
+        if (event.type === 'goal') {
+          if (event.team === 'home') match.homeScore = (match.homeScore || 0) + 1
+          if (event.team === 'away') match.awayScore = (match.awayScore || 0) + 1
+        }
+        
+        // Add to liveData events
+        if (!match.liveData) match.liveData = {}
+        if (!match.liveData.events) match.liveData.events = []
+        
+        match.liveData.events.push({
+          type: event.type,
+          minute: event.minute,
+          team: event.team,
+          player: event.player,
+          description: event.description || `${event.type} by ${event.player || 'Unknown'}`
+        })
+        
+        event.processed = true
+        modified = true
+      }
+      
+      if (modified) {
+        match.liveData.minute = currentMinute
+        await match.save()
+        logger.info(`Processed ${dueEvents.length} events for match ${match._id}`)
+      }
+    }
+  } catch (error) {
+    logger.error('Error processing scheduled events:', error)
+  }
+}
+
+/**
  * @function updateMatchStatuses
  * @description Updates match statuses based on start times
  */
@@ -42,28 +149,29 @@ async function updateMatchStatuses () {
       { $set: { status: 'live' } }
     )
 
-    // Update matches that should be finished (e.g., 3 hours after start time)
-    const threeHoursAgo = new Date(now - 3 * 60 * 60 * 1000)
-    const matchesToFinish = await Match.find({
-      startTime: { $lte: threeHoursAgo },
-      status: 'live'
-    })
+    // Update matches that should be finished based on sport-specific duration
+    const liveMatches = await Match.find({ status: 'live' })
+    
+    for (const match of liveMatches) {
+      const duration = getMatchDuration(match.sport)
+      const finishTime = new Date(match.startTime.getTime() + duration)
+      
+      if (now >= finishTime) {
+        match.status = 'finished'
+        match.finishedAt = now
 
-    for (const match of matchesToFinish) {
-      match.status = 'finished'
-      match.finishedAt = now
+        // Apply predetermined result if exists and valid
+        if (match.predeterminedResult && match.predeterminedResult.shouldSettle) {
+          if (match.predeterminedResult.homeScore !== null && match.predeterminedResult.homeScore !== undefined) {
+            match.homeScore = match.predeterminedResult.homeScore
+          }
+          if (match.predeterminedResult.awayScore !== null && match.predeterminedResult.awayScore !== undefined) {
+            match.awayScore = match.predeterminedResult.awayScore
+          }
+        }
 
-      // Apply predetermined result if exists and valid
-      if (match.predeterminedResult && match.predeterminedResult.shouldSettle) {
-        if (match.predeterminedResult.homeScore !== null && match.predeterminedResult.homeScore !== undefined) {
-          match.homeScore = match.predeterminedResult.homeScore
-        }
-        if (match.predeterminedResult.awayScore !== null && match.predeterminedResult.awayScore !== undefined) {
-          match.awayScore = match.predeterminedResult.awayScore
-        }
+        await match.save()
       }
-
-      await match.save()
     }
 
     logger.info('Successfully updated match statuses')
@@ -334,45 +442,7 @@ async function updateLiveBetStatuses () {
   }
 }
 
-/**
- * @function processScheduledEvents
- * @description Processes scheduled events for live matches
- */
-async function processScheduledEvents () {
-  try {
-    const liveMatches = await Match.find({
-      status: 'live',
-      'scheduledEvents.0': { $exists: true }
-    })
 
-    for (const match of liveMatches) {
-      const start = new Date(match.startTime).getTime()
-      const now = Date.now()
-      const currentMinute = Math.floor((now - start) / 60000)
-
-      let updated = false
-
-      for (const event of match.scheduledEvents) {
-        if (!event.processed && event.minute <= currentMinute) {
-          event.processed = true
-          updated = true
-
-          if (event.type === 'goal') {
-            if (event.team === 'home') match.homeScore = (match.homeScore || 0) + 1
-            if (event.team === 'away') match.awayScore = (match.awayScore || 0) + 1
-          }
-        }
-      }
-
-      if (updated) {
-        await match.save()
-        logger.info(`Processed scheduled events for match ${match._id}`)
-      }
-    }
-  } catch (error) {
-    logger.error('Error processing scheduled events:', error)
-  }
-}
 
 /**
  * @function startCronJobs

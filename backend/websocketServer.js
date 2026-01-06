@@ -545,10 +545,12 @@ class WebSocketServer {
     if (sport && (sport.includes('soccer') || sport.includes('football'))) {
       if (diffMins <= 45) {
         return `${diffMins}'`
-      } else if (diffMins <= 60) {
+      } else if (diffMins <= 50) {
+        return '45+'
+      } else if (diffMins <= 65) {
         return 'HT'
-      } else if (diffMins <= 105) {
-        return `${diffMins - 15}'`
+      } else if (diffMins <= 110) {
+        return `${diffMins - 20}'`
       } else {
         return '90+'
       }

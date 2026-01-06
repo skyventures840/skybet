@@ -6,6 +6,7 @@ const Scores = require('../models/Scores')
 const MultiBet = require('../models/MultiBet')
 const logger = require('../utils/logger')
 const { bus } = require('../utils/cache')
+const { escapeRegex } = require('../utils/regex')
 
 class BetSettlementService {
   constructor () {
@@ -199,6 +200,7 @@ class BetSettlementService {
       if (!matchMap.has(eventId)) {
         matchMap.set(eventId, {
           eventId,
+          originalId: match._id.toString(),
           homeTeam: match.homeTeam,
           awayTeam: match.awayTeam,
           scores: [
@@ -214,6 +216,7 @@ class BetSettlementService {
         // If match exists from API but we have DB override (predeterminedResult), merge/override
         // This is useful if API is missing stats like corners/cards but we have them manually
         const existing = matchMap.get(eventId)
+        existing.originalId = match._id.toString()
         existing.directResults = { ...existing.directResults, ...directResults }
 
         // If we have explicit scores in DB, potentially override API scores (if marked as authoritative)
@@ -273,8 +276,13 @@ class BetSettlementService {
       const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
       const resultData = { ...results, finalOutcome }
 
+      const matchIds = [match.eventId]
+      if (match.originalId && match.originalId !== match.eventId) {
+        matchIds.push(match.originalId)
+      }
+
       await MultiBet.updateMany(
-        { 'matches.matchId': match.eventId },
+        { 'matches.matchId': { $in: matchIds } },
         {
           $set: {
             'matches.$.matchStatus': 'Finished',
@@ -285,7 +293,7 @@ class BetSettlementService {
 
       // Update Single Bets (Top level result)
       await Bet.updateMany(
-        { matchId: match.eventId },
+        { matchId: { $in: matchIds } },
         {
           $set: {
             result: resultData
@@ -294,7 +302,7 @@ class BetSettlementService {
       )
 
       await Bet.updateMany(
-        { 'matches.matchId': match.eventId },
+        { 'matches.matchId': { $in: matchIds } },
         {
           $set: {
             'matches.$.outcome': finalOutcome,
@@ -373,15 +381,20 @@ class BetSettlementService {
    */
   async findMatchingBets (match) {
     const queries = [
-      { matchId: match.eventId, status: 'pending' },
-      {
-        status: 'pending',
-        $and: [
-          { homeTeam: { $regex: new RegExp(match.homeTeam, 'i') } },
-          { awayTeam: { $regex: new RegExp(match.awayTeam, 'i') } }
-        ]
-      }
+      { matchId: match.eventId, status: 'pending' }
     ]
+
+    if (match.originalId && match.originalId !== match.eventId) {
+      queries.push({ matchId: match.originalId, status: 'pending' })
+    }
+
+    queries.push({
+      status: 'pending',
+      $and: [
+        { homeTeam: { $regex: new RegExp(escapeRegex(match.homeTeam), 'i') } },
+        { awayTeam: { $regex: new RegExp(escapeRegex(match.awayTeam), 'i') } }
+      ]
+    })
 
     let allBets = []
     for (const query of queries) {
@@ -401,7 +414,7 @@ class BetSettlementService {
    */
   async settleSingleBet (bet, results, match) {
     try {
-      let won = false
+      let outcome = false // can be true, false, or 'void'
       const { homeScore, awayScore } = results
 
       // Determine bet outcome based on market type
@@ -409,86 +422,118 @@ class BetSettlementService {
         case 'h2h':
         case 'moneyline':
         case 'match_winner':
+        case 'matchwinner':
         case '1x2':
-          won = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
+          outcome = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
           break
         case 'double_chance':
-          won = this.evaluateDoubleChanceBet(bet.selection, homeScore, awayScore)
+        case 'doublechance':
+          outcome = this.evaluateDoubleChanceBet(bet.selection, homeScore, awayScore)
           break
         case 'btts':
         case 'both_teams_to_score':
-          won = this.evaluateBTTSBet(bet.selection, homeScore, awayScore)
+        case 'bothteamstoscore':
+          outcome = this.evaluateBTTSBet(bet.selection, homeScore, awayScore)
           break
         case 'handicap':
         case 'spread':
-          won = this.evaluateHandicapBet(bet.selection, homeScore, awayScore)
+          outcome = this.evaluateHandicapBet(bet.selection, homeScore, awayScore)
           break
         case 'totals':
         case 'over_under':
+        case 'overunder':
         case 'total_goals':
-          won = this.evaluateTotalsBet(bet.selection, homeScore, awayScore)
+        case 'totalgoals':
+          outcome = this.evaluateTotalsBet(bet.selection, homeScore, awayScore)
           break
         case 'correct_score':
-          won = this.evaluateCorrectScoreBet(bet.selection, homeScore, awayScore)
+        case 'correctscore':
+        case 'correct score':
+        case 'Correct Score':
+          outcome = this.evaluateCorrectScoreBet(bet.selection, homeScore, awayScore)
           break
         case 'ht_ft':
         case 'halftime_fulltime':
-          won = this.evaluateHTFTBet(bet.selection, results)
+        case 'halftimefulltime':
+          outcome = this.evaluateHTFTBet(bet.selection, results)
           break
         case 'corners':
         case 'corners_over_under':
-          won = this.evaluateCornersBet(bet.selection, results)
+        case 'cornersoverunder':
+          outcome = this.evaluateCornersBet(bet.selection, results)
           break
         case 'cards':
         case 'cards_over_under':
-          won = this.evaluateCardsBet(bet.selection, results)
+        case 'cardsoverunder':
+          outcome = this.evaluateCardsBet(bet.selection, results)
           break
         case 'goalscorer':
         case 'first_goalscorer':
+        case 'firstgoalscorer':
         case 'anytime_goalscorer':
+        case 'anytimegoalscorer':
         case 'last_goalscorer':
-          won = this.evaluateGoalscorerBet(bet.selection, bet.market, results)
+        case 'lastgoalscorer':
+          outcome = this.evaluateGoalscorerBet(bet.selection, bet.market, results)
           break
         case 'odd_even':
         case 'odd_even_goals':
-          won = this.evaluateOddEvenBet(bet.selection, homeScore, awayScore)
+        case 'oddevengoals':
+          outcome = this.evaluateOddEvenBet(bet.selection, homeScore, awayScore)
           break
         case 'multi_goals':
+        case 'multigoals':
         case 'goal_bands':
-          won = this.evaluateMultiGoalsBet(bet.selection, homeScore, awayScore)
+        case 'goalbands':
+          outcome = this.evaluateMultiGoalsBet(bet.selection, homeScore, awayScore)
           break
         case 'winning_margin':
-          won = this.evaluateWinningMarginBet(bet.selection, homeScore, awayScore, match)
+        case 'winningmargin':
+          outcome = this.evaluateWinningMarginBet(bet.selection, homeScore, awayScore, match)
           break
         case 'penalty':
         case 'penalty_awarded':
-          won = this.evaluatePenaltyBet(bet.selection, results)
+        case 'penaltyawarded':
+          outcome = this.evaluatePenaltyBet(bet.selection, results)
           break
         default:
           logger.warn(`Unknown market type: ${bet.market} for bet ${bet._id}`)
-          // Fallback to match winner if possible, otherwise fail safe to lost (or keep pending?)
-          // Safe default: process as match winner only if it looks like one
+          // Fallback to match winner if possible
           if (['1', 'X', '2'].includes(bet.selection) || bet.selection.includes('Home') || bet.selection.includes('Away')) {
-            won = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
+            outcome = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
           }
       }
 
       // Update bet status
       const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+      let status = 'lost'
+      let actualWin = 0
+
+      if (outcome === true) {
+        status = 'won'
+        actualWin = bet.potentialWin
+      } else if (outcome === 'void') {
+        status = 'void'
+        actualWin = bet.stake // Refund stake
+      }
+
       const update = {
-        status: won ? 'won' : 'lost',
-        actualWin: won ? bet.potentialWin : 0,
+        status,
+        actualWin,
         settledAt: new Date(),
         result: { ...results, finalOutcome }
       }
 
       await Bet.findByIdAndUpdate(bet._id, update)
 
-      if (won && update.actualWin > 0) {
-        await User.settleBetWin(bet.userId, update.actualWin)
+      if (status === 'won') {
+        await User.settleBetWin(bet.userId, actualWin)
         await User.findByIdAndUpdate(bet.userId, {
-          $inc: { lifetimeWinnings: update.actualWin - bet.stake }
+          $inc: { lifetimeWinnings: actualWin - bet.stake }
         })
+      } else if (status === 'void') {
+        await User.settleBetWin(bet.userId, actualWin) // Refund stake
+        // Do not update lifetimeWinnings for void bets
       }
 
       try { bus.emit('bets:changed') } catch (e) {}
@@ -515,7 +560,7 @@ class BetSettlementService {
         }
       } catch (emitError) {}
 
-      logger.info(`Bet ${bet._id} settled as ${won ? 'WON' : 'LOST'} for match ${match.eventId}`)
+      logger.info(`Bet ${bet._id} settled as ${status.toUpperCase()} for match ${match.eventId}`)
       return true
     } catch (error) {
       logger.error(`Error settling bet ${bet._id}:`, error)
@@ -531,9 +576,14 @@ class BetSettlementService {
       const results = this.extractResults(match)
       if (results.homeScore === null || results.awayScore === null) return 0
 
+      const matchIds = [match.eventId]
+      if (match.originalId && match.originalId !== match.eventId) {
+        matchIds.push(match.originalId)
+      }
+
       // Find pending multi-bets containing this match
       const multiBets = await MultiBet.find({
-        'matches.matchId': match.eventId,
+        'matches.matchId': { $in: matchIds },
         status: 'Pending'
       })
 
@@ -543,7 +593,7 @@ class BetSettlementService {
       for (const mb of multiBets) {
         try {
           // Find the specific leg
-          const leg = mb.matches.find(m => m.matchId === match.eventId)
+          const leg = mb.matches.find(m => matchIds.includes(m.matchId))
           if (!leg || leg.status !== 'Pending') continue
 
           // Determine outcome (1, X, 2)
@@ -554,7 +604,7 @@ class BetSettlementService {
 
           // Update the match status in the MultiBet
           // This will trigger updateOverallStatus() and save()
-          await mb.updateMatchStatus(match.eventId, status, {
+          await mb.updateMatchStatus(leg.matchId, status, {
             homeScore: results.homeScore,
             awayScore: results.awayScore,
             finalOutcome
@@ -619,21 +669,37 @@ class BetSettlementService {
   }
 
   evaluateHandicapBet (selection, homeScore, awayScore) {
-    const handicapMatch = selection.match(/([-+]?\d+\.?\d*)/)
+    const handicapMatch = selection.match(/([+-]?\d*\.?\d+)/)
     if (!handicapMatch) return false
     const handicap = parseFloat(handicapMatch[1])
     const sel = selection.toLowerCase()
-    if (sel.includes('home')) return (homeScore + handicap) > awayScore
-    if (sel.includes('away')) return (awayScore + handicap) > homeScore
-    return false
+
+    let adjustedHomeScore = homeScore
+    let adjustedAwayScore = awayScore
+
+    if (sel.includes('home')) {
+      adjustedHomeScore += handicap
+    } else if (sel.includes('away')) {
+      adjustedAwayScore += handicap
+    } else {
+      return false
+    }
+
+    if (adjustedHomeScore > adjustedAwayScore) return sel.includes('home')
+    if (adjustedAwayScore > adjustedHomeScore) return sel.includes('away')
+
+    return 'void'
   }
 
   evaluateTotalsBet (selection, homeScore, awayScore) {
-    const totalMatch = selection.match(/(\d+\.?\d*)/)
+    const totalMatch = selection.match(/(\d*\.?\d+)/)
     if (!totalMatch) return false
     const total = parseFloat(totalMatch[1])
     const totalScore = homeScore + awayScore
     const sel = selection.toLowerCase()
+
+    if (totalScore === total) return 'void'
+
     if (sel.includes('over')) return totalScore > total
     if (sel.includes('under')) return totalScore < total
     return false
