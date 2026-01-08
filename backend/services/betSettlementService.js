@@ -50,6 +50,26 @@ class BetSettlementService {
         }
       }
 
+      // Additionally handle cancelled/postponed matches as void
+      try {
+        const voidableMatches = await Match.find({ status: { $in: ['cancelled', 'postponed'] } })
+        if (voidableMatches && voidableMatches.length > 0) {
+          for (const vm of voidableMatches) {
+            try {
+              const voided = await this.settleVoidedMatchBets(vm)
+              if (voided > 0) {
+                settledBetsCount += voided
+                processedMatchesCount++
+              }
+            } catch (err) {
+              logger.error(`Error void-settling bets for match ${vm._id}`, err)
+            }
+          }
+        }
+      } catch (voidErr) {
+        logger.error('Error fetching cancelled/postponed matches for void settlement:', voidErr)
+      }
+
       logger.info(`Bet settlement completed: ${settledBetsCount} bets settled across ${processedMatchesCount} matches`)
 
       return {
@@ -125,6 +145,91 @@ class BetSettlementService {
     } catch (error) {
       logger.error(`Error updating live bets for match ${match.eventId}:`, error)
       return false
+    }
+  }
+
+  /**
+   * Settle all pending bets as VOID for cancelled/postponed matches
+   */
+  async settleVoidedMatchBets (match) {
+    try {
+      const eventId = match.externalId || (match._id ? match._id.toString() : null)
+      if (!eventId) return 0
+
+      const pendingBets = await Bet.find({ matchId: eventId, status: 'pending' })
+      let settledCount = 0
+
+      const resultData = {
+        homeScore: match.homeScore ?? null,
+        awayScore: match.awayScore ?? null,
+        finalOutcome: 'void'
+      }
+
+      for (const bet of pendingBets) {
+        try {
+          const update = {
+            status: 'void',
+            actualWin: bet.stake, // refund stake
+            settledAt: new Date(),
+            result: resultData
+          }
+          await Bet.findByIdAndUpdate(bet._id, update)
+          await User.settleBetWin(bet.userId, update.actualWin)
+
+          try {
+            bus.emit('bets:update', {
+              userId: String(bet.userId),
+              betId: String(bet._id),
+              matchId: bet.matchId,
+              status: update.status,
+              actualWin: update.actualWin,
+              settledAt: update.settledAt,
+              result: resultData
+            })
+            if (global.websocketServer && typeof global.websocketServer.broadcastBetStatusUpdate === 'function') {
+              global.websocketServer.broadcastBetStatusUpdate(
+                String(bet._id),
+                String(bet.userId),
+                update.status,
+                bet.matches || [],
+                resultData
+              )
+            }
+          } catch (_) {}
+          settledCount++
+        } catch (err) {
+          logger.error(`Error void-settling bet ${bet._id}:`, err)
+        }
+      }
+
+      // Handle multibets legs: mark leg as Void and let model recalc partials
+      const multiBets = await MultiBet.find({ 'matches.matchId': eventId, status: 'Pending' })
+      for (const mb of multiBets) {
+        try {
+          const leg = mb.matches.find(m => m.matchId === eventId)
+          if (leg && leg.status === 'Pending') {
+            await mb.updateMatchStatus(eventId, 'Void', resultData)
+            // If Partial or Win, pay accordingly
+            if (mb.status === 'Win' || mb.status === 'Partial') {
+              const payout = mb.potentialPayout
+              if (payout > 0) {
+                await User.settleBetWin(mb.userId, payout)
+                await User.findByIdAndUpdate(mb.userId, {
+                  $inc: { lifetimeWinnings: payout - mb.stake }
+                })
+              }
+            }
+            settledCount++
+          }
+        } catch (mbErr) {
+          logger.error(`Error void-settling multi-bet ${mb._id}:`, mbErr)
+        }
+      }
+
+      return settledCount
+    } catch (error) {
+      logger.error(`Error in settleVoidedMatchBets for match ${match._id}:`, error)
+      return 0
     }
   }
 
@@ -414,7 +519,11 @@ class BetSettlementService {
    */
   async settleSingleBet (bet, results, match) {
     try {
-      let outcome = false // can be true, false, or 'void'
+      // outcome can be:
+      // - boolean (legacy) true/false
+      // - string: 'void'
+      // - object: { decision: 'win'|'loss'|'void'|'half_win'|'half_loss'|'push', payoutFactor?: number, rule?: string }
+      let outcome = false
       const { homeScore, awayScore } = results
 
       // Determine bet outcome based on market type
@@ -437,15 +546,31 @@ class BetSettlementService {
           break
         case 'handicap':
         case 'spread':
-          outcome = this.evaluateHandicapBet(bet.selection, homeScore, awayScore)
+        case 'spreads':
+        case 'alternate_spreads': {
+          const asian = this.evaluateAsianHandicapOutcome(bet.selection, homeScore, awayScore)
+          if (asian) {
+            outcome = asian
+          } else {
+            outcome = this.evaluateHandicapBet(bet.selection, homeScore, awayScore)
+          }
           break
+        }
         case 'totals':
         case 'over_under':
         case 'overunder':
         case 'total_goals':
         case 'totalgoals':
-          outcome = this.evaluateTotalsBet(bet.selection, homeScore, awayScore)
+        case 'team_totals':
+        case 'alternate_totals': {
+          const asianTotals = this.evaluateAsianTotalsOutcome(bet.selection, homeScore, awayScore)
+          if (asianTotals) {
+            outcome = asianTotals
+          } else {
+            outcome = this.evaluateTotalsBet(bet.selection, homeScore, awayScore)
+          }
           break
+        }
         case 'correct_score':
         case 'correctscore':
         case 'correct score':
@@ -504,7 +629,7 @@ class BetSettlementService {
           }
       }
 
-      // Update bet status
+      // Update bet status (supports partial outcomes)
       const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
       let status = 'lost'
       let actualWin = 0
@@ -512,9 +637,26 @@ class BetSettlementService {
       if (outcome === true) {
         status = 'won'
         actualWin = bet.potentialWin
-      } else if (outcome === 'void') {
+      } else if (outcome === 'void' || (typeof outcome === 'object' && outcome.decision === 'void') || (typeof outcome === 'object' && outcome.decision === 'push')) {
         status = 'void'
-        actualWin = bet.stake // Refund stake
+        actualWin = bet.stake
+      } else if (typeof outcome === 'object') {
+        if (outcome.decision === 'win') {
+          status = 'won'
+          actualWin = bet.potentialWin
+        } else if (outcome.decision === 'half_win') {
+          status = 'won'
+          const factor = outcome.payoutFactor != null ? outcome.payoutFactor : 0.5
+          // Half stake wins at odds, half stake refunded (push)
+          actualWin = (bet.stake * factor * bet.odds) + (bet.stake * (1 - factor))
+        } else if (outcome.decision === 'half_loss') {
+          status = 'lost'
+          // Half loss means half stake lost, half stake refunded (push)
+          actualWin = bet.stake * 0.5
+        } else if (outcome.decision === 'loss') {
+          status = 'lost'
+          actualWin = 0
+        }
       }
 
       const update = {
@@ -524,7 +666,27 @@ class BetSettlementService {
         result: { ...results, finalOutcome }
       }
 
-      await Bet.findByIdAndUpdate(bet._id, update)
+      // Append settlement audit log entry
+      const decision = typeof outcome === 'object' ? outcome.decision : (outcome === true ? 'win' : (outcome === 'void' ? 'void' : 'loss'))
+      const ruleNote = typeof outcome === 'object' ? outcome.rule : undefined
+      try {
+        await Bet.findByIdAndUpdate(bet._id, {
+          $set: update,
+          $push: {
+            settlementLog: {
+              timestamp: new Date(),
+              market: bet.market,
+              selection: bet.selection,
+              decision,
+              payoutFactor: typeof outcome === 'object' && outcome.payoutFactor != null ? outcome.payoutFactor : undefined,
+              computedActualWin: actualWin,
+              rule: ruleNote
+            }
+          }
+        })
+      } catch (e) {
+        await Bet.findByIdAndUpdate(bet._id, update)
+      }
 
       if (status === 'won') {
         await User.settleBetWin(bet.userId, actualWin)
@@ -534,6 +696,9 @@ class BetSettlementService {
       } else if (status === 'void') {
         await User.settleBetWin(bet.userId, actualWin) // Refund stake
         // Do not update lifetimeWinnings for void bets
+      } else if (status === 'lost' && typeof outcome === 'object' && outcome.decision === 'half_loss') {
+        // Refund half stake for half-loss scenarios
+        await User.settleBetWin(bet.userId, actualWin)
       }
 
       try { bus.emit('bets:changed') } catch (e) {}
@@ -689,6 +854,119 @@ class BetSettlementService {
     if (adjustedAwayScore > adjustedHomeScore) return sel.includes('away')
 
     return 'void'
+  }
+
+  // Asian Handicap with quarter-line support: returns rich outcome object
+  evaluateAsianHandicapOutcome (selection, homeScore, awayScore) {
+    const m = selection.match(/([+-]?\d*\.?\d+)/)
+    if (!m) return null
+    const h = parseFloat(m[1])
+    const sel = selection.toLowerCase()
+    const isHome = sel.includes('home')
+    const isAway = sel.includes('away')
+    if (!isHome && !isAway) return null
+    const base = Math.floor(Math.abs(h))
+    const frac = Math.abs(h) - base
+    const sign = h >= 0 ? 1 : -1
+    const signH = sign * (base + frac)
+
+    // Helper to evaluate a single line
+    const evalLine = (line) => {
+      const adjHome = homeScore + (isHome ? line : 0)
+      const adjAway = awayScore + (isAway ? line : 0)
+      if (adjHome > adjAway) return 'win'
+      if (adjHome < adjAway) return 'loss'
+      return 'push'
+    }
+
+    if (frac === 0.25 || frac === 0.75) {
+      const low = sign * (base + (frac === 0.25 ? 0.0 : 0.5))
+      const high = sign * (base + (frac === 0.25 ? 0.5 : 1.0))
+      const r1 = evalLine(low)
+      const r2 = evalLine(high)
+      if (r1 === 'win' && r2 === 'win') return { decision: 'win', payoutFactor: 1, rule: `Asian Handicap ${signH} (full win)` }
+      if ((r1 === 'win' && r2 === 'push') || (r1 === 'push' && r2 === 'win')) return { decision: 'half_win', payoutFactor: 0.5, rule: `Asian Handicap ${signH} (half win)` }
+      if ((r1 === 'loss' && r2 === 'push') || (r1 === 'push' && r2 === 'loss')) return { decision: 'half_loss', payoutFactor: 0.5, rule: `Asian Handicap ${signH} (half loss)` }
+      if (r1 === 'push' && r2 === 'push') return { decision: 'void', payoutFactor: 1, rule: `Asian Handicap ${signH} (push)` }
+      return { decision: 'loss', payoutFactor: 0, rule: `Asian Handicap ${signH} (loss)` }
+    }
+
+    if (frac === 0.0) {
+      const res = evalLine(signH)
+      if (res === 'win') return { decision: 'win', payoutFactor: 1, rule: `Asian Handicap ${signH} (win)` }
+      if (res === 'loss') return { decision: 'loss', payoutFactor: 0, rule: `Asian Handicap ${signH} (loss)` }
+      return { decision: 'void', payoutFactor: 1, rule: `Asian Handicap ${signH} (push)` }
+    }
+
+    if (frac === 0.5) {
+      const res = evalLine(signH)
+      if (res === 'win') return { decision: 'win', payoutFactor: 1, rule: `Asian Handicap ${signH} (win)` }
+      return { decision: 'loss', payoutFactor: 0, rule: `Asian Handicap ${signH} (loss)` }
+    }
+
+    return null
+  }
+
+  // Asian Totals with quarter-line support: returns rich outcome object
+  evaluateAsianTotalsOutcome (selection, homeScore, awayScore) {
+    const totalMatch = selection.match(/(\d*\.?\d+)/)
+    if (!totalMatch) return null
+    const point = parseFloat(totalMatch[1])
+    const total = homeScore + awayScore
+    const sel = selection.toLowerCase()
+    const isOver = sel.includes('over')
+    const isUnder = sel.includes('under')
+    if (!isOver && !isUnder) return null
+    const base = Math.floor(point)
+    const frac = point - base
+
+    // Split-lines approach for quarter-lines
+    if (frac === 0.25 || frac === 0.75) {
+      const low = base + (frac === 0.25 ? 0.0 : 0.5)
+      const high = base + (frac === 0.25 ? 0.5 : 1.0)
+      const evalLine = (line) => {
+        if (isOver) {
+          if (total > line) return 'win'
+          if (total === line) return 'push'
+          return 'loss'
+        } else {
+          if (total < line) return 'win'
+          if (total === line) return 'push'
+          return 'loss'
+        }
+      }
+      const r1 = evalLine(low)
+      const r2 = evalLine(high)
+      if (r1 === 'win' && r2 === 'win') return { decision: 'win', payoutFactor: 1, rule: `Asian Totals ${point} (full win)` }
+      if ((r1 === 'win' && r2 === 'push') || (r1 === 'push' && r2 === 'win')) return { decision: 'half_win', payoutFactor: 0.5, rule: `Asian Totals ${point} (half win)` }
+      if ((r1 === 'loss' && r2 === 'push') || (r1 === 'push' && r2 === 'loss')) return { decision: 'half_loss', payoutFactor: 0.5, rule: `Asian Totals ${point} (half loss)` }
+      if (r1 === 'push' && r2 === 'push') return { decision: 'void', payoutFactor: 1, rule: `Asian Totals ${point} (push)` }
+      return { decision: 'loss', payoutFactor: 0, rule: `Asian Totals ${point} (loss)` }
+    }
+
+    // .0 line (push possible)
+    if (frac === 0.0) {
+      if (isOver) {
+        if (total > point) return { decision: 'win', payoutFactor: 1, rule: `Totals ${point} (win)` }
+        if (total === point) return { decision: 'void', payoutFactor: 1, rule: `Totals ${point} (push)` }
+        return { decision: 'loss', payoutFactor: 0, rule: `Totals ${point} (loss)` }
+      } else {
+        if (total < point) return { decision: 'win', payoutFactor: 1, rule: `Totals ${point} (win)` }
+        if (total === point) return { decision: 'void', payoutFactor: 1, rule: `Totals ${point} (push)` }
+        return { decision: 'loss', payoutFactor: 0, rule: `Totals ${point} (loss)` }
+      }
+    }
+
+    // .5 line (no push)
+    if (frac === 0.5) {
+      if (isOver) {
+        return total > point ? { decision: 'win', payoutFactor: 1, rule: `Totals ${point} (win)` } : { decision: 'loss', payoutFactor: 0, rule: `Totals ${point} (loss)` }
+      } else {
+        return total < point ? { decision: 'win', payoutFactor: 1, rule: `Totals ${point} (win)` } : { decision: 'loss', payoutFactor: 0, rule: `Totals ${point} (loss)` }
+      }
+    }
+
+    return null
   }
 
   evaluateTotalsBet (selection, homeScore, awayScore) {

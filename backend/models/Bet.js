@@ -77,6 +77,16 @@ const betSchema = new mongoose.Schema({
   settledAt: {
     type: Date
   },
+  // Settlement audit trail for transparency
+  settlementLog: [{
+    timestamp: { type: Date, default: Date.now },
+    market: String,
+    selection: String,
+    decision: String, // win | loss | void | half_win | half_loss | push
+    payoutFactor: Number, // 1, 0.5, 0, etc.
+    computedActualWin: Number,
+    rule: String // brief description of applied rule (e.g., 'Asian Handicap +0.25 (half win)')
+  }],
   // For multibets/parlays - array of individual matches
   matches: [{
     matchId: String,

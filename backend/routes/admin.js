@@ -298,19 +298,26 @@ router.put('/matches/:id', adminAuth, async (req, res) => {
     if (scheduledEvents) updateData.scheduledEvents = scheduledEvents
 
     if (odds) {
-      const oddsMap = new Map()
+      const normalizedOdds = {}
       Object.keys(odds).forEach(key => {
         const value = odds[key]
-        const isSimpleNumber = (typeof value === 'number') || (typeof value === 'string' && !isNaN(Number(value)) && value.trim() !== '')
-
-        if (isSimpleNumber) {
-          oddsMap.set(key, Number(value))
+        if ((typeof value === 'number') || (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value)))) {
+          normalizedOdds[key] = Number(value)
         } else if (value && typeof value === 'object') {
-          // Allow complex objects/arrays
-          oddsMap.set(key, value)
+          normalizedOdds[key] = value
         }
       })
-      updateData.odds = oddsMap
+      const existingMatch = await Match.findById(req.params.id)
+      const mergedMap = new Map()
+      if (existingMatch && existingMatch.odds) {
+        existingMatch.odds.forEach((v, k) => {
+          mergedMap.set(k, v)
+        })
+      }
+      Object.keys(normalizedOdds).forEach(k => {
+        mergedMap.set(k, normalizedOdds[k])
+      })
+      updateData.odds = mergedMap
     }
 
     const match = await Match.findByIdAndUpdate(req.params.id, updateData, { new: true })

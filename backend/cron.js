@@ -171,6 +171,44 @@ async function updateMatchStatuses () {
         }
 
         await match.save()
+
+        // Broadcast finish immediately
+        try {
+          if (global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
+            global.websocketServer.broadcastMatchResult(match.externalId || match._id.toString(), {
+              homeScore: match.homeScore ?? null,
+              awayScore: match.awayScore ?? null,
+              score: (match.homeScore != null && match.awayScore != null) ? `${match.homeScore}:${match.awayScore}` : null,
+              status: 'finished'
+            })
+          }
+        } catch (_) {}
+
+        // Trigger immediate settlement for this match (do not wait for next cron)
+        try {
+          const betSettlementService = require('./services/betSettlementService')
+          const finishMeta = {
+            eventId: match.externalId || match._id.toString(),
+            originalId: match._id.toString(),
+            homeTeam: match.homeTeam,
+            awayTeam: match.awayTeam,
+            directResults: {
+              homeScore: match.homeScore ?? null,
+              awayScore: match.awayScore ?? null,
+              homeCorners: match.predeterminedResult?.homeCorners,
+              awayCorners: match.predeterminedResult?.awayCorners,
+              homeCards: match.predeterminedResult?.homeCards,
+              awayCards: match.predeterminedResult?.awayCards,
+              penaltyAwarded: match.predeterminedResult?.penaltyAwarded,
+              firstGoalscorer: match.predeterminedResult?.firstGoalscorer,
+              anytimeGoalscorers: match.predeterminedResult?.anytimeGoalscorers,
+              lastGoalscorer: match.predeterminedResult?.lastGoalscorer
+            }
+          }
+          await betSettlementService.settleMatchBets(finishMeta)
+        } catch (err) {
+          logger.error('Immediate settlement error after match finish:', err)
+        }
       }
     }
 

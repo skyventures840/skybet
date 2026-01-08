@@ -647,6 +647,31 @@ router.get('/my-bets', auth, cacheUserBets(60), [
         startTime: bet.createdAt,
         status: bet.status === 'pending' ? 'upcoming' : 'finished'
       }
+      // Resolve Unknown team names from authoritative sources (Match or Odds)
+      try {
+        const isUnknown = (t) => !t || String(t).trim().toLowerCase() === 'unknown'
+        if (isUnknown(matchInfo.homeTeam) || isUnknown(matchInfo.awayTeam)) {
+          if (mongoose.Types.ObjectId.isValid(bet.matchId)) {
+            const matchDoc = await Match.findById(bet.matchId).populate('leagueId', 'name').lean()
+            if (matchDoc) {
+              if (isUnknown(matchInfo.homeTeam) && matchDoc.homeTeam) matchInfo.homeTeam = matchDoc.homeTeam
+              if (isUnknown(matchInfo.awayTeam) && matchDoc.awayTeam) matchInfo.awayTeam = matchDoc.awayTeam
+              if (!matchInfo.competition && (matchDoc.league || matchDoc.leagueId?.name)) {
+                matchInfo.competition = matchDoc.league || matchDoc.leagueId?.name
+              }
+            }
+          } else {
+            const oddsDoc = await Odds.findOne({ gameId: bet.matchId }).lean()
+            if (oddsDoc) {
+              if (isUnknown(matchInfo.homeTeam) && oddsDoc.home_team) matchInfo.homeTeam = oddsDoc.home_team
+              if (isUnknown(matchInfo.awayTeam) && oddsDoc.away_team) matchInfo.awayTeam = oddsDoc.away_team
+              if (!matchInfo.competition && oddsDoc.sport_title) {
+                matchInfo.competition = oddsDoc.sport_title
+              }
+            }
+          }
+        }
+      } catch (resolveErr) {}
 
       // Create detailed odds information
       const oddsInfo = {
