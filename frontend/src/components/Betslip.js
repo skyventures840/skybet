@@ -257,6 +257,7 @@ const Betslip = () => {
   // Derive market type display from bet info
   const getMarketTypeDisplay = (bet) => {
     if (bet.marketTypeDisplay) return bet.marketTypeDisplay;
+    if (bet.marketDisplay) return bet.marketDisplay;
     const key = bet.market ? normalizeMarketKey(bet.market) : '';
     if (key) {
       if (key === 'winner') return 'Winner';
@@ -294,7 +295,9 @@ const Betslip = () => {
         const selectionSummary = activeBets
           .map(b => {
             const selection = getSelectionLabel(b);
-            const matchName = `${b.homeTeam} vs ${b.awayTeam}`;
+            const matchName = (b.homeTeam && b.awayTeam)
+              ? `${b.homeTeam} vs ${b.awayTeam}`
+              : (b.match || 'Match');
             const odds = parseFloat(b.odds).toFixed(2);
             return `${matchName}: ${selection} (${odds})`;
           })
@@ -307,14 +310,21 @@ const Betslip = () => {
           stake: totalStake,
           odds: parseFloat(combinedOdds.toFixed(2)),
           totalMatches: activeBets.length,
-          matches: activeBets.map(bet => ({
-            matchId: bet.matchId,
-            homeTeam: bet.homeTeam,
-            awayTeam: bet.awayTeam,
-            selection: getSelectionLabel(bet),
-            odds: parseFloat(bet.odds),
-            startTime: bet.startTime
-          }))
+          matches: activeBets.map(bet => {
+            const fallbackHome = bet.match && bet.match.includes(' vs ') ? bet.match.split(' vs ')[0] : '';
+            const fallbackAway = bet.match && bet.match.includes(' vs ') ? bet.match.split(' vs ')[1] : '';
+            return {
+              matchId: bet.matchId,
+              homeTeam: bet.homeTeam || fallbackHome,
+              awayTeam: bet.awayTeam || fallbackAway,
+              market: bet.market,
+              marketDisplay: bet.marketDisplay || getMarketTitle(bet.market),
+              marketTypeDisplay: getMarketTypeDisplay(bet),
+              selection: getSelectionLabel(bet),
+              odds: parseFloat(bet.odds),
+              startTime: bet.startTime
+            };
+          })
         };
         
         // Validate bet data before submission
@@ -343,7 +353,10 @@ const Betslip = () => {
             market: bet.market || 'Match Result',
             selection: getSelectionLabel(bet),
             stake: parseFloat(bet.stake),
-            odds: parseFloat(bet.odds)
+            odds: parseFloat(bet.odds),
+            homeTeam: bet.homeTeam,
+            awayTeam: bet.awayTeam,
+            league: bet.league
           };
 
            // Validate bet data
@@ -451,9 +464,11 @@ const Betslip = () => {
             )}
             
             {activeBets.map((bet, index) => {
-              const matchTitle = bet.homeTeam && bet.awayTeam
-                ? `${bet.homeTeam} vs ${bet.awayTeam}`
-                : (bet.match || 'Match');
+              const isKnown = (t) => t && t !== 'Unknown';
+              const split = typeof bet.match === 'string' && bet.match.includes(' vs ') ? bet.match.split(' vs ') : [];
+              const home = isKnown(bet.homeTeam) ? bet.homeTeam : (split[0] || bet.homeTeam || '');
+              const away = isKnown(bet.awayTeam) ? bet.awayTeam : (split[1] || bet.awayTeam || '');
+              const matchTitle = (home || away) ? `${home} vs ${away}` : (bet.match || 'Match');
               
               const selectionDisplay = getSelectionLabel(bet);
               const when = bet.startTime ? new Date(bet.startTime).toLocaleString() : '';
@@ -615,4 +630,3 @@ const Betslip = () => {
 };
 
 export default memo(Betslip);
-

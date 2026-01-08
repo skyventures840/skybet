@@ -3,6 +3,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import apiService from '../services/api';
 import websocketService from '../services/websocketService';
 import enhancedCache from '../services/enhancedCache';
+import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 
 const Bets = () => {
   const [betHistory, setBetHistory] = useState([]);
@@ -25,6 +26,7 @@ const Bets = () => {
   const [selectedBet, setSelectedBet] = useState(null);
   const [showFullPageBet, setShowFullPageBet] = useState(false);
   const subscribedMatchIdsRef = useRef(new Set());
+  const resolvedMatchIdsRef = useRef(new Set());
 
   useEffect(() => {
     let hasInstantData = false;
@@ -110,6 +112,54 @@ const Bets = () => {
         ...localStats
       }));
     }
+  }, [betHistory]);
+
+  // Resolve missing team names for custom/legacy bets using matchId
+  useEffect(() => {
+    const missing = betHistory.filter(b => {
+      const hasTeams = !!(b.homeTeam && b.awayTeam);
+      const hasStringMatch = typeof b.match === 'string' && b.match.includes(' vs ');
+      return !hasTeams && !hasStringMatch && b.matchId && !resolvedMatchIdsRef.current.has(String(b.matchId));
+    });
+    if (missing.length === 0) return;
+    const uniqueIds = Array.from(new Set(missing.map(b => String(b.matchId))));
+    const run = async () => {
+      const updates = [];
+      for (const id of uniqueIds) {
+        try {
+          // Prefer public markets endpoint (works for external event IDs)
+          let md = null;
+          try {
+            const mktResp = await apiService.getMatchMarkets(id, { full: true });
+            const mktData = mktResp?.data?.match || mktResp?.data || {};
+            md = mktData;
+          } catch (e1) { void e1; }
+          if (!md) {
+            const resp = await apiService.getMatchById(id);
+            md = resp?.data?.match || resp?.data || {};
+          }
+          const home = md?.homeTeam || md?.home_team;
+          const away = md?.awayTeam || md?.away_team;
+          if (home && away) {
+            updates.push({ id, home, away, league: md?.league || md?.sport_title || md?.sport });
+            resolvedMatchIdsRef.current.add(String(id));
+          }
+        } catch (e) { void e; }
+      }
+      if (updates.length > 0) {
+        setBetHistory(prev => prev.map(b => {
+          const upd = updates.find(u => String(u.id) === String(b.matchId));
+          if (!upd) return b;
+          return {
+            ...b,
+            homeTeam: b.homeTeam || upd.home,
+            awayTeam: b.awayTeam || upd.away,
+            league: b.league || upd.league
+          };
+        }));
+      }
+    };
+    run();
   }, [betHistory]);
 
   // Connect to authenticated WebSocket and stream live FT score updates
@@ -708,8 +758,35 @@ const Bets = () => {
   
 
   // Full-page bet view functions
-  const openFullPageBet = (bet) => {
-    setSelectedBet(bet);
+  const openFullPageBet = async (bet) => {
+    let enriched = { ...bet };
+    const hasTeams = !!(enriched.homeTeam && enriched.awayTeam);
+    const hasStringMatch = typeof enriched.match === 'string' && enriched.match.includes(' vs ');
+    if (!hasTeams && !hasStringMatch && enriched.matchId) {
+      try {
+        // Prefer public markets endpoint for external IDs
+        let md = null;
+        try {
+          const mktResp = await apiService.getMatchMarkets(enriched.matchId, { full: true });
+          md = mktResp?.data?.match || mktResp?.data || null;
+        } catch (e1) { void e1; }
+        if (!md) {
+          const resp = await apiService.getMatchById(enriched.matchId);
+          md = resp?.data?.match || resp?.data || {};
+        }
+        const home = md?.homeTeam || md?.home_team;
+        const away = md?.awayTeam || md?.away_team;
+        const league = md?.league || md?.sport_title || md?.sport;
+        if (home && away) {
+          enriched.homeTeam = home;
+          enriched.awayTeam = away;
+        }
+        if (league && !enriched.league) {
+          enriched.league = league;
+        }
+      } catch (e) { void e; }
+    }
+    setSelectedBet(enriched);
     setShowFullPageBet(true);
   };
 
@@ -904,14 +981,30 @@ const Bets = () => {
                 
                 // For single bets, create a single match entry
                 if (!isMultibet && displayMatches.length === 0) {
+                  const key = bet.market ? normalizeMarketKey(bet.market) : '';
+                  const marketTypeDisplay = (() => {
+                    if (!key) return 'Market';
+                    if (key === 'winner') return 'Winner';
+                    if (key.startsWith('totals') || key.startsWith('alternate_totals') || key.startsWith('team_totals') || key.startsWith('alternate_team_totals')) return 'Over/Under';
+                    if (key.startsWith('spreads') || key.startsWith('alternate_spreads')) return 'Handicap';
+                    if (key === 'outrights') return 'Outrights';
+                    return getMarketTitle(key);
+                  })();
+                  const matchStr = typeof bet.match === 'string' ? bet.match : '';
+                  const split = matchStr.includes(' vs ') ? matchStr.split(' vs ') : [];
+                  const homeName = bet.homeTeam || (split[0] || 'Unknown');
+                  const awayName = bet.awayTeam || (split[1] || 'Unknown');
                   displayMatches = [{
                     matchId: bet.matchId,
-                    homeTeam: bet.match?.homeTeam || 'Unknown',
-                    awayTeam: bet.match?.awayTeam || 'Unknown',
+                    homeTeam: homeName,
+                    awayTeam: awayName,
+                    market: bet.market,
+                    marketTypeDisplay,
                     selection: bet.selection,
                     odds: bet.odds?.selected || bet.odds,
                     status: bet.status,
                     outcome: bet.result?.outcome || bet.status,
+                    result: bet.result || null,
                     startTime: bet.createdAt
                   }];
                 }
@@ -920,8 +1013,17 @@ const Bets = () => {
                 displayMatches = displayMatches.map(m => {
                   const derivedOutcome = deriveOutcome(m);
                   const derivedStatus = deriveStatus(m);
+                  const matchStr = typeof bet.match === 'string' && bet.match.includes(' vs ') ? bet.match.split(' vs ') : [];
+                  const safeHome = (m.homeTeam && m.homeTeam !== 'Unknown')
+                    ? m.homeTeam
+                    : (bet.homeTeam || matchStr[0] || m.homeTeam || '');
+                  const safeAway = (m.awayTeam && m.awayTeam !== 'Unknown')
+                    ? m.awayTeam
+                    : (bet.awayTeam || matchStr[1] || m.awayTeam || '');
                   return {
                     ...m,
+                    homeTeam: safeHome || m.homeTeam || '',
+                    awayTeam: safeAway || m.awayTeam || '',
                     derivedOutcome,
                     derivedStatus
                   };
@@ -1024,14 +1126,30 @@ const Bets = () => {
                 }
                 
                 if (!isMultibet && displayMatches.length === 0) {
+                  const key2 = bet.market ? normalizeMarketKey(bet.market) : '';
+                  const marketTypeDisplay2 = (() => {
+                    if (!key2) return 'Market';
+                    if (key2 === 'winner') return 'Winner';
+                    if (key2.startsWith('totals') || key2.startsWith('alternate_totals') || key2.startsWith('team_totals') || key2.startsWith('alternate_team_totals')) return 'Over/Under';
+                    if (key2.startsWith('spreads') || key2.startsWith('alternate_spreads')) return 'Handicap';
+                    if (key2 === 'outrights') return 'Outrights';
+                    return getMarketTitle(key2);
+                  })();
+                  const matchStr2 = typeof bet.match === 'string' ? bet.match : '';
+                  const split2 = matchStr2.includes(' vs ') ? matchStr2.split(' vs ') : [];
+                  const homeName2 = bet.homeTeam || (split2[0] || 'Unknown');
+                  const awayName2 = bet.awayTeam || (split2[1] || 'Unknown');
                   displayMatches = [{
                     matchId: bet.matchId,
-                    homeTeam: bet.match?.homeTeam || 'Unknown',
-                    awayTeam: bet.match?.awayTeam || 'Unknown',
+                    homeTeam: homeName2,
+                    awayTeam: awayName2,
+                    market: bet.market,
+                    marketTypeDisplay: marketTypeDisplay2,
                     selection: bet.selection,
                     odds: bet.odds?.selected || bet.odds,
                     status: bet.status,
                     outcome: bet.result?.outcome || bet.status,
+                    result: bet.result || null,
                     startTime: bet.createdAt
                   }];
                 }
@@ -1111,11 +1229,35 @@ const Bets = () => {
                           const ft = getFtResult(match);
                           const pick = parsePick(match?.selection, match?.point);
                           const typeLabel = (() => {
-                            if (!pick || !pick.kind) return 'Type';
-                            if (pick.kind === 'winner') return '1×2';
-                            if (pick.kind === 'totals') return 'Over/Under';
-                            if (pick.kind === 'handicap') return 'Handicap';
-                            return 'Type';
+                            // Prefer explicit market header from each match entry
+                            const matchMarketDisplay = match?.marketTypeDisplay || match?.marketDisplay || null;
+                            if (matchMarketDisplay) return matchMarketDisplay;
+                            const matchMarketKey = match?.market || '';
+                            if (matchMarketKey) {
+                              const norm = normalizeMarketKey(matchMarketKey);
+                              if (norm === 'winner') return 'Winner';
+                              if (norm.startsWith('totals') || norm.startsWith('alternate_totals') || norm.startsWith('team_totals') || norm.startsWith('alternate_team_totals')) return 'Over/Under';
+                              if (norm.startsWith('spreads') || norm.startsWith('alternate_spreads')) return 'Handicap';
+                              if (norm === 'outrights') return 'Outrights';
+                              return getMarketTitle(norm);
+                            }
+                            // Fallback to parsed pick if market context is missing
+                            if (pick && pick.kind) {
+                              if (pick.kind === 'winner') return 'Winner';
+                              if (pick.kind === 'totals') return 'Over/Under';
+                              if (pick.kind === 'handicap') return 'Handicap';
+                              if (pick.kind === 'btts') return 'Both Teams to Score';
+                              if (pick.kind === 'corners_totals') return 'Corners';
+                              if (pick.kind === 'cards_totals') return 'Cards';
+                              if (pick.kind === 'odd_even') return 'Odd/Even';
+                              if (pick.kind === 'multi_goals') return 'Multi Goals';
+                            }
+                            // Heuristic: handicap selections like "Team (-9)" without explicit market
+                            const sel = match?.selection || '';
+                            const hasSignedPoint = /\(\s*[-+]\d+(?:\.\d+)?\s*\)/.test(sel);
+                            const mentionsTotals = /\b(over|under|ov|und|o|u)\b/i.test(sel);
+                            if (hasSignedPoint && !mentionsTotals) return 'Handicap';
+                            return 'Market';
                           })();
 
                           return (

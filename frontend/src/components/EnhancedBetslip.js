@@ -13,7 +13,7 @@ const EnhancedBetslip = ({ isOpen, onClose }) => {
   const [success, setSuccess] = useState('');
   
   // Get selected bets from Redux store
-  const selectedBets = useSelector(state => state.activeBets.bets);
+  const selectedBets = useSelector(state => state.activeBets || []);
   const [multiBetMatches, setMultiBetMatches] = useState([]);
   
   // Calculate combined odds and potential payout
@@ -55,10 +55,13 @@ const EnhancedBetslip = ({ isOpen, onClose }) => {
       return;
     }
     
+    const split = typeof bet.match === 'string' && bet.match.includes(' vs ') ? bet.match.split(' vs ') : [];
+    const safeHome = bet.homeTeam && bet.homeTeam !== 'Unknown' ? bet.homeTeam : (split[0] || bet.homeTeam || '');
+    const safeAway = bet.awayTeam && bet.awayTeam !== 'Unknown' ? bet.awayTeam : (split[1] || bet.awayTeam || '');
     const newMatch = {
       matchId: bet.matchId,
-      homeTeam: bet.homeTeam,
-      awayTeam: bet.awayTeam,
+      homeTeam: safeHome,
+      awayTeam: safeAway,
       league: bet.league,
       startTime: bet.startTime,
       outcome: bet.type,
@@ -252,7 +255,12 @@ const EnhancedBetslip = ({ isOpen, onClose }) => {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="font-medium text-gray-800">
-                              {bet.homeTeam} vs {bet.awayTeam}
+                              {(() => {
+                                const split = typeof bet.match === 'string' && bet.match.includes(' vs ') ? bet.match.split(' vs ') : [];
+                                const home = bet.homeTeam && bet.homeTeam !== 'Unknown' ? bet.homeTeam : (split[0] || bet.homeTeam || '');
+                                const away = bet.awayTeam && bet.awayTeam !== 'Unknown' ? bet.awayTeam : (split[1] || bet.awayTeam || '');
+                                return `${home} vs ${away}`;
+                              })()}
                             </div>
                             <div className="text-sm text-gray-600">
                               {bet.league} • {formatDate(bet.startTime)}
@@ -316,7 +324,11 @@ const EnhancedBetslip = ({ isOpen, onClose }) => {
                               </span>
                             </div>
                             <div className="font-medium text-gray-800 mb-1">
-                              {match.homeTeam} vs {match.awayTeam}
+                              {(() => {
+                                const home = match.homeTeam && match.homeTeam !== 'Unknown' ? match.homeTeam : '';
+                                const away = match.awayTeam && match.awayTeam !== 'Unknown' ? match.awayTeam : '';
+                                return `${home} vs ${away}`;
+                              })()}
                             </div>
                             <div className="text-sm text-gray-600 mb-2">
                               {match.league}

@@ -83,9 +83,9 @@ const MatchDetail = () => {
             // --- 1. Match Winner ---
             if (oddsData.homeWin || oddsData.awayWin || oddsData.draw) {
                 const options = [];
-                if (oddsData.homeWin) options.push({ name: matchData.homeTeam, odds: oddsData.homeWin });
-                if (oddsData.draw) options.push({ name: 'Draw', odds: oddsData.draw });
-                if (oddsData.awayWin) options.push({ name: matchData.awayTeam, odds: oddsData.awayWin });
+                if (oddsData.homeWin) options.push({ name: matchData.homeTeam, odds: Number(oddsData.homeWin) });
+                if (oddsData.draw) options.push({ name: 'Draw', odds: Number(oddsData.draw) });
+                if (oddsData.awayWin) options.push({ name: matchData.awayTeam, odds: Number(oddsData.awayWin) });
                 
                 if (options.length > 0) {
                     markets[`market_${marketIndex++}`] = { name: 'Match Winner', options };
@@ -100,9 +100,9 @@ const MatchDetail = () => {
                     matcher: k => k.toLowerCase().includes('doublechance'),
                     mapper: (key, val) => {
                         const lower = key.toLowerCase();
-                        if (lower.includes('homedraw') || lower.includes('1x')) return { name: 'Home/Draw', odds: val };
-                        if (lower.includes('homeaway') || lower.includes('12')) return { name: 'Home/Away', odds: val };
-                        if (lower.includes('drawaway') || lower.includes('x2')) return { name: 'Draw/Away', odds: val };
+                        if (lower.includes('homedraw') || lower.includes('1x')) return { name: 'Home/Draw', odds: Number(val) };
+                        if (lower.includes('homeaway') || lower.includes('12')) return { name: 'Home/Away', odds: Number(val) };
+                        if (lower.includes('drawaway') || lower.includes('x2')) return { name: 'Draw/Away', odds: Number(val) };
                         return null;
                     }
                 },
@@ -111,8 +111,8 @@ const MatchDetail = () => {
                     matcher: k => k.toLowerCase().includes('btts'),
                     mapper: (key, val) => {
                         const lower = key.toLowerCase();
-                        if (lower.includes('yes')) return { name: 'Yes', odds: val };
-                        if (lower.includes('no')) return { name: 'No', odds: val };
+                        if (lower.includes('yes')) return { name: 'Yes', odds: Number(val) };
+                        if (lower.includes('no')) return { name: 'No', odds: Number(val) };
                         return null;
                     }
                 },
@@ -121,8 +121,8 @@ const MatchDetail = () => {
                     matcher: k => k.toLowerCase().includes('penalty'),
                     mapper: (key, val) => {
                         const lower = key.toLowerCase();
-                        if (lower.includes('yes')) return { name: 'Yes', odds: val };
-                        if (lower.includes('no')) return { name: 'No', odds: val };
+                        if (lower.includes('yes')) return { name: 'Yes', odds: Number(val) };
+                        if (lower.includes('no')) return { name: 'No', odds: Number(val) };
                         return null;
                     }
                 },
@@ -131,8 +131,8 @@ const MatchDetail = () => {
                     matcher: k => k.toLowerCase().includes('oddeven'),
                     mapper: (key, val) => {
                         const lower = key.toLowerCase();
-                        if (lower.includes('odd')) return { name: 'Odd', odds: val };
-                        if (lower.includes('even')) return { name: 'Even', odds: val };
+                        if (lower.includes('odd')) return { name: 'Odd', odds: Number(val) };
+                        if (lower.includes('even')) return { name: 'Even', odds: Number(val) };
                         return null;
                     }
                 },
@@ -150,7 +150,7 @@ const MatchDetail = () => {
                         Object.keys(mapCode).forEach(code => {
                             if (upperKey.endsWith(code)) name = mapCode[code];
                         });
-                        return name ? { name, odds: val } : null;
+                        return name ? { name, odds: Number(val) } : null;
                     }
                 }
             ];
@@ -179,8 +179,8 @@ const MatchDetail = () => {
             if (oddsData.over || oddsData.under) {
                 const options = [];
                 const line = oddsData.total || '2.5';
-                if (oddsData.over) options.push({ name: `Over ${line}`, odds: oddsData.over });
-                if (oddsData.under) options.push({ name: `Under ${line}`, odds: oddsData.under });
+                if (oddsData.over) options.push({ name: `Over ${line}`, odds: Number(oddsData.over) });
+                if (oddsData.under) options.push({ name: `Under ${line}`, odds: Number(oddsData.under) });
                 
                 if (options.length > 0) {
                     markets[`market_${marketIndex++}`] = { name: 'Totals', options };
@@ -189,7 +189,7 @@ const MatchDetail = () => {
             }
 
             // --- 5. Corners ---
-            const cornerKeys = allKeys.filter(k => k.toLowerCase().startsWith('corners'));
+            const cornerKeys = allKeys.filter(k => k.toLowerCase().includes('corners'));
             if (cornerKeys.length > 0) {
                 const options = [];
                 const lineKey = cornerKeys.find(k => k.toLowerCase().includes('line'));
@@ -205,7 +205,7 @@ const MatchDetail = () => {
                     if (lower.includes('over')) name = line ? `Over ${line}` : 'Over';
                     else if (lower.includes('under')) name = line ? `Under ${line}` : 'Under';
                     
-                    options.push({ name, odds: val });
+                    options.push({ name, odds: Number(val) });
                 });
                 
                 if (options.length > 0) {
@@ -215,7 +215,7 @@ const MatchDetail = () => {
             }
 
             // --- 6. Cards ---
-            const cardKeys = allKeys.filter(k => k.toLowerCase().startsWith('cards'));
+            const cardKeys = allKeys.filter(k => k.toLowerCase().includes('cards'));
             if (cardKeys.length > 0) {
                 const options = [];
                 const lineKey = cardKeys.find(k => k.toLowerCase().includes('line'));
@@ -231,7 +231,7 @@ const MatchDetail = () => {
                     if (lower.includes('over')) name = line ? `Over ${line}` : 'Over';
                     else if (lower.includes('under')) name = line ? `Under ${line}` : 'Under';
                     
-                    options.push({ name, odds: val });
+                    options.push({ name, odds: Number(val) });
                 });
                 
                 if (options.length > 0) {
@@ -244,17 +244,17 @@ const MatchDetail = () => {
 
             // --- 10. Array Markets (Correct Score, etc.) ---
             const arrayMarkets = [
-                { key: 'correctScore', name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, odds: item.odds }] : [] },
-                { key: 'multiGoals', name: 'Multi Goals', processor: (item) => item.range && item.odds ? [{ name: item.range, odds: item.odds }] : [] },
-                { key: 'winningMargin', name: 'Winning Margin', processor: (item) => item.margin && item.odds ? [{ name: item.margin, odds: item.odds }] : [] },
+                { key: 'correctScore', name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, odds: Number(item.odds) }] : [] },
+                { key: 'multiGoals', name: 'Multi Goals', processor: (item) => item.range && item.odds ? [{ name: item.range, odds: Number(item.odds) }] : [] },
+                { key: 'winningMargin', name: 'Winning Margin', processor: (item) => item.margin && item.odds ? [{ name: item.margin, odds: Number(item.odds) }] : [] },
                 { key: 'handicaps', name: 'Handicap', processor: (item) => {
                      if (item.line && item.homeOdds && item.awayOdds) {
                         const line = parseFloat(item.line);
                         const homeLine = line > 0 ? `+${line}` : `${line}`;
                         const awayLine = -line > 0 ? `+${-line}` : `${-line}`;
                         return [
-                            { name: `${matchData.homeTeam} (${homeLine})`, odds: item.homeOdds },
-                            { name: `${matchData.awayTeam} (${awayLine})`, odds: item.awayOdds }
+                            { name: `${matchData.homeTeam} (${homeLine})`, odds: Number(item.homeOdds) },
+                            { name: `${matchData.awayTeam} (${awayLine})`, odds: Number(item.awayOdds) }
                         ];
                     }
                     return [];
@@ -270,7 +270,7 @@ const MatchDetail = () => {
                          types.forEach(type => {
                              const typeOptions = oddsData.goalScorers
                                 .filter(item => item.type && item.type.toLowerCase() === type.toLowerCase() && item.player && item.odds)
-                                .map(item => ({ name: `${item.player}`, odds: item.odds })); // Removed (${type}) redundant in header context
+                                .map(item => ({ name: `${item.player}`, odds: Number(item.odds) }));
                              
                              if (typeOptions.length > 0) {
                                  markets[`market_${marketIndex++}`] = { name: `${type} Goalscorer`, options: typeOptions };
@@ -295,7 +295,7 @@ const MatchDetail = () => {
                     if (customMarket.name && Array.isArray(customMarket.options)) {
                         const validOptions = customMarket.options
                             .filter(opt => opt.name && opt.odds)
-                            .map(opt => ({ name: opt.name, odds: opt.odds }));
+                            .map(opt => ({ name: opt.name, odds: Number(opt.odds) }));
                         
                         if (validOptions.length > 0) {
                             markets[`market_${marketIndex++}`] = { name: customMarket.name, options: validOptions };
@@ -338,7 +338,7 @@ const MatchDetail = () => {
                 
                 markets[`market_${marketIndex++}`] = {
                     name: formattedName,
-                    options: [{ name: formattedName, odds: val }]
+                    options: [{ name: formattedName, odds: Number(val) }]
                 };
             });
 
@@ -486,7 +486,11 @@ const MatchDetail = () => {
         const bet = {
             matchId: match._id || match.id,
             match: `${match.homeTeam} vs ${match.awayTeam}`,
+            homeTeam: match.homeTeam,
+            awayTeam: match.awayTeam,
+            league: match.competition,
             market: marketName,
+            marketDisplay: marketName,
             selection: option?.name,
             point: option?.point,
             marketType: normalizedKey,

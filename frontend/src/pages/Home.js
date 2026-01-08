@@ -299,21 +299,13 @@ const Home = () => {
       });
     }
 
-    // Show upcoming matches and recent finished matches (within last 3 days)
+    // Ensure only upcoming (not started) matches in regular/pre-match section
     const now = new Date();
-    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-    
-    console.log('[HOME] Date filtering - now:', now, 'threeDaysAgo:', threeDaysAgo);
-    console.log('[HOME] Before date filtering:', filtered.length, 'matches');
-    
-    // Temporarily disable date filtering to test
-    // filtered = filtered.filter(match => {
-    //   const matchDate = new Date(match.startTime);
-    //   // Show if upcoming OR if finished within last 3 days
-    //   return matchDate >= threeDaysAgo;
-    // });
-    
-    console.log('[HOME] After date filtering (disabled):', filtered.length, 'matches');
+    filtered = filtered.filter(match => {
+      const start = new Date(match.startTime);
+      const status = String(match.status || 'upcoming').toLowerCase();
+      return status === 'upcoming' && start > now;
+    });
 
     console.log('[HOME] After all filtering:', filtered.length, 'matches remain');
     setFilteredMatches(filtered);

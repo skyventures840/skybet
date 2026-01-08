@@ -426,7 +426,9 @@ const LiveBetting = () => {
     );
   }
 
-  const groupedMatches = groupMatchesByLeague(liveMatches);
+  const groupedMatches = groupMatchesByLeague(
+    liveMatches.filter(m => String(m.status || '').toLowerCase() === 'live')
+  );
 
   return (
     <div className="sport-page">

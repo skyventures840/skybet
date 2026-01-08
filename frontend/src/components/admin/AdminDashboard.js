@@ -1025,13 +1025,13 @@ const AdminDashboard = () => {
       <div className="settings-section">
         <h3>Payment Gateways</h3>
         <div className="toggle-group">
-          <label>
+          <label className="text-black font-semibold">
             <input type="checkbox" /> Stripe
           </label>
-          <label>
+          <label className="text-black font-semibold">
             <input type="checkbox" /> PayPal
           </label>
-          <label>
+          <label className="text-black font-semibold">
             <input type="checkbox" /> Bank Transfer
           </label>
         </div>
@@ -1060,7 +1060,7 @@ const AdminDashboard = () => {
           </select>
         </div>
         <div className="form-group">
-          <label>
+          <label className="text-black font-semibold">
             <input type="checkbox" /> Enable GDPR Compliance
           </label>
         </div>

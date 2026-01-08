@@ -636,7 +636,7 @@ const MatchMarkets = () => {
     // ... Copying render from memory/standard pattern ...
     
     // Function to add bet to betslip
-    const addToBetslip = (marketKey, outcome) => {
+    const addToBetslip = (marketKey, outcome, marketTitle) => {
         if (!match) return;
         
         const normalizedKey = normalizeMarketKey(marketKey);
@@ -656,7 +656,7 @@ const MatchMarkets = () => {
             league: match.league || match.sport_title,
             startTime: match.startTime || match.commence_time,
             market: marketKey,
-            marketDisplay: getMarketTitle(marketKey),
+            marketDisplay: marketTitle || getMarketTitle(marketKey),
             marketType: normalizedKey,
             marketTypeDisplay,
             selection: outcome.name,
@@ -735,16 +735,16 @@ const MatchMarkets = () => {
                         </button>
                         <div className="market-outcomes">
                             {market.outcomes.map((outcome, index) => (
-                                <button key={index} className="outcome-button" onClick={() => addToBetslip(market.key, outcome)}>
-                                    <div className="outcome-name">{outcome.name} {outcome.point && `(${outcome.point})`}</div>
-                                    <div className="outcome-odds">{outcome.price ? Number(outcome.price).toFixed(2) : '-'}</div>
-                                </button>
-                            ))}
+                                    <button key={index} className="outcome-button" onClick={() => addToBetslip(market.key, outcome, market.title)}>
+                                        <div className="outcome-name">{outcome.name} {outcome.point && `(${outcome.point})`}</div>
+                                        <div className="outcome-odds">{outcome.price ? Number(outcome.price).toFixed(2) : '-'}</div>
+                                    </button>
+                                ))}
                         </div>
-                    </div>
-                ))}
+                        </div>
+                    ))}
+                </div>
             </div>
-        </div>
     );
 };
 

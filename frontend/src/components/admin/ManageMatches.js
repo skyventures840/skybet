@@ -4,6 +4,7 @@ import apiService from '../../services/api';
 const ManageMatches = () => {
   const [matches, setMatches] = useState([]);
   const [leagues, setLeagues] = useState([]);
+  const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -134,6 +135,7 @@ const ManageMatches = () => {
   useEffect(() => {
     fetchMatches();
     fetchLeagues();
+    fetchSports();
   }, []);
 
 
@@ -184,6 +186,16 @@ const ManageMatches = () => {
       setLeagues(res.data);
     } catch (err) {
       setError('Failed to fetch leagues.');
+    }
+  };
+  
+  const fetchSports = async () => {
+    try {
+      const res = await apiService.getSports();
+      const list = Array.isArray(res.data) ? res.data : [];
+      setSports(list);
+    } catch (err) {
+      // Keep manual entry available if sports list fails
     }
   };
 
@@ -1127,14 +1139,33 @@ const ManageMatches = () => {
               </div>
               <div className="form-group">
                 <label className="text-black font-bold" style={{ color: 'black' }}>Sport:</label>
-                <input
-                  type="text"
+                <select
                   name="sport"
                   value={formData.sport}
                   onChange={handleInputChange}
                   className="w-full bg-white text-black border border-gray-300 rounded px-2 py-1"
                   required
-                />
+                >
+                  <option value="">Select sport</option>
+                  {(sports && sports.length > 0
+                    ? sports.map(s => ({ key: (s.key || s.name || '').toLowerCase(), name: s.name || s.key }))
+                    : [
+                        { key: 'soccer', name: 'Soccer' },
+                        { key: 'football', name: 'Football' },
+                        { key: 'basketball', name: 'Basketball' },
+                        { key: 'hockey', name: 'Hockey' },
+                        { key: 'tennis', name: 'Tennis' },
+                        { key: 'baseball', name: 'Baseball' }
+                      ]
+                  ).map(opt => (
+                    <option key={opt.key} value={opt.key}>{opt.name}</option>
+                  ))}
+                  {formData.sport && !(
+                    (sports && sports.length > 0 && sports.some(s => (s.key || s.name || '').toLowerCase() === String(formData.sport).toLowerCase()))
+                  ) && !['soccer','football','basketball','hockey','tennis','baseball'].includes(String(formData.sport).toLowerCase()) && (
+                    <option value={String(formData.sport).toLowerCase()}>{formData.sport}</option>
+                  )}
+                </select>
               </div>
               <div className="form-group">
                 <label className="text-black font-bold" style={{ color: 'black' }}>Home Team:</label>
@@ -1209,7 +1240,7 @@ const ManageMatches = () => {
                 <label className="text-lg font-bold mb-2 block text-black">Market Management</label>
                 
                 {/* Tabs Navigation */}
-                <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-300 pb-2">
+                <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-300 pb-2 market-tabs">
                   <button type="button" onClick={() => setActiveOddsTab('main')} className={`px-4 py-2 rounded ${activeOddsTab === 'main' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Main Markets</button>
                   <button type="button" onClick={() => setActiveOddsTab('corners_cards')} className={`px-4 py-2 rounded ${activeOddsTab === 'corners_cards' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Corners & Cards</button>
                   <button type="button" onClick={() => setActiveOddsTab('custom')} className={`px-4 py-2 rounded ${activeOddsTab === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}>Custom</button>

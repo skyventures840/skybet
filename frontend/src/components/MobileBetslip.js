@@ -130,6 +130,7 @@ const MobileBetslip = () => {
   };
   const getMarketTypeDisplay = (bet) => {
     if (bet.marketTypeDisplay) return bet.marketTypeDisplay;
+    if (bet.marketDisplay) return bet.marketDisplay;
     const key = bet.market ? normalizeMarketKey(bet.market) : '';
     if (key) {
       if (key === 'winner') return 'Winner';
@@ -247,7 +248,10 @@ const MobileBetslip = () => {
           market: bet.market || 'Match Result',
           selection: getSelectionLabel(bet),
           stake: parseFloat(bet.stake),
-          odds: parseFloat(bet.odds)
+          odds: parseFloat(bet.odds),
+          homeTeam: bet.homeTeam,
+          awayTeam: bet.awayTeam,
+          league: bet.league
         }));
 
         // Validate all bets have stakes
@@ -332,9 +336,11 @@ const MobileBetslip = () => {
             {/* Bets list */}
             <div className="mobile-bets-list">
               {activeBets.map((bet, index) => {
-                const matchTitle = bet.homeTeam && bet.awayTeam
-                  ? `${bet.homeTeam} vs ${bet.awayTeam}`
-                  : (bet.match || 'Match');
+                const isKnown = (t) => t && t !== 'Unknown';
+                const split = typeof bet.match === 'string' && bet.match.includes(' vs ') ? bet.match.split(' vs ') : [];
+                const home = isKnown(bet.homeTeam) ? bet.homeTeam : (split[0] || bet.homeTeam || '');
+                const away = isKnown(bet.awayTeam) ? bet.awayTeam : (split[1] || bet.awayTeam || '');
+                const matchTitle = (home || away) ? `${home} vs ${away}` : (bet.match || 'Match');
                 
               const selectionDisplay = getSelectionLabel(bet);
               const when = bet.startTime ? new Date(bet.startTime).toLocaleString() : '';

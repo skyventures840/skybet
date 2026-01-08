@@ -133,7 +133,7 @@ const MyBets = () => {
       
       // Fetch both Ordinary/Express bets (Bet model) and legacy MultiBets (MultiBet model)
       const [userBetsResponse, multiBetsResponse] = await Promise.allSettled([
-        apiService.getUserBets({ limit: 50 }), // Fetch recent bets
+        apiService.getUserBets({ limit: 50, excludeMarket: 'Aviator' }),
         apiService.getMultiBets({ limit: 50 })
       ]);
 

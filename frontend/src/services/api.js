@@ -389,6 +389,9 @@ const apiService = {
   addMatch: (matchData) => api.post('/admin/matches', matchData),
   updateMatch: (id, matchData) => api.put(`/admin/matches/${id}`, matchData),
   deleteMatch: (id) => api.delete(`/admin/matches/${id}`),
+  
+  // Sports
+  getSports: () => instantGet('/sports', 600000),
 
   // Bets
   placeBet: (betData) => api.post('/bets', betData),

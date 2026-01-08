@@ -70,6 +70,19 @@ const nicknames = [
   'Prometheus', 'Epimetheus', 'Menoetius', 'Styx', 'Nike', 'Kratos', 'Bia', 'Zelus', 'Eos'
 ];
 
+const generateInitialHistory = (count = 14) => {
+  const arr = [];
+  for (let i = 0; i < count; i++) {
+    const r = Math.random();
+    let m;
+    if (r < 0.6) m = 1.01 + Math.random() * 1.49;
+    else if (r < 0.9) m = 2.0 + Math.random() * 3.0;
+    else m = 10.0 + Math.random() * 20.0;
+    arr.push(m);
+  }
+  return arr;
+};
+
 const generateFakeUser = () => {
   const cryptoNames = ['Satoshi', 'HODL', 'Moon', 'Whale', 'Crypto', 'BTC', 'ETH', 'Doge', 'Chain', 'Block'];
   const isCrypto = Math.random() < 0.05;
@@ -109,7 +122,7 @@ const Aviator = () => {
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
   const [multiplier, setMultiplier] = useState(1.00);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(() => generateInitialHistory(14));
   const [countdown, setCountdown] = useState(5);
   
   const dispatch = useDispatch();

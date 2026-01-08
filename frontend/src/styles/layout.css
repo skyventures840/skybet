@@ -215,6 +215,33 @@
   color: var(--text-primary);
 }
 
+/* Admin white-panel readability adjustments */
+.admin-settings-container label,
+.admin-settings-container h3,
+.settings-section .form-group label,
+.admin-dashboard .form-group label {
+  color: #000;
+}
+
+/* Button-like tabs for market management */
+.admin-dashboard .market-tabs button {
+  cursor: pointer;
+  border: 1px solid #d1d5db; /* gray-300 */
+  background: #e5e7eb;       /* gray-200 */
+  color: #000;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+.admin-dashboard .market-tabs button:hover {
+  background: #dbe1e7;
+}
+.admin-dashboard .market-tabs button.active {
+  background: #2563eb; /* blue-600 */
+  color: #fff;
+  border-color: #1f51c6;
+}
+
 .admin-sidebar {
   width: 280px;
   background: var(--sidebar-bg);
