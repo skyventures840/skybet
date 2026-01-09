@@ -72,7 +72,8 @@ const betSchema = new mongoose.Schema({
   result: {
     homeScore: Number,
     awayScore: Number,
-    finalOutcome: String
+    finalOutcome: String,
+    marketOutcome: String
   },
   settledAt: {
     type: Date

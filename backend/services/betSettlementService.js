@@ -525,6 +525,7 @@ class BetSettlementService {
       // - object: { decision: 'win'|'loss'|'void'|'half_win'|'half_loss'|'push', payoutFactor?: number, rule?: string }
       let outcome = false
       const { homeScore, awayScore } = results
+      let marketOutcome = null
 
       // Determine bet outcome based on market type
       switch (bet.market.toLowerCase()) {
@@ -534,15 +535,18 @@ class BetSettlementService {
         case 'matchwinner':
         case '1x2':
           outcome = this.evaluateMatchWinnerBet(bet.selection, homeScore, awayScore, match)
+          marketOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
           break
         case 'double_chance':
         case 'doublechance':
           outcome = this.evaluateDoubleChanceBet(bet.selection, homeScore, awayScore)
+          marketOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
           break
         case 'btts':
         case 'both_teams_to_score':
         case 'bothteamstoscore':
           outcome = this.evaluateBTTSBet(bet.selection, homeScore, awayScore)
+          marketOutcome = (homeScore > 0 && awayScore > 0) ? 'Yes' : 'No'
           break
         case 'handicap':
         case 'spread':
@@ -553,6 +557,16 @@ class BetSettlementService {
             outcome = asian
           } else {
             outcome = this.evaluateHandicapBet(bet.selection, homeScore, awayScore)
+          }
+          {
+            const m = bet.selection.match(/([+-]?\d*\.?\d+)/)
+            const sel = bet.selection.toLowerCase()
+            if (m && (sel.includes('home') || sel.includes('away'))) {
+              const h = parseFloat(m[1])
+              const adjHome = homeScore + (sel.includes('home') ? h : 0)
+              const adjAway = awayScore + (sel.includes('away') ? h : 0)
+              marketOutcome = adjHome > adjAway ? 'Home' : adjAway > adjHome ? 'Away' : 'Push'
+            }
           }
           break
         }
@@ -569,6 +583,14 @@ class BetSettlementService {
           } else {
             outcome = this.evaluateTotalsBet(bet.selection, homeScore, awayScore)
           }
+          {
+            const tm = bet.selection.match(/(\d*\.?\d+)/)
+            if (tm) {
+              const point = parseFloat(tm[1])
+              const total = homeScore + awayScore
+              marketOutcome = total > point ? 'Over' : total < point ? 'Under' : 'Push'
+            }
+          }
           break
         }
         case 'correct_score':
@@ -576,21 +598,46 @@ class BetSettlementService {
         case 'correct score':
         case 'Correct Score':
           outcome = this.evaluateCorrectScoreBet(bet.selection, homeScore, awayScore)
+          marketOutcome = `${homeScore}-${awayScore}`
           break
         case 'ht_ft':
         case 'halftime_fulltime':
         case 'halftimefulltime':
           outcome = this.evaluateHTFTBet(bet.selection, results)
+          {
+            const r = (h, a) => h > a ? '1' : h < a ? '2' : 'X'
+            if (results.homeScoreHT !== null && results.awayScoreHT !== null) {
+              const ht = r(results.homeScoreHT, results.awayScoreHT)
+              const ft = r(homeScore, awayScore)
+              marketOutcome = `${ht}/${ft}`
+            }
+          }
           break
         case 'corners':
         case 'corners_over_under':
         case 'cornersoverunder':
           outcome = this.evaluateCornersBet(bet.selection, results)
+          {
+            const tm = bet.selection.match(/(\d+\.?\d*)/)
+            if (tm && results.homeCorners !== null && results.awayCorners !== null) {
+              const point = parseFloat(tm[1])
+              const total = (results.homeCorners || 0) + (results.awayCorners || 0)
+              marketOutcome = total > point ? 'Over' : total < point ? 'Under' : 'Push'
+            }
+          }
           break
         case 'cards':
         case 'cards_over_under':
         case 'cardsoverunder':
           outcome = this.evaluateCardsBet(bet.selection, results)
+          {
+            const tm = bet.selection.match(/(\d+\.?\d*)/)
+            if (tm && results.homeCards !== null && results.awayCards !== null) {
+              const point = parseFloat(tm[1])
+              const total = (results.homeCards || 0) + (results.awayCards || 0)
+              marketOutcome = total > point ? 'Over' : total < point ? 'Under' : 'Push'
+            }
+          }
           break
         case 'goalscorer':
         case 'first_goalscorer':
@@ -605,6 +652,10 @@ class BetSettlementService {
         case 'odd_even_goals':
         case 'oddevengoals':
           outcome = this.evaluateOddEvenBet(bet.selection, homeScore, awayScore)
+          {
+            const s = homeScore + awayScore
+            marketOutcome = s % 2 === 0 ? 'Even' : 'Odd'
+          }
           break
         case 'multi_goals':
         case 'multigoals':
@@ -615,11 +666,18 @@ class BetSettlementService {
         case 'winning_margin':
         case 'winningmargin':
           outcome = this.evaluateWinningMarginBet(bet.selection, homeScore, awayScore, match)
+          {
+            const diff = homeScore - awayScore
+            if (diff === 0) marketOutcome = 'Draw'
+            else if (diff > 0) marketOutcome = `Home by ${diff}`
+            else marketOutcome = `Away by ${Math.abs(diff)}`
+          }
           break
         case 'penalty':
         case 'penalty_awarded':
         case 'penaltyawarded':
           outcome = this.evaluatePenaltyBet(bet.selection, results)
+          marketOutcome = results.penaltyAwarded ? 'Yes' : 'No'
           break
         default:
           logger.warn(`Unknown market type: ${bet.market} for bet ${bet._id}`)
@@ -631,6 +689,7 @@ class BetSettlementService {
 
       // Update bet status (supports partial outcomes)
       const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+      if (!marketOutcome) marketOutcome = finalOutcome
       let status = 'lost'
       let actualWin = 0
 
@@ -663,7 +722,7 @@ class BetSettlementService {
         status,
         actualWin,
         settledAt: new Date(),
-        result: { ...results, finalOutcome }
+        result: { ...results, finalOutcome, marketOutcome }
       }
 
       // Append settlement audit log entry

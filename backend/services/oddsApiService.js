@@ -256,6 +256,24 @@ class OddsApiService {
     )
   }
 
+  async _getWithRetry (path, params, maxRetries = 3) {
+    let attempt = 0
+    let lastError = null
+    const delays = [500, 1500, 3000]
+    while (attempt < maxRetries) {
+      try {
+        const response = await this.client.get(path, { params })
+        return response
+      } catch (error) {
+        lastError = error
+        await new Promise(res => setTimeout(res, delays[attempt] || 3000))
+        attempt++
+      }
+    }
+    if (lastError) throw lastError
+    return { data: [] }
+  }
+
   getSportBookmaker (sportKey) {
     if (!sportKey) return null
     return SPORT_BOOKMAKERS[sportKey] || 'pinnacle'
@@ -597,18 +615,28 @@ class OddsApiService {
         params.eventIds = eventIds.join(',')
       }
 
-      const response = await this.client.get(`/sports/${sportKey}/scores`, { params })
+      const response = await this._getWithRetry(`/sports/${sportKey}/scores`, params, 3)
       this.lastResponseHeaders = response.headers
-
       const scores = response.data || []
-
       // Store in database asynchronously
       this._storeScoresAsync(scores)
-
       // Cache the result
       scoresCache.set(cacheKey, scores)
-
-      return scores
+      if (scores.length > 0) return scores
+      if (!eventIds || eventIds.length === 0) {
+        const altParams = { ...params, daysFrom: Math.max(daysFrom, 1) }
+        const altResp = await this._getWithRetry(`/sports/${sportKey}/scores`, altParams, 2)
+        const altScores = altResp.data || []
+        this._storeScoresAsync(altScores)
+        scoresCache.set(`${cacheKey}_alt`, altScores)
+        return altScores
+      }
+      const broadParams = { apiKey: config.oddsApi.apiKey, daysFrom, dateFormat: 'iso' }
+      const broadResp = await this._getWithRetry(`/sports/${sportKey}/scores`, broadParams, 2)
+      const broadScores = broadResp.data || []
+      this._storeScoresAsync(broadScores)
+      scoresCache.set(`${cacheKey}_broad`, broadScores)
+      return broadScores
     } catch (error) {
       console.error(`Error fetching scores for ${sportKey}:`, error.message)
       return []
@@ -736,18 +764,28 @@ class OddsApiService {
         params.eventIds = eventIds.join(',')
       }
 
-      const response = await this.client.get(`/sports/${sportKey}/scores`, { params })
+      const response = await this._getWithRetry(`/sports/${sportKey}/scores`, params, 3)
       this.lastResponseHeaders = response.headers
-
       const results = response.data || []
-
       // Store in database asynchronously
       this._storeResultsAsync(results)
-
       // Cache the result
       oddsCache.set(cacheKey, results)
-
-      return results
+      if (results.length > 0) return results
+      if (!eventIds || eventIds.length === 0) {
+        const altParams = { ...params, daysFrom: Math.max(daysBack, 7) }
+        const altResp = await this._getWithRetry(`/sports/${sportKey}/scores`, altParams, 2)
+        const altResults = altResp.data || []
+        this._storeResultsAsync(altResults)
+        oddsCache.set(`${cacheKey}_alt`, altResults)
+        return altResults
+      }
+      const broadParams = { apiKey: config.oddsApi.apiKey, daysFrom: daysBack, completed: true }
+      const broadResp = await this._getWithRetry(`/sports/${sportKey}/scores`, broadParams, 2)
+      const broadResults = broadResp.data || []
+      this._storeResultsAsync(broadResults)
+      oddsCache.set(`${cacheKey}_broad`, broadResults)
+      return broadResults
     } catch (error) {
       console.error(`Error fetching results for ${sportKey}:`, error.message)
       return []
@@ -768,7 +806,7 @@ class OddsApiService {
               sport_key: result.sport_key,
               sport_title: result.sport_title,
               commence_time: new Date(result.commence_time),
-              completed: result.completed || true,
+              completed: !!result.completed,
               home_team: result.home_team,
               away_team: result.away_team,
               scores: result.scores || [],

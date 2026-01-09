@@ -139,12 +139,17 @@ router.post('/matches', adminAuth, [
       oddsMap.set('TU', underPrice) // Total Under
     }
 
-    // Add any other custom odds
+    // Add any other custom odds (numbers or arrays/objects)
     Object.keys(odds).forEach(key => {
       if (!['homeWin', 'awayWin', 'draw', 'total', 'over', 'under'].includes(key)) {
-        const value = Number(odds[key])
-        if (value && value > 1) {
-          oddsMap.set(key, value)
+        const raw = odds[key]
+        const num = typeof raw === 'string' ? Number(raw) : raw
+        if (Array.isArray(raw) && raw.length > 0) {
+          oddsMap.set(key, raw)
+        } else if (typeof num === 'number' && num > 1) {
+          oddsMap.set(key, num)
+        } else if (typeof raw === 'object' && raw !== null) {
+          oddsMap.set(key, raw)
         }
       }
     })
@@ -226,13 +231,41 @@ router.post('/matches', adminAuth, [
         })
       }
 
-      // Add any other custom additional markets
+      // Add array-based markets for visibility
+      if (Array.isArray(odds.correctScore) && odds.correctScore.length > 0) {
+        const outcomes = odds.correctScore
+          .filter(it => it && it.score && it.odds)
+          .map(it => ({ name: it.score, price: Number(it.odds), point: null }))
+        if (outcomes.length > 0) {
+          oddsDoc.bookmakers[0].markets.push({
+            key: 'correct_score',
+            title: 'Correct Score',
+            last_update: new Date(),
+            outcomes
+          })
+        }
+      }
+      if (Array.isArray(odds.multiGoals) && odds.multiGoals.length > 0) {
+        const outcomes = odds.multiGoals
+          .filter(it => it && (it.range || it.band) && it.odds)
+          .map(it => ({ name: `${(it.range || it.band)} Goals`, price: Number(it.odds), point: null }))
+        if (outcomes.length > 0) {
+          oddsDoc.bookmakers[0].markets.push({
+            key: 'multi_goals',
+            title: 'Multi Goals',
+            last_update: new Date(),
+            outcomes
+          })
+        }
+      }
+      // Add any other custom additional markets (numeric)
       Object.keys(odds).forEach(key => {
-        if (!['homeWin', 'awayWin', 'draw', 'total', 'over', 'under'].includes(key)) {
-          const value = Number(odds[key])
-          if (value && value > 1) {
+        if (!['homeWin', 'awayWin', 'draw', 'total', 'over', 'under', 'correctScore', 'multiGoals'].includes(key)) {
+          const raw = odds[key]
+          const value = typeof raw === 'string' ? Number(raw) : raw
+          if (typeof value === 'number' && value > 1) {
             oddsDoc.bookmakers[0].markets.push({
-              key: key.toLowerCase(),
+              key: String(key).toLowerCase(),
               last_update: new Date(),
               outcomes: [
                 { name: key, price: value, point: null }
@@ -425,10 +458,38 @@ router.put('/matches/:matchId/odds', adminAuth, [
         })
       }
 
-      // Add any other additional markets
+      // Add array-based markets from oddsMap
+      const csArr = oddsMap.get('correctScore') || oddsMap.get('correct_score')
+      if (Array.isArray(csArr) && csArr.length > 0) {
+        const outcomes = csArr
+          .filter(it => it && it.score && it.odds)
+          .map(it => ({ name: it.score, price: Number(it.odds), point: null }))
+        if (outcomes.length > 0) {
+          markets.push({
+            key: 'correct_score',
+            last_update: new Date(),
+            outcomes
+          })
+        }
+      }
+      const mgArr = oddsMap.get('multiGoals') || oddsMap.get('multi_goals') || oddsMap.get('goalBands')
+      if (Array.isArray(mgArr) && mgArr.length > 0) {
+        const outcomes = mgArr
+          .filter(it => it && (it.range || it.band) && it.odds)
+          .map(it => ({ name: `${(it.range || it.band)} Goals`, price: Number(it.odds), point: null }))
+        if (outcomes.length > 0) {
+          markets.push({
+            key: 'multi_goals',
+            last_update: new Date(),
+            outcomes
+          })
+        }
+      }
+
+      // Add any other additional markets (numeric)
       const additionalMarkets = []
       oddsMap.forEach((value, key) => {
-        if (!['1', 'X', '2', 'Total', 'TM', 'TU'].includes(key) && value > 0) {
+        if (!['1', 'X', '2', 'Total', 'TM', 'TU'].includes(key) && typeof value === 'number' && value > 0) {
           additionalMarkets.push({ name: key, price: value })
         }
       })
@@ -458,6 +519,62 @@ router.put('/matches/:matchId/odds', adminAuth, [
   } catch (error) {
     console.error('Update odds error:', error)
     res.status(500).json({ error: 'Failed to update odds: ' + error.message })
+  }
+})
+
+router.put('/odds/:gameId/markets', adminAuth, async (req, res) => {
+  try {
+    const gameId = req.params.gameId
+    const correctScore = Array.isArray(req.body.correctScore) ? req.body.correctScore : []
+    const multiGoals = Array.isArray(req.body.multiGoals) ? req.body.multiGoals : []
+    let oddsDoc = await Odds.findOne({ gameId })
+    if (!oddsDoc) {
+      oddsDoc = new Odds({
+        gameId,
+        sport_key: 'soccer',
+        sport_title: 'Football',
+        commence_time: new Date(),
+        home_team: req.body.homeTeam || 'Home',
+        away_team: req.body.awayTeam || 'Away',
+        bookmakers: [{ key: 'default', title: 'Default', last_update: new Date(), markets: [] }],
+        lastFetched: new Date()
+      })
+    }
+    if (!Array.isArray(oddsDoc.bookmakers) || oddsDoc.bookmakers.length === 0) {
+      oddsDoc.bookmakers = [{ key: 'default', title: 'Default', last_update: new Date(), markets: [] }]
+    }
+    const bm = oddsDoc.bookmakers[0]
+    const existing = Array.isArray(bm.markets) ? bm.markets : []
+    const filtered = existing.filter(m => m.key !== 'correct_score' && m.key !== 'multi_goals')
+    const newMarkets = []
+    if (correctScore.length > 0) {
+      const outcomes = correctScore.filter(it => it && it.score && it.odds).map(it => ({
+        name: it.score,
+        price: Number(it.odds),
+        point: null
+      }))
+      if (outcomes.length > 0) {
+        newMarkets.push({ key: 'correct_score', title: 'Correct Score', last_update: new Date(), outcomes })
+      }
+    }
+    if (multiGoals.length > 0) {
+      const outcomes = multiGoals.filter(it => it && (it.range || it.band) && it.odds).map(it => ({
+        name: `${(it.range || it.band)} Goals`,
+        price: Number(it.odds),
+        point: null
+      }))
+      if (outcomes.length > 0) {
+        newMarkets.push({ key: 'multi_goals', title: 'Multi Goals', last_update: new Date(), outcomes })
+      }
+    }
+    bm.markets = [...filtered, ...newMarkets]
+    bm.last_update = new Date()
+    oddsDoc.lastFetched = new Date()
+    await oddsDoc.save()
+    res.json({ success: true, gameId, markets: bm.markets })
+  } catch (error) {
+    console.error('Upsert odds markets error:', error)
+    res.status(500).json({ error: 'Failed to upsert odds markets' })
   }
 })
 
@@ -736,12 +853,15 @@ router.put('/matches/:matchId/status', adminAuth, [
       return res.status(404).json({ error: 'Match not found' })
     }
 
-    // If match is finished, update scores and settle bets
     if (status === 'finished') {
       updateData.homeScore = homeScore
       updateData.awayScore = awayScore
       updateData.finishedAt = new Date()
-      await Bet.settleBets(match._id, homeScore, awayScore)
+      try {
+        await betSettlementService.processSettlements()
+      } catch (e) {
+        console.warn('Settlement trigger error:', e?.message || e)
+      }
     }
 
     res.json({ success: true, match })

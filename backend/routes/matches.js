@@ -1131,9 +1131,10 @@ router.get('/:matchId/markets', async (req, res) => {
 
     // Add any other available markets
     Object.entries(oddsData).forEach(([key, value]) => {
+      const lowerKey = String(key || '').toLowerCase()
       // Handle array-based markets (Correct Score, Multi Goals, etc.)
       if (Array.isArray(value)) {
-        if (key === 'correctScore') {
+        if (lowerKey === 'correctscore' || lowerKey === 'correct_score' || lowerKey === 'correct score' || lowerKey === 'correctscore_lay') {
           const outcomes = value
             .filter(item => item.score && item.odds)
             .map(item => ({ name: item.score, price: parseFloat(item.odds), point: null }))
@@ -1146,10 +1147,10 @@ router.get('/:matchId/markets', async (req, res) => {
               outcomes
             })
           }
-        } else if (key === 'multiGoals') {
+        } else if (lowerKey === 'multigoals' || lowerKey === 'multi_goals' || lowerKey === 'goalbands' || lowerKey === 'multi goals' || lowerKey === 'multigoals_lay' || lowerKey === 'goal_bands') {
           const outcomes = value
-            .filter(item => item.range && item.odds)
-            .map(item => ({ name: item.range, price: parseFloat(item.odds), point: null }))
+            .filter(item => (item.range || item.band) && item.odds)
+            .map(item => ({ name: `${(item.range || item.band)} Goals`, price: parseFloat(item.odds), point: null }))
           if (outcomes.length > 0) {
             console.log(`Adding array market: ${key} with ${outcomes.length} outcomes`)
             bookmaker.markets.push({
