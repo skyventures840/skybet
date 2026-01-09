@@ -17,7 +17,7 @@ export const normalizeMarketKey = (keyRaw) => {
   if (['handicap','asian_handicap','point_spread','spread','line_spread','homehandicap','awayhandicap','handicapline','handicap_line'].includes(base)) return 'spreads';
   
   // Map BTTS variants
-  if (['both_teams_to_score','btts','bttsyes','bttsno','btts_yes','btts_no'].includes(base)) return 'both_teams_to_score';
+  if (['both_teams_to_score','both teams to score','btts','bttsyes','bttsno','btts_yes','btts_no'].includes(base)) return 'both_teams_to_score';
   
   // Map Double Chance variants
   if (['double_chance','doublechance','dc','dc1x','dc12','dc2x','1x','12','2x'].includes(base)) return 'double_chance';
@@ -26,6 +26,10 @@ export const normalizeMarketKey = (keyRaw) => {
   // Synonyms for goal/try scorer keys
   if (base === 'player_first_goal_scorer') return 'player_goal_scorer_first';
   if (base === 'player_last_goal_scorer') return 'player_goal_scorer_last';
+  if (['correctscore','correct score'].includes(base)) return 'correct_score';
+  if (['multi goals','multigoals','goal bands','goalbands'].includes(base)) return 'multi_goals';
+  if (['corners'].includes(base)) return 'corners';
+  if (['cards'].includes(base)) return 'cards';
   return base;
 };
 
@@ -182,6 +186,10 @@ const MARKET_TITLE_MAP = {
 
 // Additional alternates and extended props per request
 Object.assign(MARKET_TITLE_MAP, {
+  correct_score: 'Correct Score',
+  multi_goals: 'Multi Goals',
+  corners: 'Corners',
+  cards: 'Cards',
   // NFL alternates
   player_field_goals_alternate: 'Alternate Field Goals (Over/Under)',
   player_kicking_points_alternate: 'Alternate Kicking Points (Over/Under)',

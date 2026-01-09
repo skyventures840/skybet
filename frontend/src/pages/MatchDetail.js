@@ -73,7 +73,9 @@ const MatchDetail = () => {
             
             const markets = {};
             let marketIndex = 0;
-            const oddsData = matchData.odds;
+            const oddsData = (matchData.odds instanceof Map)
+                ? Object.fromEntries(matchData.odds)
+                : matchData.odds;
             const consumedKeys = new Set();
             const allKeys = Object.keys(oddsData);
             
@@ -244,8 +246,11 @@ const MatchDetail = () => {
 
             // --- 10. Array Markets (Correct Score, etc.) ---
             const arrayMarkets = [
-                { key: 'correctScore', name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, odds: Number(item.odds) }] : [] },
-                { key: 'multiGoals', name: 'Multi Goals', processor: (item) => item.range && item.odds ? [{ name: item.range, odds: Number(item.odds) }] : [] },
+                { key: 'correctScore', altKeys: ['correct_score','CorrectScore','correctscore','correct score'], name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, odds: Number(item.odds) }] : [] },
+                { key: 'multiGoals', altKeys: ['multi_goals','goalBands','Multigoals','MultiGoals','multi goals','goalbands'], name: 'Multi Goals', processor: (item) => {
+                    const rg = item.range || item.band;
+                    return rg && item.odds ? [{ name: `${rg} Goals`, odds: Number(item.odds) }] : [];
+                } },
                 { key: 'winningMargin', name: 'Winning Margin', processor: (item) => item.margin && item.odds ? [{ name: item.margin, odds: Number(item.odds) }] : [] },
                 { key: 'handicaps', name: 'Handicap', processor: (item) => {
                      if (item.line && item.homeOdds && item.awayOdds) {
@@ -263,7 +268,21 @@ const MatchDetail = () => {
             ];
 
             arrayMarkets.forEach(m => {
-                if (Array.isArray(oddsData[m.key]) && oddsData[m.key].length > 0) {
+                // detect present key by primary or alt keys
+                const keysToCheck = [m.key, ...(m.altKeys || [])];
+                let presentKey = keysToCheck.find(k => Array.isArray(oddsData[k]) && oddsData[k].length > 0);
+                // Fallback structural scan
+                if (!presentKey) {
+                    const structuralMatch = Object.keys(oddsData).find(k => {
+                        const v = oddsData[k];
+                        if (!Array.isArray(v) || v.length === 0) return false;
+                        if (m.key === 'correctScore') return v.some(it => it && typeof it === 'object' && 'score' in it && 'odds' in it);
+                        if (m.key === 'multiGoals') return v.some(it => it && typeof it === 'object' && ('range' in it || 'band' in it) && 'odds' in it);
+                        return false;
+                    });
+                    presentKey = structuralMatch;
+                }
+                if (presentKey) {
                     if (m.key === 'goalScorers') {
                         // Special handling for goalscorers
                          const types = ['First', 'Anytime', 'Last'];
@@ -278,14 +297,14 @@ const MatchDetail = () => {
                          });
                     } else {
                         const options = [];
-                        oddsData[m.key].forEach(item => {
+                        oddsData[presentKey].forEach(item => {
                             options.push(...m.processor(item));
                         });
                         if (options.length > 0) {
                             markets[`market_${marketIndex++}`] = { name: m.name, options };
                         }
                     }
-                    consume(m.key);
+                    consume(presentKey);
                 }
             });
 
@@ -489,8 +508,8 @@ const MatchDetail = () => {
             homeTeam: match.homeTeam,
             awayTeam: match.awayTeam,
             league: match.competition,
-            market: marketName,
-            marketDisplay: marketName,
+            market: normalizedKey,
+            marketDisplay: marketTypeDisplay,
             selection: option?.name,
             point: option?.point,
             marketType: normalizedKey,

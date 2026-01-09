@@ -147,6 +147,8 @@ function App() {
     tasks.push(apiService.getMatches());
     tasks.push(apiService.getPopularMatches());
     tasks.push(apiService.getLiveMatches());
+    // Prefetch odds feed to enable instant fallback rendering on /live
+    tasks.push(apiService.getOddsMatches());
     if (localStorage.getItem('user')) {
       tasks.push(apiService.getUserBets());
       tasks.push(apiService.getBalance());

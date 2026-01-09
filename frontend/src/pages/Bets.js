@@ -1257,7 +1257,20 @@ const Bets = () => {
                             const hasSignedPoint = /\(\s*[-+]\d+(?:\.\d+)?\s*\)/.test(sel);
                             const mentionsTotals = /\b(over|under|ov|und|o|u)\b/i.test(sel);
                             if (hasSignedPoint && !mentionsTotals) return 'Handicap';
-                            return 'Market';
+                            // Final fallback: inspect parent bet.market for canonical mapping
+                            const parentKey = normalizeMarketKey(bet?.market || '');
+                            if (parentKey) {
+                              if (parentKey === 'winner') return 'Winner';
+                              if (parentKey.startsWith('totals') || parentKey.startsWith('alternate_totals') || parentKey.startsWith('team_totals') || parentKey.startsWith('alternate_team_totals')) return 'Over/Under';
+                              if (parentKey.startsWith('spreads') || parentKey.startsWith('alternate_spreads')) return 'Handicap';
+                              if (parentKey === 'both_teams_to_score') return 'Both Teams to Score';
+                              if (parentKey === 'correct_score') return 'Correct Score';
+                              if (parentKey === 'multi_goals') return 'Multi Goals';
+                              if (parentKey === 'corners') return 'Corners';
+                              if (parentKey === 'cards') return 'Cards';
+                              return getMarketTitle(parentKey) || 'Winner';
+                            }
+                            return 'Winner';
                           })();
 
                           return (

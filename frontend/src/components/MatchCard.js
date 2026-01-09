@@ -33,28 +33,70 @@ const LiveTimer = ({ startTime, sport, liveTime }) => {
                 return;
             }
 
+            const s = String(sport || '').toLowerCase();
             // Soccer specific logic
-            if (sport === 'soccer' || sport === 'football' || (sport && sport.includes('soccer'))) {
+            if (s === 'soccer' || s === 'football' || s.includes('soccer')) {
                 if (diffMins <= 45) {
                     setDisplayTime(`${diffMins}'`);
-                } else if (diffMins <= 50) {
-                    // First half added time (approx 5 mins)
-                    setDisplayTime('45+');
-                } else if (diffMins <= 65) {
-                    // Half time break (15 mins)
-                    setDisplayTime('HT');
-                } else if (diffMins <= 110) {
-                    // Second half (starts at 45', real time 65')
-                    // Offset = 65 - 45 = 20 mins
-                    setDisplayTime(`${diffMins - 20}'`);
-                } else {
-                    // Full time added time
-                    setDisplayTime('90+');
+                    return;
                 }
-            } else {
-                // Default for other sports
-                setDisplayTime(`${diffMins}'`);
+                if (diffMins <= 50) {
+                    setDisplayTime('45+');
+                    return;
+                }
+                if (diffMins <= 65) {
+                    setDisplayTime('HT');
+                    return;
+                }
+                // Second half: displayed minute accounts for the break offset
+                const displayed = diffMins - 20; // 65 -> 45, 110 -> 90
+                if (displayed <= 90) {
+                    setDisplayTime(`${displayed}'`);
+                    return;
+                }
+                // Stoppage time: cap to +10
+                const stoppage = Math.min(displayed - 90, 10);
+                setDisplayTime(`90+${stoppage}`);
+                return;
             }
+            // Basketball (NBA-style 48 mins, 12-min quarters, ~15 min halftime)
+            if (s === 'basketball') {
+                if (diffMins <= 12) { setDisplayTime(`Q1 ${diffMins}'`); return; }
+                if (diffMins <= 24) { setDisplayTime(`Q2 ${diffMins - 12}'`); return; }
+                if (diffMins <= 39) { setDisplayTime('HT'); return; } // halftime approx
+                if (diffMins <= 51) { setDisplayTime(`Q3 ${diffMins - 39}'`); return; }
+                if (diffMins <= 63) { setDisplayTime(`Q4 ${diffMins - 51}'`); return; }
+                setDisplayTime('OT'); return; // cap beyond regulation as OT
+            }
+            // American Football (NFL-style: 4x15, halftime ~12 min)
+            if (s === 'americanfootball') {
+                if (diffMins <= 15) { setDisplayTime(`Q1 ${diffMins}'`); return; }
+                if (diffMins <= 30) { setDisplayTime(`Q2 ${diffMins - 15}'`); return; }
+                if (diffMins <= 42) { setDisplayTime('HT'); return; }
+                if (diffMins <= 57) { setDisplayTime(`Q3 ${diffMins - 42}'`); return; }
+                if (diffMins <= 72) { setDisplayTime(`Q4 ${diffMins - 57}'`); return; }
+                setDisplayTime('OT'); return;
+            }
+            // Ice Hockey (NHL-style: 3x20, intermissions ~15 min)
+            if (s === 'icehockey' || s === 'hockey') {
+                if (diffMins <= 20) { setDisplayTime(`P1 ${diffMins}'`); return; }
+                if (diffMins <= 35) { setDisplayTime('INT'); return; }
+                if (diffMins <= 55) { setDisplayTime(`P2 ${diffMins - 35}'`); return; }
+                if (diffMins <= 70) { setDisplayTime('INT'); return; }
+                if (diffMins <= 90) { setDisplayTime(`P3 ${diffMins - 70}'`); return; }
+                setDisplayTime('OT'); return;
+            }
+            // Rugby (Union/League typical: 80 mins, halftime ~15 min, stoppage cap +10)
+            if (s === 'rugby') {
+                if (diffMins <= 40) { setDisplayTime(`${diffMins}'`); return; }
+                if (diffMins <= 55) { setDisplayTime('HT'); return; }
+                const displayed = diffMins - 15; // 55 -> 40
+                if (displayed <= 80) { setDisplayTime(`${displayed}'`); return; }
+                const stoppage = Math.min(displayed - 80, 10);
+                setDisplayTime(`80+${stoppage}`); return;
+            }
+            // Default for other sports
+            setDisplayTime(`${diffMins}'`);
         };
 
         updateTime();

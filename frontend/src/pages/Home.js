@@ -41,6 +41,10 @@ const Home = () => {
       navigate('/aviator');
       return;
     }
+    if (sportKey === 'Casino') {
+      navigate('/wheel');
+      return;
+    }
     // Toggle off if clicking the same sport; otherwise set sport and clear subcategory
     // This only affects regular match cards, not popular matches
     setSportsStripFilter(prev => (prev === sportKey ? '' : sportKey));
@@ -382,9 +386,9 @@ const Home = () => {
         if (match.odds && typeof match.odds === 'object' && !Array.isArray(match.odds)) {
           return match.odds;
         }
-        // If odds is a bookmakers array, flatten h2h / h2h_3_way to 1/X/2
-        if (Array.isArray(match.odds)) {
-          const bm = match.odds.find(b => Array.isArray(b.markets) && b.markets.length > 0);
+        // If bookmakers array exists (odds feed), flatten h2h / h2h_3_way to 1/X/2
+        if (Array.isArray(match.bookmakers)) {
+          const bm = match.bookmakers.find(b => Array.isArray(b.markets) && b.markets.length > 0) || match.bookmakers[0];
           if (!bm) return {};
           const markets = bm.markets || [];
           const h2h = markets.find(m => m.key === 'h2h') || markets.find(m => m.key === 'h2h_3_way');
@@ -408,23 +412,23 @@ const Home = () => {
 
       // Handle backend database format
       return {
-        id: match._id || match.id,
+        id: match._id || match.id || match.gameId,
         // Use existing league/country/title data from backend if available
-        league: match.league || (match.leagueId ? formatSportKey(match.leagueId) : ''),
-        subcategory: match.subcategory || (match.sport ? formatSportKey(match.sport) : ''),
-        startTime: new Date(match.startTime),
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
+        league: match.league || match.sport_title || (match.leagueId ? formatSportKey(match.leagueId) : ''),
+        subcategory: match.subcategory || formatSportKey(match.sport_key || match.sport || ''),
+        startTime: match.startTime ? new Date(match.startTime) : (match.commence_time ? new Date(match.commence_time) : new Date()),
+        homeTeam: match.homeTeam || match.home_team,
+        awayTeam: match.awayTeam || match.away_team,
         homeTeamFlag: '🏳️',
         awayTeamFlag: '🏳️',
         odds: buildFlatOdds(),
         additionalMarkets: (match.markets || []).length,
-        sport: match.sport ? match.sport.split('_')[0] : '',
+        sport: (match.sport ? match.sport.split('_')[0] : (match.sport_key ? String(match.sport_key).split('_')[0] : '')),
         sport_key: match.sport_key || match.sport,
-        sport_title: match.sport_title || match.league,
+        sport_title: match.sport_title || match.league || '',
         country: match.country || '',
         fullLeagueTitle: match.fullLeagueTitle || '',
-        allMarkets: match.markets || []
+        allMarkets: match.markets || (Array.isArray(match.bookmakers) ? (match.bookmakers[0]?.markets || []) : [])
       };
     }).filter(match => match !== null);
     
@@ -790,6 +794,32 @@ const Home = () => {
       } catch (e) {
         console.log('[HOME] Cache restoration failed:', e);
       }
+    }
+    
+    // If still no instant data, attempt odds cache for instant fallback
+    if (!hasInstantData) {
+      try {
+        const oddsCached = enhancedCache.getCachedData('/odds');
+        const oddsMatches = Array.isArray(oddsCached?.matches) ? oddsCached.matches : [];
+        if (oddsMatches.length > 0) {
+          const now = new Date();
+          const upcomingFromOdds = oddsMatches.filter(m => {
+            const ct = m.commence_time ? new Date(m.commence_time) : null;
+            return ct && ct > now;
+          });
+          const transformed = transformOddsToMatches(upcomingFromOdds);
+          if (transformed.length > 0) {
+            setMatches(transformed);
+            const popularFromTransformed = transformed
+              .filter(m => Object.values(m.odds || {}).filter(odd => odd > 0).length >= 2)
+              .slice(0, 6);
+            setPopularMatches(popularFromTransformed);
+            setLoading(false);
+            hasInstantData = true;
+            console.log('[HOME] Instant odds fallback used for regular and popular matches');
+          }
+        }
+      } catch (e) { void e; }
     }
     
     // Fetch fresh data in background (don't set loading to true if we have instant data)

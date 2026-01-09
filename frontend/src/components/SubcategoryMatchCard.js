@@ -87,15 +87,101 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
             const now = new Date();
             const diffMs = now - startTime;
             const diffMins = Math.floor(diffMs / 60000);
-            
-            if (diffMins > 0) {
+            if (diffMins <= 0) {
                 return (
                     <div className="live-time-display">
                         <span className="time-icon"></span>
-                        <span>LIVE {diffMins}'</span>
+                        <span>LIVE</span>
                     </div>
                 );
             }
+            const sportKey = (sport || match.sport || '').toLowerCase();
+            // Soccer-specific capped display: 90 + up to 10 minutes
+            if (sportKey.includes('soccer') || sportKey === 'football') {
+                if (diffMins <= 45) {
+                    return (
+                        <div className="live-time-display">
+                            <span className="time-icon"></span>
+                            <span>{diffMins}'</span>
+                        </div>
+                    );
+                }
+                if (diffMins <= 50) {
+                    return (
+                        <div className="live-time-display">
+                            <span className="time-icon"></span>
+                            <span>45+</span>
+                        </div>
+                    );
+                }
+                if (diffMins <= 65) {
+                    return (
+                        <div className="live-time-display">
+                            <span className="time-icon"></span>
+                            <span>HT</span>
+                        </div>
+                    );
+                }
+                const displayed = diffMins - 20;
+                if (displayed <= 90) {
+                    return (
+                        <div className="live-time-display">
+                            <span className="time-icon"></span>
+                            <span>{displayed}'</span>
+                        </div>
+                    );
+                }
+                const stoppage = Math.min(displayed - 90, 10);
+                return (
+                    <div className="live-time-display">
+                        <span className="time-icon"></span>
+                        <span>{`90+${stoppage}`}</span>
+                    </div>
+                );
+            }
+            // Basketball
+            if (sportKey === 'basketball') {
+                if (diffMins <= 12) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q1 ${diffMins}'`}</span></div>;
+                if (diffMins <= 24) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q2 ${diffMins - 12}'`}</span></div>;
+                if (diffMins <= 39) return <div className="live-time-display"><span className="time-icon"></span><span>HT</span></div>;
+                if (diffMins <= 51) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q3 ${diffMins - 39}'`}</span></div>;
+                if (diffMins <= 63) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q4 ${diffMins - 51}'`}</span></div>;
+                return <div className="live-time-display"><span className="time-icon"></span><span>OT</span></div>;
+            }
+            // American Football
+            if (sportKey === 'americanfootball') {
+                if (diffMins <= 15) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q1 ${diffMins}'`}</span></div>;
+                if (diffMins <= 30) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q2 ${diffMins - 15}'`}</span></div>;
+                if (diffMins <= 42) return <div className="live-time-display"><span className="time-icon"></span><span>HT</span></div>;
+                if (diffMins <= 57) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q3 ${diffMins - 42}'`}</span></div>;
+                if (diffMins <= 72) return <div className="live-time-display"><span className="time-icon"></span><span>{`Q4 ${diffMins - 57}'`}</span></div>;
+                return <div className="live-time-display"><span className="time-icon"></span><span>OT</span></div>;
+            }
+            // Ice Hockey
+            if (sportKey === 'icehockey' || sportKey === 'hockey') {
+                if (diffMins <= 20) return <div className="live-time-display"><span className="time-icon"></span><span>{`P1 ${diffMins}'`}</span></div>;
+                if (diffMins <= 35) return <div className="live-time-display"><span className="time-icon"></span><span>INT</span></div>;
+                if (diffMins <= 55) return <div className="live-time-display"><span className="time-icon"></span><span>{`P2 ${diffMins - 35}'`}</span></div>;
+                if (diffMins <= 70) return <div className="live-time-display"><span className="time-icon"></span><span>INT</span></div>;
+                if (diffMins <= 90) return <div className="live-time-display"><span className="time-icon"></span><span>{`P3 ${diffMins - 70}'`}</span></div>;
+                return <div className="live-time-display"><span className="time-icon"></span><span>OT</span></div>;
+            }
+            // Rugby
+            if (sportKey === 'rugby') {
+                if (diffMins <= 40) return <div className="live-time-display"><span className="time-icon"></span><span>{`${diffMins}'`}</span></div>;
+                if (diffMins <= 55) return <div className="live-time-display"><span className="time-icon"></span><span>HT</span></div>;
+                const displayed = diffMins - 15;
+                if (displayed <= 80) return <div className="live-time-display"><span className="time-icon"></span><span>{`${displayed}'`}</span></div>;
+                const stoppage = Math.min(displayed - 80, 10);
+                return <div className="live-time-display"><span className="time-icon"></span><span>{`80+${stoppage}`}</span></div>;
+            }
+            // Default for other sports
+            return (
+                <div className="live-time-display">
+                    <span className="time-icon"></span>
+                    <span>{diffMins}'</span>
+                </div>
+            );
         }
         
         return (

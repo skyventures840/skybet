@@ -145,6 +145,12 @@ const Aviator = () => {
   const [showBetHistory, setShowBetHistory] = useState(false);
   const [myBetHistory, setMyBetHistory] = useState([]);
   const menuRef = useRef(null);
+  const flightAudioRef = useRef(null);
+  const flyAwayAudioRef = useRef(null);
+  const flightFadeRef = useRef(null);
+  const awayFadeRef = useRef(null);
+  const FLIGHT_VOL = 0.4;
+  const AWAY_VOL = 0.6;
   
   // Derived active balance
   const balance = (user.balance || 0) + (user.balanceBonus || 0);
@@ -180,85 +186,101 @@ const Aviator = () => {
     }
   }, [showBetHistory, fetchMyHistory]);
 
-  // Sound Effect - Advanced Prop Plane Simulation
   useEffect(() => {
-    let audioCtx;
-    let engineOsc;
-    let engineLFO;
-    let noiseNode;
-    let filterNode;
-    let masterGain;
-
-    if (gameState === 'FLYING' && soundEnabled) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        
-        audioCtx = new AudioContext();
-        masterGain = audioCtx.createGain();
-        masterGain.connect(audioCtx.destination);
-        masterGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-
-        // 1. Engine Drone (Sawtooth + Lowpass)
-        engineOsc = audioCtx.createOscillator();
-        engineOsc.type = 'sawtooth';
-        engineOsc.frequency.setValueAtTime(60, audioCtx.currentTime); // Start low rumble
-        
-        // 2. Engine Speed Modulation (LFO)
-        engineLFO = audioCtx.createOscillator();
-        engineLFO.type = 'sine';
-        engineLFO.frequency.setValueAtTime(15, audioCtx.currentTime);
-        const lfoGain = audioCtx.createGain();
-        lfoGain.gain.setValueAtTime(20, audioCtx.currentTime);
-        engineLFO.connect(lfoGain);
-        lfoGain.connect(engineOsc.frequency);
-
-        // 3. Propeller Noise (Pink Noise approximation)
-        const bufferSize = 2 * audioCtx.sampleRate;
-        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        let lastOut = 0;
-        for (let i = 0; i < bufferSize; i++) {
-            const white = Math.random() * 2 - 1;
-            output[i] = (lastOut + (0.02 * white)) / 1.02;
-            lastOut = output[i];
-            output[i] *= 3.5; 
-        }
-        
-        noiseNode = audioCtx.createBufferSource();
-        noiseNode.buffer = noiseBuffer;
-        noiseNode.loop = true;
-
-        // 4. Dynamic Filter (Rising Pitch)
-        filterNode = audioCtx.createBiquadFilter();
-        filterNode.type = 'lowpass';
-        filterNode.Q.value = 1;
-        filterNode.frequency.setValueAtTime(200, audioCtx.currentTime);
-        
-        // Connect Graph
-        engineOsc.connect(filterNode);
-        noiseNode.connect(filterNode);
-        filterNode.connect(masterGain);
-
-        // Start Sources
-        engineOsc.start();
-        engineLFO.start();
-        noiseNode.start();
-
-        // Ramp Up Effect (Acceleration)
-        const rampDuration = 10; // Slow acceleration
-        engineOsc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + rampDuration);
-        filterNode.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + rampDuration);
-        masterGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 15); // Fade out eventually
-    }
-
+    const flight = new Audio('/audio/aviator-loop.mp3');
+    flight.loop = true;
+    flight.volume = FLIGHT_VOL;
+    flightAudioRef.current = flight;
+    const away = new Audio('/audio/aviator-away.mp3');
+    away.loop = false;
+    away.volume = AWAY_VOL;
+    flyAwayAudioRef.current = away;
     return () => {
-        if (audioCtx) {
-            try { if (engineOsc) engineOsc.stop(); } catch(e) { /* ignore */ }
-            try { if (engineLFO) engineLFO.stop(); } catch(e) { /* ignore */ }
-            try { if (noiseNode) noiseNode.stop(); } catch(e) { /* ignore */ }
-            audioCtx.close().catch(() => { /* ignore */ });
-        }
+      flight.pause();
+      away.pause();
     };
+  }, []);
+
+  const fadeAudio = useCallback((audio, from, to, duration, rafRef, onEnd) => {
+    if (!audio) return;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const start = performance.now();
+    const clamp = (v) => Math.max(0, Math.min(1, v));
+    audio.volume = clamp(from);
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const v = from + (to - from) * t;
+      audio.volume = clamp(v);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        rafRef.current = null;
+        audio.volume = clamp(to);
+        if (onEnd) onEnd();
+      }
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => {
+    const flight = flightAudioRef.current;
+    const away = flyAwayAudioRef.current;
+    if (!soundEnabled) {
+      if (flight) {
+        flight.pause();
+        flight.currentTime = 0;
+      }
+      if (away) {
+        away.pause();
+        away.currentTime = 0;
+      }
+      return;
+    }
+    if (gameState === 'FLYING') {
+      if (away) {
+        if (awayFadeRef.current) cancelAnimationFrame(awayFadeRef.current);
+        away.pause();
+        away.currentTime = 0;
+        away.volume = AWAY_VOL;
+      }
+      if (flight) {
+        if (flightFadeRef.current) cancelAnimationFrame(flightFadeRef.current);
+        flight.volume = FLIGHT_VOL;
+        flight.currentTime = 0;
+        flight.play().catch(() => {});
+      }
+    } else if (gameState === 'CRASHED') {
+      if (flight) {
+        fadeAudio(flight, flight.volume, 0, 300, flightFadeRef, () => {
+          flight.pause();
+          flight.currentTime = 0;
+          flight.volume = FLIGHT_VOL;
+        });
+      }
+      if (away) {
+        away.pause();
+        away.currentTime = 0;
+        away.volume = 0;
+        away.play().then(() => {
+          fadeAudio(away, 0, AWAY_VOL, 300, awayFadeRef);
+        }).catch(() => {
+          away.play().catch(() => {});
+        });
+      }
+    } else if (gameState === 'WAITING') {
+      if (flight) {
+        if (flightFadeRef.current) cancelAnimationFrame(flightFadeRef.current);
+        flight.pause();
+        flight.currentTime = 0;
+        flight.volume = FLIGHT_VOL;
+      }
+      if (away) {
+        if (awayFadeRef.current) cancelAnimationFrame(awayFadeRef.current);
+        away.pause();
+        away.currentTime = 0;
+        away.volume = AWAY_VOL;
+      }
+    }
   }, [gameState, soundEnabled]);
 
   // Fetch balance and profile on mount

@@ -81,6 +81,22 @@ const sports = [
       <rect x="32" y="12" width="4" height="20" fill="#a1887f" />
     </svg>
   )},
+  { key: 'Casino', name: 'Casino', icon: (
+    <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
+      <circle cx="24" cy="24" r="18" fill="#2e7d32" stroke="#1b5e20" strokeWidth="2" />
+      <circle cx="24" cy="24" r="14" fill="#43a047" stroke="#1b5e20" strokeWidth="2" />
+      <circle cx="24" cy="24" r="8" fill="#c62828" />
+      <circle cx="24" cy="24" r="3" fill="#ffd54f" />
+      <rect x="23" y="10" width="2" height="4" fill="#ffd54f" />
+      <rect x="23" y="34" width="2" height="4" fill="#ffd54f" />
+      <rect x="10" y="23" width="4" height="2" fill="#ffd54f" />
+      <rect x="34" y="23" width="4" height="2" fill="#ffd54f" />
+      <circle cx="14" cy="14" r="2" fill="#ffd54f" />
+      <circle cx="34" cy="14" r="2" fill="#ffd54f" />
+      <circle cx="14" cy="34" r="2" fill="#ffd54f" />
+      <circle cx="34" cy="34" r="2" fill="#ffd54f" />
+    </svg>
+  )},
   { key: 'Rugby', name: 'Rugby', icon: (
     <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
       <ellipse cx="24" cy="24" rx="18" ry="12" fill="#8e24aa" />

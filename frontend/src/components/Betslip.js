@@ -266,9 +266,18 @@ const Betslip = () => {
       if (key === 'outrights') return 'Outrights';
       return getMarketTitle(key);
     }
-    // If we only have type 1/X/2, treat as Winner
     if (bet.type && ['1','X','2','home','away','draw'].includes(bet.type)) return 'Winner';
-    return 'Market';
+    const sel = (bet.selection || '').toLowerCase();
+    if (sel) {
+      if (/\d+\s*-\s*\d+/.test(sel)) return 'Correct Score';
+      if (sel.includes('over') || sel.includes('under') || typeof bet.point === 'number') return 'Totals';
+      if (sel.includes('both teams') || sel.includes('btts')) return 'Both Teams to Score';
+      if (sel.includes('corner')) return 'Corners';
+      if (sel.includes('card')) return 'Cards';
+      if (/\d+\s*-\s*\d+\s*goals/.test(sel) || /\d+\+/.test(sel)) return 'Multi Goals';
+      if (sel.includes('handicap') || sel.includes('+') || sel.includes('-')) return 'Handicap';
+    }
+    return 'Winner';
   };
 
   const placeBet = async () => {

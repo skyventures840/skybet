@@ -26,6 +26,95 @@ const LiveBetting = () => {
     } catch (_) { return false; }
   };
 
+  // Transform odds feed entries into live-like matches for instant fallback
+  const transformOddsToLiveMatches = (oddsData) => {
+    const MAX_WINDOWS_MIN = {
+      soccer: 120,
+      basketball: 150,
+      icehockey: 150,
+      baseball: 240,
+      tennis: 240,
+      rugby: 120,
+      volleyball: 150,
+      handball: 120
+    };
+
+    return oddsData.map(m => {
+      const bookmakers = Array.isArray(m.bookmakers) ? m.bookmakers : [];
+      const firstBm = bookmakers[0] || null;
+      const markets = firstBm?.markets || [];
+      const h2h = markets.find(x => x.key === 'h2h') || markets.find(x => x.key === 'h2h_3_way');
+      const odds = {};
+      if (h2h && Array.isArray(h2h.outcomes)) {
+        const homeOutcome = h2h.outcomes.find(o => o.name === m.home_team) || h2h.outcomes[0];
+        const awayOutcome = h2h.outcomes.find(o => o.name === m.away_team) || h2h.outcomes[1];
+        const drawOutcome = h2h.outcomes.find(o => /^(draw|tie)$/i.test(o.name));
+        if (homeOutcome?.price) odds['1'] = homeOutcome.price;
+        if (awayOutcome?.price) odds['2'] = awayOutcome.price;
+        if (drawOutcome?.price) odds['X'] = drawOutcome.price;
+      }
+
+      const start = m.commence_time ? new Date(m.commence_time) : new Date();
+      const diffMs = Date.now() - start.getTime();
+      const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+      const sportKeyFull = (m.sport_key || '').toString();
+      const sportKey = sportKeyFull.split('_')[0] || '';
+      const maxWindow = MAX_WINDOWS_MIN[sportKey] || 180;
+
+      const withinWindow = diffMins >= 0 && diffMins <= maxWindow;
+      const status = withinWindow ? 'live' : 'finished';
+
+      let liveTime = undefined;
+      if (withinWindow) {
+        if (sportKey === 'soccer' || sportKey === 'football') {
+          if (diffMins <= 45) {
+            liveTime = `${diffMins}'`;
+          } else if (diffMins <= 60) {
+            liveTime = 'HT';
+          } else if (diffMins <= 105) {
+            liveTime = `${diffMins - 15}'`;
+          } else {
+            liveTime = '90+';
+          }
+        } else {
+          liveTime = 'LIVE';
+        }
+      }
+
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportKeyFull,
+        country: '',
+        leagueName: '',
+        fallbackSportTitle: ''
+      });
+
+      return {
+        id: m.id || m.gameId,
+        league: m.sport_title || m.sport_key || 'Live',
+        subcategory: m.sport_key || 'live',
+        startTime: start,
+        homeTeam: m.home_team,
+        awayTeam: m.away_team,
+        homeTeamFlag: '🏳️',
+        awayTeamFlag: '🏳️',
+        odds,
+        additionalMarkets: Math.max(0, (markets.length || 0) - (h2h ? 1 : 0)),
+        sport: sportKey || 'live',
+        sport_key: sportKeyFull,
+        allMarkets: markets,
+        status,
+        isLive: status === 'live',
+        liveTime,
+        score: null,
+        homeScore: null,
+        awayScore: null,
+        lastUpdate: new Date().toISOString(),
+        country: '',
+        fullLeagueTitle
+      };
+    });
+  };
+
   // Fetch live matches from API (instant-friendly: no loading gate)
   const fetchLiveMatches = async (opts = {}) => {
     try {
@@ -51,98 +140,6 @@ const LiveBetting = () => {
               const ct = m.commence_time ? new Date(m.commence_time) : null;
               return ct && ct <= new Date();
             });
-
-            const transformOddsToLiveMatches = (oddsData) => {
-              // Define conservative maximum live windows per sport to avoid showing finished games
-              const MAX_WINDOWS_MIN = {
-                soccer: 120,       // up to ET
-                basketball: 150,   // game runtime window
-                icehockey: 150,    // includes intermissions
-                baseball: 240,     // variable length; generous cap
-                tennis: 240,       // varies widely; conservative cap
-                rugby: 120,
-                volleyball: 150,
-                handball: 120
-              };
-
-              return oddsData.map(m => {
-                const bookmakers = Array.isArray(m.bookmakers) ? m.bookmakers : [];
-                const firstBm = bookmakers[0] || null;
-                const markets = firstBm?.markets || [];
-                const h2h = markets.find(x => x.key === 'h2h') || markets.find(x => x.key === 'h2h_3_way');
-                const odds = {};
-                if (h2h && Array.isArray(h2h.outcomes)) {
-                  const homeOutcome = h2h.outcomes.find(o => o.name === m.home_team) || h2h.outcomes[0];
-                  const awayOutcome = h2h.outcomes.find(o => o.name === m.away_team) || h2h.outcomes[1];
-                  const drawOutcome = h2h.outcomes.find(o => /^(draw|tie)$/i.test(o.name));
-                  if (homeOutcome?.price) odds['1'] = homeOutcome.price;
-                  if (awayOutcome?.price) odds['2'] = awayOutcome.price;
-                  if (drawOutcome?.price) odds['X'] = drawOutcome.price;
-                }
-
-                const start = m.commence_time ? new Date(m.commence_time) : new Date();
-                const diffMs = Date.now() - start.getTime();
-                const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
-                const sportKeyFull = (m.sport_key || '').toString();
-                const sportKey = sportKeyFull.split('_')[0] || '';
-                const maxWindow = MAX_WINDOWS_MIN[sportKey] || 180;
-
-                // Determine live status within realistic window
-                const withinWindow = diffMins >= 0 && diffMins <= maxWindow;
-                const status = withinWindow ? 'live' : 'finished';
-
-                // Build live time string: show minutes only for soccer; otherwise generic LIVE
-                let liveTime = undefined;
-                if (withinWindow) {
-                    if (sportKey === 'soccer' || sportKey === 'football') {
-                        if (diffMins <= 45) {
-                            liveTime = `${diffMins}'`;
-                        } else if (diffMins <= 60) {
-                            liveTime = 'HT';
-                        } else if (diffMins <= 105) {
-                            liveTime = `${diffMins - 15}'`;
-                        } else {
-                            liveTime = '90+';
-                        }
-                    } else {
-                        liveTime = 'LIVE';
-                    }
-                }
-
-                const fullLeagueTitle = computeFullLeagueTitle({
-                  sportKeyOrName: sportKeyFull,
-                  country: '',
-                  leagueName: '',
-                  fallbackSportTitle: ''
-                });
-
-                return {
-                  id: m.id || m.gameId,
-                  league: m.sport_title || m.sport_key || 'Live',
-                  subcategory: m.sport_key || 'live',
-                  startTime: start,
-                  homeTeam: m.home_team,
-                  awayTeam: m.away_team,
-                  homeTeamFlag: '🏳️',
-                  awayTeamFlag: '🏳️',
-                  odds,
-                  additionalMarkets: Math.max(0, (markets.length || 0) - (h2h ? 1 : 0)),
-                  sport: sportKey || 'live',
-                  sport_key: sportKeyFull,
-                  allMarkets: markets,
-                  status,
-                  isLive: status === 'live',
-                  liveTime,
-                  score: null,
-                  homeScore: null,
-                  awayScore: null,
-                  lastUpdate: new Date().toISOString(),
-                  country: '',
-                  fullLeagueTitle
-                };
-              });
-            };
-
             const transformed = transformOddsToLiveMatches(oddsMatches)
               // Only keep truly live matches
               .filter(m => isLiveStatus(m.status, m.startTime));
@@ -350,6 +347,7 @@ const LiveBetting = () => {
         setLiveMatches(sessionMatches);
         setLastUpdate(new Date().toISOString());
         setLoading(false);
+        enhancedCache.markInitialLoadComplete();
       } else {
         const cached = enhancedCache.getCachedData('/matches/live/real-time');
         if (cached && Array.isArray(cached.matches)) {
@@ -359,11 +357,52 @@ const LiveBetting = () => {
             setLiveMatches(matches);
             setLastUpdate(new Date().toISOString());
             setLoading(false);
+            enhancedCache.markInitialLoadComplete();
+          } else {
+            // Try odds cache for instant fallback when live cache empty
+            const oddsCached = enhancedCache.getCachedData('/odds');
+            const oddsMatches = Array.isArray(oddsCached?.matches) ? oddsCached.matches : [];
+            if (oddsMatches.length > 0) {
+              const filtered = oddsMatches.filter(m => {
+                const ct = m.commence_time ? new Date(m.commence_time) : null;
+                return ct && ct <= new Date();
+              });
+              const transformed = transformOddsToLiveMatches(filtered).filter(m => isLiveStatus(m.status, m.startTime));
+              if (transformed.length > 0) {
+                console.log('[LIVE BETTING] Instant odds fallback from cache:', transformed.length, 'matches');
+                setLiveMatches(transformed);
+                setLastUpdate(new Date().toISOString());
+                setLoading(false);
+                enhancedCache.markInitialLoadComplete();
+              } else {
+                setLoading(enhancedCache.shouldShowSkeleton());
+              }
+            } else {
+              setLoading(enhancedCache.shouldShowSkeleton());
+            }
+          }
+        } else {
+          // No live cache: attempt odds cache
+          const oddsCached = enhancedCache.getCachedData('/odds');
+          const oddsMatches = Array.isArray(oddsCached?.matches) ? oddsCached.matches : [];
+          if (oddsMatches.length > 0) {
+            const filtered = oddsMatches.filter(m => {
+              const ct = m.commence_time ? new Date(m.commence_time) : null;
+              return ct && ct <= new Date();
+            });
+            const transformed = transformOddsToLiveMatches(filtered).filter(m => isLiveStatus(m.status, m.startTime));
+            if (transformed.length > 0) {
+              console.log('[LIVE BETTING] Instant odds fallback from cache (no live cache):', transformed.length, 'matches');
+              setLiveMatches(transformed);
+              setLastUpdate(new Date().toISOString());
+              setLoading(false);
+              enhancedCache.markInitialLoadComplete();
+            } else {
+              setLoading(enhancedCache.shouldShowSkeleton());
+            }
           } else {
             setLoading(enhancedCache.shouldShowSkeleton());
           }
-        } else {
-          setLoading(enhancedCache.shouldShowSkeleton());
         }
       }
     } catch (e) {

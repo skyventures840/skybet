@@ -6,6 +6,60 @@ import apiService from '../services/api';
 import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 import enhancedCache from '../services/enhancedCache';
 
+export const transformInternalOddsToMarketsPublic = (matchData) => {
+    if (!matchData?.odds) return [];
+    const homeName = matchData.homeTeam || matchData.home_team || 'Home';
+    const awayName = matchData.awayTeam || matchData.away_team || 'Away';
+    const markets = [];
+    const oddsData = matchData.odds;
+    const consume = () => void 0;
+    const arrayMarkets = [
+        { key: 'correctScore', altKeys: ['correct_score', 'CorrectScore', 'correctscore', 'correct score'], name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, price: Number(item.odds) }] : [] },
+        { key: 'multiGoals', altKeys: ['multi_goals', 'goalBands', 'Multigoals', 'MultiGoals', 'multi goals', 'goalbands'], name: 'Multi Goals', processor: (item) => {
+            const rg = item.range || item.band;
+            return rg && item.odds ? [{ name: `${rg} Goals`, price: Number(item.odds) }] : [];
+        } },
+        { key: 'handicaps', altKeys: [], name: 'Handicap', processor: (item) => {
+            if (item.line && item.homeOdds && item.awayOdds) {
+                const line = parseFloat(item.line);
+                const homeLine = line > 0 ? `+${line}` : `${line}`;
+                const awayLine = -line > 0 ? `+${-line}` : `${-line}`;
+                return [
+                    { name: `${homeName} (${homeLine})`, price: Number(item.homeOdds) },
+                    { name: `${awayName} (${awayLine})`, price: Number(item.awayOdds) }
+                ];
+            }
+            return [];
+        }}
+    ];
+    arrayMarkets.forEach(m => {
+        const keysToCheck = [m.key, ...(m.altKeys || [])];
+        let presentKey = keysToCheck.find(k => Array.isArray(oddsData[k]) && oddsData[k].length > 0);
+        if (!presentKey) {
+            const structuralMatch = Object.keys(oddsData).find(k => {
+                const v = oddsData[k];
+                if (!Array.isArray(v) || v.length === 0) return false;
+                if (m.key === 'correctScore') return v.some(it => it && typeof it === 'object' && 'score' in it && 'odds' in it);
+                if (m.key === 'multiGoals') return v.some(it => it && typeof it === 'object' && ('range' in it || 'band' in it) && 'odds' in it);
+                return false;
+            });
+            presentKey = structuralMatch;
+        }
+        if (presentKey) {
+            const outcomes = [];
+            oddsData[presentKey].forEach(item => {
+                outcomes.push(...m.processor(item));
+            });
+            if (outcomes.length > 0) {
+                const normalizedArrKey = normalizeMarketKey(m.name);
+                markets.push({ key: normalizedArrKey, title: m.name, outcomes });
+            }
+            consume(presentKey);
+        }
+    });
+    return markets;
+};
+
 const MatchMarkets = () => {
     const { matchId } = useParams();
     const navigate = useNavigate();
@@ -409,10 +463,14 @@ const MatchMarkets = () => {
 
         // 10. Array Markets (For legacy/array data)
         const arrayMarkets = [
-            { key: 'correctScore', name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, price: Number(item.odds) }] : [] },
-            { key: 'multiGoals', name: 'Multi Goals', processor: (item) => item.range && item.odds ? [{ name: item.range, price: Number(item.odds) }] : [] },
-            { key: 'winningMargin', name: 'Winning Margin', processor: (item) => item.margin && item.odds ? [{ name: item.margin, price: Number(item.odds) }] : [] },
-            { key: 'handicaps', name: 'Handicap', processor: (item) => {
+            // Support common key variants for correct score and multi goals
+            { key: 'correctScore', altKeys: ['correct_score', 'CorrectScore', 'correctscore', 'correct score'], name: 'Correct Score', processor: (item) => item.score && item.odds ? [{ name: item.score, price: Number(item.odds) }] : [] },
+            { key: 'multiGoals', altKeys: ['multi_goals', 'goalBands', 'Multigoals', 'MultiGoals', 'multi goals', 'goalbands'], name: 'Multi Goals', processor: (item) => {
+                const rg = item.range || item.band;
+                return rg && item.odds ? [{ name: `${rg} Goals`, price: Number(item.odds) }] : [];
+            } },
+            { key: 'winningMargin', altKeys: [], name: 'Winning Margin', processor: (item) => item.margin && item.odds ? [{ name: item.margin, price: Number(item.odds) }] : [] },
+            { key: 'handicaps', altKeys: [], name: 'Handicap', processor: (item) => {
                  if (item.line && item.homeOdds && item.awayOdds) {
                     const line = parseFloat(item.line);
                     const homeLine = line > 0 ? `+${line}` : `${line}`;
@@ -428,7 +486,20 @@ const MatchMarkets = () => {
         ];
 
         arrayMarkets.forEach(m => {
-            if (Array.isArray(oddsData[m.key]) && oddsData[m.key].length > 0) {
+            const keysToCheck = [m.key, ...(m.altKeys || [])];
+            let presentKey = keysToCheck.find(k => Array.isArray(oddsData[k]) && oddsData[k].length > 0);
+            // Fallback: scan any array-like key that matches structure
+            if (!presentKey) {
+                const structuralMatch = Object.keys(oddsData).find(k => {
+                    const v = oddsData[k];
+                    if (!Array.isArray(v) || v.length === 0) return false;
+                    if (m.key === 'correctScore') return v.some(it => it && typeof it === 'object' && 'score' in it && 'odds' in it);
+                    if (m.key === 'multiGoals') return v.some(it => it && typeof it === 'object' && ('range' in it || 'band' in it) && 'odds' in it);
+                    return false;
+                });
+                presentKey = structuralMatch;
+            }
+            if (presentKey) {
                 if (m.key === 'goalScorers') {
                      const types = ['First', 'Anytime', 'Last'];
                      types.forEach(type => {
@@ -442,14 +513,15 @@ const MatchMarkets = () => {
                      });
                 } else {
                     const outcomes = [];
-                    oddsData[m.key].forEach(item => {
+                    oddsData[presentKey].forEach(item => {
                         outcomes.push(...m.processor(item));
                     });
                     if (outcomes.length > 0) {
-                        markets.push({ key: m.key, title: m.name, outcomes });
+                        const normalizedArrKey = normalizeMarketKey(m.name);
+                        markets.push({ key: normalizedArrKey, title: m.name, outcomes });
                     }
                 }
-                consume(m.key);
+                consume(presentKey);
             }
         });
 
@@ -462,7 +534,9 @@ const MatchMarkets = () => {
                         .map(opt => ({ name: opt.name, price: Number(opt.odds) }));
                     
                     if (validOptions.length > 0) {
-                        markets.push({ key: `custom_${idx}`, title: customMarket.name, outcomes: validOptions });
+                        const canonicalKey = normalizeMarketKey(customMarket.name);
+                        const canonicalTitle = getMarketTitle(canonicalKey) || customMarket.name;
+                        markets.push({ key: canonicalKey || `custom_${idx}`, title: canonicalTitle, outcomes: validOptions });
                     }
                 }
             });
@@ -638,8 +712,8 @@ const MatchMarkets = () => {
     // Function to add bet to betslip
     const addToBetslip = (marketKey, outcome, marketTitle) => {
         if (!match) return;
-        
-        const normalizedKey = normalizeMarketKey(marketKey);
+        const isGrouped = String(marketKey || '').toLowerCase().startsWith('grouped_');
+        const normalizedKey = isGrouped ? normalizeMarketKey(marketTitle) : normalizeMarketKey(marketKey);
         const marketTypeDisplay = (() => {
             if (!normalizedKey) return 'Market';
             if (normalizedKey === 'winner') return 'Winner';
@@ -655,8 +729,8 @@ const MatchMarkets = () => {
             awayTeam: match.awayTeam || match.away_team,
             league: match.league || match.sport_title,
             startTime: match.startTime || match.commence_time,
-            market: marketKey,
-            marketDisplay: marketTitle || getMarketTitle(marketKey),
+            market: normalizedKey,
+            marketDisplay: getMarketTitle(normalizedKey),
             marketType: normalizedKey,
             marketTypeDisplay,
             selection: outcome.name,
