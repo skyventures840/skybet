@@ -151,6 +151,7 @@ const Aviator = () => {
   const awayFadeRef = useRef(null);
   const FLIGHT_VOL = 0.4;
   const AWAY_VOL = 0.6;
+  const [showHowTo, setShowHowTo] = useState(false);
   
   // Derived active balance
   const balance = (user.balance || 0) + (user.balanceBonus || 0);
@@ -1488,7 +1489,7 @@ const Aviator = () => {
                                     </label>
                                 </div>
 
-                                <div className="menu-item">
+                                <div className="menu-item" onClick={() => setShowHowTo(true)}>
                                     <span>How to Play</span>
                                 </div>
                             </div>
@@ -1585,6 +1586,182 @@ const Aviator = () => {
                 winnings={userBets[2].winAmount}
             />
         </div>
+
+        {showHowTo && (
+          <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <div style={{background:'#111', color:'#ddd', width:'92%', maxWidth:900, maxHeight:'85vh', overflowY:'auto', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.6)'}}>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid #222'}}>
+                <div style={{fontSize:'1.2rem', fontWeight:700}}>How to Play</div>
+                <button onClick={() => setShowHowTo(false)} style={{background:'none', border:'none', color:'#ccc', fontSize:'1.6rem', cursor:'pointer'}}>×</button>
+              </div>
+              <div style={{padding:'16px'}}>
+                <div style={{display:'flex', justifyContent:'center', margin:'6px 0 18px 0'}}>
+                  <svg viewBox="0 0 128 48" width="160" height="60" style={{fill:'#e91e63'}}>
+                    <path d="M6 24 l24 0 6-6 14 0 12-8 16 0 18 10 -18 10 -16 0 -12-8 -14 0 -6-6 -24 0 z"></path>
+                  </svg>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Game Rules</div>
+                  <div style={{lineHeight:1.5}}>
+                    Aviator is a new generation of iGaming entertainment. You can win many times more, in seconds. Aviator is built on a provably fair system, which is currently the only real guarantee of honesty in the gambling industry.
+                  </div>
+                  <a href="https://spribe.co/provably-fair" target="_blank" rel="noopener noreferrer" style={{color:'#ff5252', display:'inline-block', marginTop:6}}>Read more about provably fair system</a>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Aviator is as easy as 1‑2‑3</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>01 — Bet before take‑off.</li>
+                    <li>02 — Watch as your Lucky Plane takes off and your winnings increase.</li>
+                    <li>03 — Cash Out before the plane disappears and win X times more.</li>
+                  </ul>
+                  <div style={{marginTop:8, lineHeight:1.5}}>
+                    If you didn’t Cash Out before the Lucky Plane flies away, the bet is lost. Risk and win — it’s all in your hands.
+                  </div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:12, marginTop:12}}>
+                    <div style={{background:'#0d0d0d', border:'1px solid #222', borderRadius:8, padding:10}}>
+                      <div style={{color:'#ccc', fontWeight:700, marginBottom:6}}>01</div>
+                      <div style={{aspectRatio:'16/10', borderRadius:8, overflow:'hidden', background:'#111', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                        <svg viewBox="0 0 320 200" width="100%" height="100%">
+                          <rect x="16" y="28" rx="16" ry="16" width="288" height="144" fill="#161616" stroke="#2a2a2a"/>
+                          <rect x="36" y="48" rx="12" ry="12" width="248" height="36" fill="#0f0f0f"/>
+                          <circle cx="64" cy="66" r="16" fill="#0a0a0a" stroke="#333"/>
+                          <rect x="92" y="54" width="80" height="24" rx="8" fill="#222"/>
+                          <rect x="180" y="54" width="80" height="24" rx="8" fill="#222"/>
+                          <rect x="60" y="102" rx="14" ry="14" width="110" height="46" fill="#1b5e20"/>
+                          <text x="115" y="130" fill="#c8ffc8" fontSize="22" fontWeight="700" textAnchor="middle">Bet</text>
+                          <text x="280" y="54" fill="#e91e63" fontSize="18" fontWeight="700">KES</text>
+                        </svg>
+                      </div>
+                      <div style={{color:'#ff5252', marginTop:8}}>Bet before take‑off.</div>
+                    </div>
+                    <div style={{background:'#0d0d0d', border:'1px solid #222', borderRadius:8, padding:10}}>
+                      <div style={{color:'#ccc', fontWeight:700, marginBottom:6}}>02</div>
+                      <div style={{aspectRatio:'16/10', borderRadius:8, overflow:'hidden', background:'#111', display:'flex', alignItems:'center', justifyContent:'center', position:'relative'}}>
+                        <svg viewBox="0 0 320 200" width="100%" height="100%">
+                          <rect x="0" y="0" width="320" height="200" fill="#0f0f0f"/>
+                          <g>
+                            <rect x="20" y="160" width="280" height="12" fill="#8e0d2c"/>
+                            <polygon points="20,160 140,110 240,80 300,60 300,160" fill="#c2185b" opacity="0.35"/>
+                          </g>
+                          <text x="160" y="104" fill="#ffffff" fontSize="48" fontWeight="700" textAnchor="middle">2.25x</text>
+                          <path d="M240 60 l30 -12 18 8 -18 8 -18 6 -12 -10 z" fill="#e91e63"/>
+                        </svg>
+                      </div>
+                      <div style={{color:'#ff5252', marginTop:8}}>Watch as the plane takes off and your winnings increase.</div>
+                    </div>
+                    <div style={{background:'#0d0d0d', border:'1px solid #222', borderRadius:8, padding:10}}>
+                      <div style={{color:'#ccc', fontWeight:700, marginBottom:6}}>03</div>
+                      <div style={{aspectRatio:'16/10', borderRadius:8, overflow:'hidden', background:'#111', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                        <svg viewBox="0 0 320 200" width="100%" height="100%">
+                          <defs>
+                            <linearGradient id="g1" x1="0" y1="1" x2="1" y2="0">
+                              <stop offset="0%" stopColor="#1b5e20"/>
+                              <stop offset="100%" stopColor="#76ff03"/>
+                            </linearGradient>
+                          </defs>
+                          <rect x="0" y="0" width="320" height="200" fill="#0f0f0f"/>
+                          <path d="M24 168 C 96 156, 160 128, 208 92 S 280 44, 304 32" stroke="url(#g1)" strokeWidth="8" fill="none"/>
+                          <circle cx="208" cy="92" r="6" fill="#76ff03"/>
+                          <rect x="150" y="60" rx="10" ry="10" width="120" height="34" fill="#1b5e20" stroke="#2e7d32"/>
+                          <text x="210" y="84" fill="#c8ffc8" fontSize="18" fontWeight="700" textAnchor="middle">$25.35 ✓</text>
+                          <path d="M264 36 l30 -12 18 8 -18 8 -18 6 -12 -10 z" fill="#e91e63"/>
+                        </svg>
+                      </div>
+                      <div style={{color:'#ff5252', marginTop:8}}>Cash Out before the plane disappears and win X times more.</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>More details</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>The win multiplier starts at 1x and grows as the plane takes off.</li>
+                    <li>Your winnings equal the Cash Out multiplier times your bet.</li>
+                    <li>Before each round, the provably fair RNG sets the multiplier at which the plane flies away.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Game functions — Bet & Cash Out</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>Select an amount and press “Bet”.</li>
+                    <li>Cancel the bet if the round hasn’t started.</li>
+                    <li>Adjust bet size with “+” and “–”, use presets, or enter a value.</li>
+                    <li>Place two bets simultaneously using the second bet panel.</li>
+                    <li>Press “Cash Out” to lock winnings; win equals bet × Cash Out multiplier.</li>
+                    <li>If you don’t Cash Out in time, the bet is lost.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Auto Play & Auto Cash Out</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>Choose bet size, then enable Auto Bet from the “Auto” tab.</li>
+                    <li>For automatic Cash Out, set “Auto Cash Out” in the “Auto” tab.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Live Bets & Statistics</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>Live Bets panel shows all bets placed in the current round.</li>
+                    <li>Top panel shows stats like biggest round multipliers.</li>
+                    <li>Share round results via chat.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Free Bets</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>Check status in Game Menu › Free Bets. They may be operator or Rain awards.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Rain Feature</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>Drop Free Bets for others using the “Rain” panel; others claim via “Claim”.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:6}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Randomisation</div>
+                  <div style={{lineHeight:1.5}}>
+                    Each round’s multiplier is generated by a Provably Fair algorithm and is transparent and 100% fair.
+                  </div>
+                  <a href="https://spribe.co/provably-fair" target="_blank" rel="noopener noreferrer" style={{color:'#ff5252', display:'inline-block', marginTop:6}}>Read more about provably fair system</a>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Provably Fair</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>You can check and modify Provably Fair settings in Game Menu › Provably Fair.</li>
+                    <li>Check the fairness of each round by pressing the icon opposite the results in “My Bets” or inside “Top” tabs.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Game Menu</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>Access the menu from the top right corner.</li>
+                    <li>Toggle “Sound” to turn game sounds on or off.</li>
+                    <li>Toggle “Music” to turn background music on or off.</li>
+                    <li>Toggle “Animation” to turn the airplane animation on or off.</li>
+                    <li>Press “Limits” to view minimum/maximum bets and maximum win.</li>
+                    <li>Press “My Bets History” to view your bet history.</li>
+                    <li>Open “Game Rules” to read detailed rules of the game.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Multi Rooms</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>At the start of each session, players are randomly assigned to a room until the session ends.</li>
+                    <li>Change rooms via Game Menu › Game Room.</li>
+                    <li>Each room generates results independently using unique Server and Players Seed settings to guarantee Provably Fair results.</li>
+                  </ul>
+                </div>
+                <div style={{marginBottom:6}}>
+                  <div style={{fontWeight:700, marginBottom:6}}>Other</div>
+                  <ul style={{margin:0, paddingLeft:18}}>
+                    <li>If the internet connection is interrupted while a bet is active, the game auto cashes out with the current multiplier and adds the win to your balance.</li>
+                    <li>In case of gaming hardware/software malfunction, all affected game bets and payouts are void, and affected bets are refunded.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Panel: Chat */}

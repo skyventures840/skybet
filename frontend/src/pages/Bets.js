@@ -574,6 +574,7 @@ const Bets = () => {
     const hasScores = typeof hs === 'number' && typeof as === 'number';
 
     const pick = parsePick(match?.selection, match?.point);
+    const marketNorm = normalizeMarketKey(match?.market || (selectedBet ? selectedBet.market : '') || '');
 
     if (!hasScores) {
       // If no final scores, we cannot determine outcome yet
@@ -610,7 +611,7 @@ const Bets = () => {
     }
 
     // BTTS
-    if (pick.kind === 'btts') {
+    if (pick.kind === 'btts' || marketNorm === 'both_teams_to_score') {
       const bothScored = hs > 0 && as > 0;
       return bothScored ? 'Yes' : 'No';
     }
@@ -681,6 +682,7 @@ const Bets = () => {
     const pick = parsePick(match?.selection, match?.point);
     const outcomeText = deriveOutcome(match);
     const lowOutcome = (outcomeText || '').toLowerCase().replace(/\s+/g, '');
+    const marketNorm = normalizeMarketKey(match?.market || (selectedBet ? selectedBet.market : '') || '');
 
     // Compare against pick
     if (pick.kind === 'totals' && (pick.type === 'over' || pick.type === 'under')) {
@@ -706,8 +708,10 @@ const Bets = () => {
       return lowOutcome === lowTarget ? 'won' : 'lost';
     }
 
-    if (pick.kind === 'btts' && (pick.type === 'yes' || pick.type === 'no')) {
-      const lowTarget = (pick.type).toLowerCase();
+    if ((pick.kind === 'btts' || marketNorm === 'both_teams_to_score') && (pick.type === 'yes' || pick.type === 'no' || /yes|no/i.test(pick.raw || ''))) {
+      const sel = (match?.selection || '').toLowerCase();
+      const inferredType = sel.includes('no') ? 'no' : sel.includes('yes') ? 'yes' : (pick.type || '');
+      const lowTarget = inferredType.toLowerCase();
       return lowOutcome === lowTarget ? 'won' : 'lost';
     }
 
