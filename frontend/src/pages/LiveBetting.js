@@ -74,7 +74,8 @@ const LiveBetting = () => {
           } else if (diffMins <= 105) {
             liveTime = `${diffMins - 15}'`;
           } else {
-            liveTime = '90+';
+            const stoppage = Math.min(diffMins - 105, 10);
+            liveTime = `90+${stoppage}`;
           }
         } else {
           liveTime = 'LIVE';

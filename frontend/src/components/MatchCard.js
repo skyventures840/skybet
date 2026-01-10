@@ -49,7 +49,7 @@ const LiveTimer = ({ startTime, sport, liveTime }) => {
                     return;
                 }
                 // Second half: displayed minute accounts for the break offset
-                const displayed = diffMins - 20; // 65 -> 45, 110 -> 90
+                const displayed = diffMins - 15
                 if (displayed <= 90) {
                     setDisplayTime(`${displayed}'`);
                     return;
@@ -178,25 +178,30 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
 
     // Get live score display
     const getLiveScoreDisplay = () => {
-        if (!isLiveMatch) return null;
+        const isFinished = String(match?.status || '').toLowerCase() === 'finished';
+        const isCustomDb = String(match?.source || '').toLowerCase() === 'db';
+        if (!isLiveMatch && !isFinished) return null;
+        if (isLiveMatch && isCustomDb) return null;
+        const hasNumericScores = (match.homeScore !== undefined && match.awayScore !== undefined);
         
-        if (match.score) {
-            return (
-                <div className="live-score">
-                    {match.score}
-                </div>
-            );
+        if (isFinished) {
+            if (typeof match.score === 'string' && match.score.trim()) {
+                return <div className="live-score">{match.score}</div>;
+            }
+            if (hasNumericScores) {
+                return <div className="live-score">{match.homeScore}-{match.awayScore}</div>;
+            }
+            return null;
         }
         
-        if (match.homeScore !== undefined && match.awayScore !== undefined) {
-            return (
-                <div className="live-score">
-                    {match.homeScore}-{match.awayScore}
-                </div>
-            );
+        // Live: start at 0-0, then progress as scheduled goals update scores
+        if (typeof match.score === 'string' && match.score.trim()) {
+            return <div className="live-score">{match.score}</div>;
         }
-        
-        return null;
+        if (hasNumericScores) {
+            return <div className="live-score">{match.homeScore}-{match.awayScore}</div>;
+        }
+        return <div className="live-score">0-0</div>;
     };
 
     const addToBetslip = useCallback((matchInfo, betType, odds) => {
@@ -396,30 +401,6 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
         setIsFavorited(!isFavorited);
     };
 
-    const handleMatchClick = () => {
-        // Preserve Home data before navigating away
-        try {
-            const homeMatches = sessionStorage.getItem('home_matches_data');
-            const homePopular = sessionStorage.getItem('home_popular_data');
-            const homeFiltered = sessionStorage.getItem('home_filtered_data');
-            
-            if (homeMatches || homePopular || homeFiltered) {
-                console.log('[MATCHCARD] Home data already preserved in session storage');
-            }
-        } catch (e) {
-            console.log('[MATCHCARD] Session storage not available');
-        }
-        
-        const matchId = match._id || match.id;
-        if (matchId) {
-            navigate(`/match/${matchId}`);
-        } else {
-            console.error('Invalid match ID format');
-        }
-    };
-
-    // Removed handler for additional markets navigation as the button was removed
-
     const handleTeamsClick = (e) => {
         e.stopPropagation();
         
@@ -511,7 +492,7 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                 </div>
             )}
             
-            <div className={`match-container ${isLiveMatch ? 'live-match' : ''}`} onClick={handleMatchClick}>
+            <div className={`match-container ${isLiveMatch ? 'live-match' : ''}`}>
                 {/* Live status badge */}
                 {isLiveMatch && (
                     <div className="live-status-badge">LIVE</div>

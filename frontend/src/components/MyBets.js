@@ -108,13 +108,28 @@ const MatchCard = memo(({ match, index }) => (
         {match.outcome === '1' ? 'Home Win' : 
          match.outcome === 'X' ? 'Draw' : 'Away Win'}
       </span>
-      {match.result && (match.result.homeScore !== undefined) && (
-        <span className="ml-2 font-bold text-gray-900">
-          ({match.result.homeScore}-{match.result.awayScore})
-        </span>
-      )}
+      {(() => {
+        const r = match.result;
+        const isFinal = !!(r && (r.isFinal === true || (typeof r.homeScore === 'number' && typeof r.awayScore === 'number')));
+        if (!isFinal) return null;
+        const hs = typeof r.homeScore === 'number' ? r.homeScore : '-';
+        const as = typeof r.awayScore === 'number' ? r.awayScore : '-';
+        return (
+          <span className="ml-2 font-bold text-gray-900">
+            ({hs}-{as})
+          </span>
+        );
+      })()}
       <span className="ml-2 text-green-600 font-bold">
-        @ {match.odds.toFixed(2)}
+        @ {(() => {
+          const o = match.odds;
+          if (typeof o === 'number') return o.toFixed(2);
+          if (typeof o === 'string') {
+            const n = parseFloat(o);
+            return Number.isFinite(n) ? n.toFixed(2) : '-';
+          }
+          return '-';
+        })()}
       </span>
     </div>
   </div>

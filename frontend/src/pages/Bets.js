@@ -187,6 +187,10 @@ const Bets = () => {
                 awayScore: result?.awayScore
               }
             };
+            if (result && (result.status === 'finished' || result.isFinal === true)) {
+              updated.matchStatus = 'Finished';
+              updated.result.isFinal = true;
+            }
             const derivedOutcome = deriveOutcome(updated);
             const derivedStatus = deriveStatus(updated);
             return { ...updated, derivedOutcome, derivedStatus };
@@ -210,6 +214,10 @@ const Bets = () => {
                 awayScore: result?.awayScore
               }
             };
+            if (result && (result.status === 'finished' || result.isFinal === true)) {
+              updated.matchStatus = 'Finished';
+              updated.result.isFinal = true;
+            }
             const derivedOutcome = deriveOutcome(updated);
             const derivedStatus = deriveStatus(updated);
             return { ...updated, derivedOutcome, derivedStatus };
@@ -222,6 +230,10 @@ const Bets = () => {
 
     websocketService.on('matchResultUpdate', onMatchUpdate);
     const onBetStatusUpdate = (payload) => {
+      const isFinal = !!(payload && ((payload.result && payload.result.isFinal === true) || ((payload.status || '').toLowerCase() !== 'pending')));
+      if (!isFinal) {
+        return;
+      }
       if (payload && payload.betId) {
         // Optimistically update the specific bet in the list
         setBetHistory(prev => prev.map(bet => {
@@ -246,7 +258,8 @@ const Bets = () => {
                        ...(m.result || {}),
                        homeScore: payload.result.homeScore,
                        awayScore: payload.result.awayScore,
-                       finalOutcome: payload.result.finalOutcome
+                       finalOutcome: payload.result.finalOutcome,
+                       isFinal: true
                      },
                      outcome: payload.result.finalOutcome,
                      status: payload.status // Propagate status to match
@@ -569,6 +582,9 @@ const Bets = () => {
 
   // Derive outcome text from match result, aligned to the pick context
   const deriveOutcome = (match) => {
+    const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
+    const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
+    if (!isCompleted) return null;
     const hs = match?.result?.homeScore;
     const as = match?.result?.awayScore;
     const hasScores = typeof hs === 'number' && typeof as === 'number';
@@ -576,10 +592,7 @@ const Bets = () => {
     const pick = parsePick(match?.selection, match?.point);
     const marketNorm = normalizeMarketKey(match?.market || (selectedBet ? selectedBet.market : '') || '');
 
-    if (!hasScores) {
-      // If no final scores, we cannot determine outcome yet
-      return null;
-    }
+    if (!hasScores) return null;
 
     // Totals (Over/Under)
     if (pick.kind === 'totals' && (pick.type === 'over' || pick.type === 'under')) {
@@ -674,6 +687,12 @@ const Bets = () => {
 
   // Derive status from pick vs derived outcome
   const deriveStatus = (match) => {
+    const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
+    const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
+    if (!isCompleted) return 'pending';
+    const st = String(match?.status || '').toLowerCase();
+    if (st === 'win') return 'won';
+    if (st === 'loss') return 'lost';
     const hs = match?.result?.homeScore;
     const as = match?.result?.awayScore;
     const hasScores = typeof hs === 'number' && typeof as === 'number';
@@ -998,6 +1017,7 @@ const Bets = () => {
                   const split = matchStr.includes(' vs ') ? matchStr.split(' vs ') : [];
                   const homeName = bet.homeTeam || (split[0] || 'Unknown');
                   const awayName = bet.awayTeam || (split[1] || 'Unknown');
+                  const isFinal = !!(bet.result && (bet.result.isFinal === true || (typeof bet.result?.homeScore === 'number' && typeof bet.result?.awayScore === 'number'))) || (String(bet.status || '').toLowerCase() !== 'pending');
                   displayMatches = [{
                     matchId: bet.matchId,
                     homeTeam: homeName,
@@ -1007,6 +1027,7 @@ const Bets = () => {
                     selection: bet.selection,
                     odds: bet.odds?.selected || bet.odds,
                     status: bet.status,
+                    matchStatus: isFinal ? 'finished' : (bet.status || 'pending'),
                     outcome: bet.result?.outcome || bet.status,
                     result: bet.result || null,
                     startTime: bet.createdAt
@@ -1041,16 +1062,20 @@ const Bets = () => {
                     {!isExpanded && (
                       <div 
                         className="bet-summary-collapsed"
+                        title={(() => {
+                          const m0 = displayMatches[0] || null;
+                          const ms = String(m0?.matchStatus || m0?.status || '').toLowerCase();
+                          const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || m0?.result?.isFinal === true;
+                          if (!isMultibet && isCompleted && m0?.result && m0.result.homeScore != null && m0.result.awayScore != null) {
+                            return `FT: ${m0.result.homeScore}-${m0.result.awayScore}`;
+                          }
+                          return undefined;
+                        })()}
                         onClick={() => openFullPageBet(bet)}
                         style={{ cursor: 'pointer' }}
                       >
                         <div className="bet-summary-info">
                           <div className="bet-summary-title">#{bet.id?.slice(-6) || 'N/A'} • {formatDate(bet.createdAt)}</div>
-                          {!isExpanded && !isMultibet && displayMatches[0]?.result?.homeScore != null && (
-                            <div className="bet-summary-score">
-                              FT: {displayMatches[0].result.homeScore}-{displayMatches[0].result.awayScore}
-                            </div>
-                          )}
                         </div>
                         <div className="bet-summary-amounts">
                           <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
@@ -1095,13 +1120,6 @@ const Bets = () => {
                 
                 // Reuse the same logic for displaying matches
                 let displayMatches = bet.matches || [];
-                const normalizeStatus = (s) => {
-                  if (!s) return 'pending';
-                  const lower = String(s).toLowerCase();
-                  if (lower === 'win') return 'won';
-                  if (lower === 'loss') return 'lost';
-                  return lower;
-                };
                 
                 if (isMultibet && displayMatches.length === 0) {
                   if (bet.selection && bet.selection.includes(';')) {
@@ -1143,6 +1161,7 @@ const Bets = () => {
                   const split2 = matchStr2.includes(' vs ') ? matchStr2.split(' vs ') : [];
                   const homeName2 = bet.homeTeam || (split2[0] || 'Unknown');
                   const awayName2 = bet.awayTeam || (split2[1] || 'Unknown');
+                  const isFinal2 = !!(bet.result && (bet.result.isFinal === true || (typeof bet.result?.homeScore === 'number' && typeof bet.result?.awayScore === 'number'))) || (String(bet.status || '').toLowerCase() !== 'pending');
                   displayMatches = [{
                     matchId: bet.matchId,
                     homeTeam: homeName2,
@@ -1152,6 +1171,7 @@ const Bets = () => {
                     selection: bet.selection,
                     odds: bet.odds?.selected || bet.odds,
                     status: bet.status,
+                    matchStatus: isFinal2 ? 'finished' : (bet.status || 'pending'),
                     outcome: bet.result?.outcome || bet.status,
                     result: bet.result || null,
                     startTime: bet.createdAt
@@ -1173,6 +1193,9 @@ const Bets = () => {
                 const totalCount = displayMatches.length || 1;
 
                 const getFtResult = (match) => {
+                  const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
+                  const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
+                  if (!isCompleted) return '—';
                   if (match.result && (match.result.homeScore != null || match.result.awayScore != null)) {
                     const hs = match.result.homeScore ?? '-';
                     const as = match.result.awayScore ?? '-';
@@ -1180,7 +1203,7 @@ const Bets = () => {
                   }
                   if (match.finalScore) return match.finalScore;
                   if (match.outcome && ['1','X','2'].includes(String(match.outcome))) return match.outcome;
-                  return normalizeStatus(match.status) === 'pending' ? '—' : (match.outcome || match.status || '—');
+                  return '—';
                 };
 
                 return (

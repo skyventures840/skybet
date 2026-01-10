@@ -122,7 +122,7 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
                         </div>
                     );
                 }
-                const displayed = diffMins - 20;
+                const displayed = diffMins - 15;
                 if (displayed <= 90) {
                     return (
                         <div className="live-time-display">
@@ -194,25 +194,30 @@ const SubcategoryMatchCard = ({ subcategory, matches, sport }) => {
 
     // Get live score display
     const getLiveScoreDisplay = (match) => {
-        if (!isLiveMatch(match)) return null;
+        const isFinished = String(match?.status || '').toLowerCase() === 'finished';
+        const isCustomDb = String(match?.source || '').toLowerCase() === 'db';
+        if (!isLiveMatch(match) && !isFinished) return null;
+        if (isLiveMatch(match) && isCustomDb) return null;
+        const hasNumericScores = (match.homeScore !== undefined && match.awayScore !== undefined);
         
-        if (match.score) {
-            return (
-                <div className="live-score">
-                    {match.score}
-                </div>
-            );
+        if (isFinished) {
+            if (typeof match.score === 'string' && match.score.trim()) {
+                return <div className="live-score">{match.score}</div>;
+            }
+            if (hasNumericScores) {
+                return <div className="live-score">{match.homeScore}-{match.awayScore}</div>;
+            }
+            return null;
         }
         
-        if (match.homeScore !== undefined && match.awayScore !== undefined) {
-            return (
-                <div className="live-score">
-                    {match.homeScore}-{match.awayScore}
-                </div>
-            );
+        // Live: start at 0-0, then progress as scheduled goals update scores
+        if (typeof match.score === 'string' && match.score.trim()) {
+            return <div className="live-score">{match.score}</div>;
         }
-        
-        return null;
+        if (hasNumericScores) {
+            return <div className="live-score">{match.homeScore}-{match.awayScore}</div>;
+        }
+        return <div className="live-score">0-0</div>;
     };
 
 
