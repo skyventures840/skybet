@@ -75,12 +75,14 @@ async function syncLiveMatches () {
       })
 
       if (existingMatch) {
-        // Update existing match to live status if it's not already
-        if (existingMatch.status !== 'live') {
+        if (existingMatch.status === 'upcoming') {
           existingMatch.status = 'live'
           await existingMatch.save()
           updatedCount++
           console.log(`Updated: ${odds.home_team} vs ${odds.away_team} -> LIVE`)
+        } else {
+          skippedCount++
+          console.log(`Skipped: ${odds.home_team} vs ${odds.away_team} (status=${existingMatch.status})`)
         }
       } else {
         try {

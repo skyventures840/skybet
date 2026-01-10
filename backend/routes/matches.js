@@ -1874,9 +1874,34 @@ router.get('/live/real-time', async (req, res) => {
       const diffMs = now - start
       const diffMins = Math.floor(diffMs / (1000 * 60))
 
-      let liveTime = 'LIVE'
-      if (diffMins >= 0 && diffMins < 90) {
-        liveTime = `LIVE ${diffMins}'`
+      const s = String((meta?.sportName || matchObj.sport) || '').toLowerCase()
+      let maxWindow = 180
+      if (s.includes('soccer') || s.includes('football')) maxWindow = 115
+      else if (s.includes('basketball') || s.includes('nba')) maxWindow = 150
+      else if (s.includes('tennis')) maxWindow = 180
+      else if (s.includes('hockey') || s.includes('nhl')) maxWindow = 150
+      else if (s.includes('baseball') || s.includes('mlb')) maxWindow = 180
+
+      const statusComputed = (diffMins >= 0 && diffMins <= maxWindow) ? 'live' : 'finished'
+
+      let liveTime = undefined
+      if (statusComputed === 'live') {
+        if (s.includes('soccer') || s.includes('football')) {
+          if (diffMins <= 45) {
+            liveTime = `${diffMins}'`
+          } else if (diffMins <= 50) {
+            liveTime = '45+'
+          } else if (diffMins <= 65) {
+            liveTime = 'HT'
+          } else if (diffMins <= 105) {
+            liveTime = `${diffMins - 15}'`
+          } else {
+            const stoppage = Math.min(diffMins - 105, 10)
+            liveTime = `90+${stoppage}`
+          }
+        } else {
+          liveTime = `LIVE ${diffMins}'`
+        }
       }
 
       // Compute league name, country, and full league title
@@ -1906,8 +1931,8 @@ router.get('/live/real-time', async (req, res) => {
         additionalMarkets: additionalMarketsCount + (matchObj.markets || []).length,
         sport: normalizeSportToken({ sportDisplay, leagueName, sportKeyOrName: matchObj.sport }),
         allMarkets: matchObj.markets || [],
-        status: 'live',
-        isLive: true,
+        status: statusComputed,
+        isLive: statusComputed === 'live',
         liveTime,
         score: matchObj.homeScore !== null && matchObj.awayScore !== null
           ? `${matchObj.homeScore}-${matchObj.awayScore}`
@@ -1922,10 +1947,11 @@ router.get('/live/real-time', async (req, res) => {
 
     console.log(`[LIVE MATCHES] Returning ${transformedLiveMatches.length} transformed live matches`)
 
+    const liveOnly = transformedLiveMatches.filter(m => m.status === 'live')
     res.json({
       success: true,
-      matches: transformedLiveMatches,
-      total: transformedLiveMatches.length,
+      matches: liveOnly,
+      total: liveOnly.length,
       timestamp: new Date().toISOString()
     })
   } catch (error) {
