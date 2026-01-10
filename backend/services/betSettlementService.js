@@ -3,6 +3,7 @@ const User = require('../models/User')
 const Match = require('../models/Match')
 const Results = require('../models/Results')
 const MultiBet = require('../models/MultiBet')
+const Odds = require('../models/Odds')
 const logger = require('../utils/logger')
 const { bus } = require('../utils/cache')
 const { escapeRegex } = require('../utils/regex')
@@ -30,10 +31,17 @@ class BetSettlementService {
       logger.info('Starting automated bet settlement process...')
 
       const completedResults = await Results.find({ completed: true })
+      let completedScores = []
+      try {
+        const Scores = require('../models/Scores')
+        completedScores = await Scores.find({ completed: true })
+      } catch (e) {
+        completedScores = []
+      }
       // Fetch finished matches from DB (including custom matches)
       const completedMatchesDB = await Match.find({ status: 'finished' })
 
-      const completedMatches = this.combineCompletedMatches(completedResults, completedMatchesDB)
+      const completedMatches = this.combineCompletedMatches(completedResults, completedMatchesDB, completedScores)
 
       logger.info(`Found ${completedMatches.length} completed matches to process`)
 
@@ -99,7 +107,8 @@ class BetSettlementService {
         homeScore: results.homeScore,
         awayScore: results.awayScore,
         // Calculate provisional outcome
-        finalOutcome: results.homeScore > results.awayScore ? '1' : results.homeScore < results.awayScore ? '2' : 'X'
+        finalOutcome: results.homeScore > results.awayScore ? '1' : results.homeScore < results.awayScore ? '2' : 'X',
+        isFinal: false
       }
 
       // Update Single Bets
@@ -118,7 +127,8 @@ class BetSettlementService {
         { 'matches.matchId': match.eventId, status: 'Pending' },
         {
           $set: {
-            'matches.$.result': resultData
+            'matches.$.result': resultData,
+            'matches.$.matchStatus': 'Live'
           }
         }
       )
@@ -384,12 +394,21 @@ class BetSettlementService {
     try {
       const { homeScore, awayScore } = results
       const finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
-      const resultData = { ...results, finalOutcome }
+      const resultData = { ...results, finalOutcome, isFinal: true }
 
       const matchIds = [match.eventId]
       if (match.originalId && match.originalId !== match.eventId) {
         matchIds.push(match.originalId)
       }
+
+      try {
+        const oddsDocs = await Odds.find({
+          home_team: { $regex: new RegExp(escapeRegex(match.homeTeam), 'i') },
+          away_team: { $regex: new RegExp(escapeRegex(match.awayTeam), 'i') }
+        }).select('gameId home_team away_team').lean()
+        const relatedIds = Array.from(new Set((oddsDocs || []).map(o => o.gameId))).filter(Boolean)
+        matchIds.push(...relatedIds)
+      } catch (e) {}
 
       await MultiBet.updateMany(
         { 'matches.matchId': { $in: matchIds } },
@@ -512,6 +531,20 @@ class BetSettlementService {
         ]
       })
       allBets = allBets.concat(regexBets)
+    }
+
+    if (allBets.length === 0) {
+      try {
+        const oddsDocs = await Odds.find({
+          home_team: { $regex: new RegExp(escapeRegex(match.homeTeam), 'i') },
+          away_team: { $regex: new RegExp(escapeRegex(match.awayTeam), 'i') }
+        }).select('gameId home_team away_team').lean()
+        const relatedIds = Array.from(new Set((oddsDocs || []).map(o => o.gameId))).filter(Boolean)
+        if (relatedIds.length > 0) {
+          const oddsIdBets = await Bet.find({ matchId: { $in: relatedIds }, status: 'pending' })
+          allBets = allBets.concat(oddsIdBets)
+        }
+      } catch (e) {}
     }
 
     const uniqueBets = allBets.filter((bet, index, self) =>
@@ -730,7 +763,7 @@ class BetSettlementService {
         status,
         actualWin,
         settledAt: new Date(),
-        result: { ...results, finalOutcome, marketOutcome }
+        result: { ...results, finalOutcome, marketOutcome, isFinal: true }
       }
 
       // Append settlement audit log entry

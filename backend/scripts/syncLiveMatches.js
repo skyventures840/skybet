@@ -63,7 +63,9 @@ async function syncLiveMatches () {
 
     for (const odds of liveOdds) {
       // Map sport key to valid enum value
-      const mappedSport = sportMapping[odds.sport_key] || 'other'
+      const mappedSport = (odds.sport_key && String(odds.sport_key).startsWith('soccer'))
+        ? 'soccer'
+        : (sportMapping[odds.sport_key] || 'other')
 
       // Check if match already exists
       const existingMatch = await Match.findOne({

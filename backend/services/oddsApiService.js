@@ -266,7 +266,7 @@ class OddsApiService {
         return response
       } catch (error) {
         lastError = error
-        await new Promise(res => setTimeout(res, delays[attempt] || 3000))
+        await new Promise(resolve => setTimeout(resolve, delays[attempt] || 3000))
         attempt++
       }
     }

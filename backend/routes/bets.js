@@ -8,6 +8,7 @@ const { auth } = require('../middleware/auth')
 const { body, validationResult } = require('express-validator')
 const Odds = require('../models/Odds')
 const Results = require('../models/Results')
+const Scores = require('../models/Scores')
 const { cache, keyFor, bus } = require('../utils/cache')
 const { OddsApiService } = require('../services/oddsApiService')
 
@@ -681,13 +682,7 @@ router.get('/my-bets', auth, cacheUserBets(60), [
         stake: bet.stake
       }
 
-      // Create result information
-      const resultInfo = {
-        status: bet.status,
-        outcome: bet.status === 'won' ? 'Won' : bet.status === 'lost' ? 'Lost' : bet.status === 'pending' ? 'Pending' : 'Void',
-        settledAt: bet.settledAt,
-        profit: bet.actualWin ? bet.actualWin - bet.stake : 0
-      }
+      // Create result information (include FT data when available) - populated after score resolution below
       // Build matches array and inject FT results if available
       let matches = Array.isArray(bet.matches) ? bet.matches.map(m => ({ ...m })) : []
       if (matches.length === 0) {
@@ -744,15 +739,74 @@ router.get('/my-bets', auth, cacheUserBets(60), [
             }
           }
         } catch (e) {}
+        // Final fallback to Scores collection
+        if (homeScore == null || awayScore == null) {
+          try {
+            const scoreDoc = await Scores.findOne({ eventId: bet.matchId, completed: true }).lean()
+            if (scoreDoc && Array.isArray(scoreDoc.scores)) {
+              const hs = scoreDoc.scores.find(s => s.name === matchInfo.homeTeam) || scoreDoc.scores[0]
+              const as = scoreDoc.scores.find(s => s.name === matchInfo.awayTeam) || scoreDoc.scores[1]
+              homeScore = hs && hs.score != null && hs.score !== '' ? parseInt(hs.score) : homeScore
+              awayScore = as && as.score != null && as.score !== '' ? parseInt(as.score) : awayScore
+              if (homeScore != null && awayScore != null) {
+                finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+              } else {
+                // Attempt targeted fetch then re-query
+                try {
+                  const odd = await Odds.findOne({ gameId: bet.matchId }).select('sport_key').lean()
+                  if (odd && odd.sport_key && oddsApiService && oddsApiService.isEnabled) {
+                    await oddsApiService.getScores(odd.sport_key, 7, [bet.matchId])
+                    const scoreDoc2 = await Scores.findOne({ eventId: bet.matchId, completed: true }).lean()
+                    if (scoreDoc2 && Array.isArray(scoreDoc2.scores)) {
+                      const hs2 = scoreDoc2.scores.find(s => s.name === matchInfo.homeTeam) || scoreDoc2.scores[0]
+                      const as2 = scoreDoc2.scores.find(s => s.name === matchInfo.awayTeam) || scoreDoc2.scores[1]
+                      const h2 = hs2 && hs2.score != null && hs2.score !== '' ? parseInt(hs2.score) : null
+                      const a2 = as2 && as2.score != null && as2.score !== '' ? parseInt(as2.score) : null
+                      if (h2 != null && a2 != null) {
+                        homeScore = h2
+                        awayScore = a2
+                        finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+                      }
+                    }
+                  }
+                } catch (_) {}
+              }
+            }
+          } catch (e2) {}
+        }
       }
 
-      // Inject result and outcome into matches
+      // Determine final flag
+      const isFinal = String(bet.status || '').toLowerCase() !== 'pending' || !!bet.settledAt
+
+      // Build top-level result info with FT fields
+      const resultInfo = {
+        status: bet.status,
+        outcome: bet.status === 'won' ? 'Won' : bet.status === 'lost' ? 'Lost' : bet.status === 'pending' ? 'Pending' : 'Void',
+        settledAt: bet.settledAt,
+        profit: bet.actualWin ? bet.actualWin - bet.stake : 0,
+        isFinal,
+        homeScore: homeScore != null ? homeScore : (bet.result && bet.result.homeScore != null ? bet.result.homeScore : null),
+        awayScore: awayScore != null ? awayScore : (bet.result && bet.result.awayScore != null ? bet.result.awayScore : null),
+        finalOutcome: finalOutcome != null ? finalOutcome : (bet.result && bet.result.finalOutcome != null ? bet.result.finalOutcome : null)
+      }
+
+      // Inject result and outcome into matches, with final flags and status
       matches = matches.map(m => {
         const isMain = String(m.matchId) === String(bet.matchId)
-        // Prioritize existing match result, then bet-level result, then fallback
-        const result = m.result || ((isMain && homeScore != null && awayScore != null) ? { homeScore, awayScore } : null)
+        const baseResult = m.result || ((isMain && homeScore != null && awayScore != null) ? { homeScore, awayScore } : null)
+        const enrichedResult = baseResult
+          ? {
+              ...baseResult,
+              finalOutcome: (isMain && finalOutcome) ? finalOutcome : baseResult.finalOutcome,
+              isFinal
+            }
+          : (isMain && isFinal && finalOutcome != null
+              ? { homeScore, awayScore, finalOutcome, isFinal }
+              : null)
         const outcome = m.outcome || ((isMain && finalOutcome) ? finalOutcome : null)
-        return { ...m, result, outcome }
+        const matchStatus = isFinal ? 'Finished' : (m.matchStatus || m.status || 'Pending')
+        return { ...m, result: enrichedResult, outcome, matchStatus }
       })
 
       return {

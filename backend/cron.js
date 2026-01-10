@@ -33,22 +33,22 @@ try {
  */
 function getMatchDuration (sport) {
   const s = sport ? sport.toLowerCase() : ''
-  
+
   // Soccer: 90 mins + 15 break + ~15 added = 120 mins
-  if (s.includes('soccer') || s.includes('football')) return 120 * 60 * 1000
-  
+  if (s.includes('soccer') || s.includes('football')) return 115 * 60 * 1000
+
   // Basketball: 4 quarters + breaks = ~2.5 hours
   if (s.includes('basketball') || s.includes('nba')) return 150 * 60 * 1000
-  
+
   // Tennis: Can vary widely, average 3 hours
   if (s.includes('tennis')) return 180 * 60 * 1000
-  
+
   // Cricket: T20 ~3.5h, ODI ~8h. Default to T20/generic 4 hours
   if (s.includes('cricket')) return 240 * 60 * 1000
-  
+
   // Ice Hockey: 3 periods + breaks = ~2.5 hours
   if (s.includes('hockey') || s.includes('nhl')) return 150 * 60 * 1000
-  
+
   // Baseball: ~3 hours
   if (s.includes('baseball') || s.includes('mlb')) return 180 * 60 * 1000
 
@@ -59,24 +59,24 @@ function getMatchDuration (sport) {
 /**
  * @function getCurrentMatchMinute
  * @description Calculates current match minute based on sport rules
- * @param {Date} startTime 
- * @param {string} sport 
+ * @param {Date} startTime
+ * @param {string} sport
  * @returns {number} Current minute
  */
 function getCurrentMatchMinute (startTime, sport) {
   const now = new Date()
   const diffMs = now - new Date(startTime)
   const diffMins = Math.floor(diffMs / 60000)
-  
+
   const s = sport ? sport.toLowerCase() : ''
-  
+
   if (s.includes('soccer') || s.includes('football')) {
     if (diffMins <= 45) return diffMins
     if (diffMins <= 60) return 45 // During HT, we consider it 45th minute (or 45+)
     if (diffMins <= 105) return diffMins - 15
     return diffMins - 15 // Keep counting up for 90+
   }
-  
+
   return diffMins
 }
 
@@ -86,29 +86,29 @@ function getCurrentMatchMinute (startTime, sport) {
  */
 async function processScheduledEvents () {
   try {
-    const liveMatches = await Match.find({ 
+    const liveMatches = await Match.find({
       status: 'live',
-      'scheduledEvents.processed': false 
+      'scheduledEvents.processed': false
     })
 
     for (const match of liveMatches) {
       let modified = false
       const currentMinute = getCurrentMatchMinute(match.startTime, match.sport)
-      
+
       // Filter events that are due but not processed
       const dueEvents = match.scheduledEvents.filter(e => !e.processed && e.minute <= currentMinute)
-      
+
       for (const event of dueEvents) {
         // Apply event effects
         if (event.type === 'goal') {
           if (event.team === 'home') match.homeScore = (match.homeScore || 0) + 1
           if (event.team === 'away') match.awayScore = (match.awayScore || 0) + 1
         }
-        
+
         // Add to liveData events
         if (!match.liveData) match.liveData = {}
         if (!match.liveData.events) match.liveData.events = []
-        
+
         match.liveData.events.push({
           type: event.type,
           minute: event.minute,
@@ -116,11 +116,11 @@ async function processScheduledEvents () {
           player: event.player,
           description: event.description || `${event.type} by ${event.player || 'Unknown'}`
         })
-        
+
         event.processed = true
         modified = true
       }
-      
+
       if (modified) {
         match.liveData.minute = currentMinute
         await match.save()
@@ -151,17 +151,83 @@ async function updateMatchStatuses () {
 
     // Update matches that should be finished based on sport-specific duration
     const liveMatches = await Match.find({ status: 'live' })
-    
+
     for (const match of liveMatches) {
+      try {
+        const eventId = match.externalId || match._id.toString()
+        let completedSignal = null
+        try {
+          completedSignal = await Scores.findOne({ eventId, completed: true }).lean()
+        } catch (e) {}
+        if (!completedSignal) {
+          try {
+            completedSignal = await mongoose.model('Results').findOne({ eventId, completed: true }).lean()
+          } catch (e) {}
+        }
+        if (completedSignal) {
+          let hs = null
+          let as = null
+          const homeName = completedSignal.home_team
+          const awayName = completedSignal.away_team
+          const arr = Array.isArray(completedSignal.scores) ? completedSignal.scores : []
+          const hEntry = arr.find(s => s.name === homeName) || arr[0]
+          const aEntry = arr.find(s => s.name === awayName) || arr[1]
+          if (hEntry && hEntry.score !== undefined && hEntry.score !== '') hs = parseInt(hEntry.score)
+          if (aEntry && aEntry.score !== undefined && aEntry.score !== '') as = parseInt(aEntry.score)
+          match.status = 'finished'
+          match.finishedAt = now
+          if (hs != null) match.homeScore = hs
+          if (as != null) match.awayScore = as
+          await match.save()
+          try {
+            if (global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
+              global.websocketServer.broadcastMatchResult(eventId, {
+                homeScore: match.homeScore ?? null,
+                awayScore: match.awayScore ?? null,
+                score: (match.homeScore != null && match.awayScore != null) ? `${match.homeScore}:${match.awayScore}` : null,
+                status: 'finished'
+              })
+            }
+          } catch (_) {}
+          try {
+            const betSettlementService = require('./services/betSettlementService')
+            const finishMeta = {
+              eventId,
+              originalId: match._id.toString(),
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              directResults: {
+                homeScore: match.homeScore ?? null,
+                awayScore: match.awayScore ?? null,
+                homeCorners: match.predeterminedResult?.homeCorners,
+                awayCorners: match.predeterminedResult?.awayCorners,
+                homeCards: match.predeterminedResult?.homeCards,
+                awayCards: match.predeterminedResult?.awayCards,
+                penaltyAwarded: match.predeterminedResult?.penaltyAwarded,
+                firstGoalscorer: match.predeterminedResult?.firstGoalscorer,
+                anytimeGoalscorers: match.predeterminedResult?.anytimeGoalscorers,
+                lastGoalscorer: match.predeterminedResult?.lastGoalscorer
+              }
+            }
+            await betSettlementService.settleMatchBets(finishMeta)
+          } catch (err) {
+            logger.error('Immediate settlement error after result-completed finish:', err)
+          }
+          continue
+        }
+      } catch (e) {}
+
       const duration = getMatchDuration(match.sport)
       const finishTime = new Date(match.startTime.getTime() + duration)
-      
+
       if (now >= finishTime) {
         match.status = 'finished'
         match.finishedAt = now
 
-        // Apply predetermined result if exists and valid
-        if (match.predeterminedResult && match.predeterminedResult.shouldSettle) {
+        // Apply predetermined result if exists and not explicitly disabled
+        const hasPredetermined = !!match.predeterminedResult
+        const allowSettle = hasPredetermined && match.predeterminedResult.shouldSettle !== false
+        if (allowSettle) {
           if (match.predeterminedResult.homeScore !== null && match.predeterminedResult.homeScore !== undefined) {
             match.homeScore = match.predeterminedResult.homeScore
           }
@@ -446,10 +512,10 @@ async function updatePendingBetsScores () {
 async function updateLiveBetStatuses () {
   try {
     const liveMatches = await Match.find({ status: 'live' })
-    
+
     for (const match of liveMatches) {
       // Only proceed if we have valid scores
-      if (match.homeScore === undefined || match.homeScore === null || 
+      if (match.homeScore === undefined || match.homeScore === null ||
           match.awayScore === undefined || match.awayScore === null) {
         continue
       }
@@ -472,15 +538,13 @@ async function updateLiveBetStatuses () {
           lastGoalscorer: (match.predeterminedResult && match.predeterminedResult.lastGoalscorer) ? match.predeterminedResult.lastGoalscorer : undefined
         }
       }
-      
+
       await betSettlementService.updateLiveMatchBets(matchForUpdate)
     }
   } catch (error) {
     logger.error('Error updating live bet statuses:', error)
   }
 }
-
-
 
 /**
  * @function startCronJobs
@@ -593,7 +657,7 @@ const startCronJobs = async () => {
     isScoresFetching = true
     try {
       await updatePendingBetsScores()
-      
+
       // Broadcast updates to frontend immediately after fetching
       await broadcastLiveMatchesUpdate()
     } catch (error) {

@@ -33,15 +33,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage })
 
 // Helper: build a map of leagues -> { sportName, country, leagueName }
-let cachedLeagueMetaMap = null;
-let lastLeagueMetaUpdate = 0;
-const LEAGUE_META_TTL = 3600 * 1000; // 1 hour
+let cachedLeagueMetaMap = null
+let lastLeagueMetaUpdate = 0
+const LEAGUE_META_TTL = 3600 * 1000 // 1 hour
 
 async function buildLeagueMetaMap () {
   try {
-    const now = Date.now();
+    const now = Date.now()
     if (cachedLeagueMetaMap && (now - lastLeagueMetaUpdate < LEAGUE_META_TTL)) {
-      return cachedLeagueMetaMap;
+      return cachedLeagueMetaMap
     }
 
     const sports = await Sport.find({ active: true }).lean()
@@ -58,9 +58,9 @@ async function buildLeagueMetaMap () {
         })
       })
     })
-    
-    cachedLeagueMetaMap = mapByLeagueName;
-    lastLeagueMetaUpdate = now;
+
+    cachedLeagueMetaMap = mapByLeagueName
+    lastLeagueMetaUpdate = now
     return mapByLeagueName
   } catch (err) {
     console.warn('Failed to build league meta map:', err.message)
@@ -1306,6 +1306,42 @@ router.put('/:matchId', adminAuth, async (req, res) => {
     bus.emit('matches:update', updatedMatch)
     bus.emit('matches:live:update', updatedMatch)
     bus.emit('matches:changed')
+
+    try {
+      if (String(updatedMatch.status).toLowerCase() === 'finished') {
+        const eventId = updatedMatch.externalId || updatedMatch._id.toString()
+        const homeScore = updatedMatch.homeScore ?? null
+        const awayScore = updatedMatch.awayScore ?? null
+        if (global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
+          global.websocketServer.broadcastMatchResult(eventId, {
+            homeScore,
+            awayScore,
+            score: (homeScore != null && awayScore != null) ? `${homeScore}:${awayScore}` : null,
+            status: 'finished'
+          })
+        }
+        const betSettlementService = require('../services/betSettlementService')
+        const finishMeta = {
+          eventId,
+          originalId: updatedMatch._id.toString(),
+          homeTeam: updatedMatch.homeTeam,
+          awayTeam: updatedMatch.awayTeam,
+          directResults: {
+            homeScore,
+            awayScore,
+            homeCorners: updatedMatch.predeterminedResult?.homeCorners,
+            awayCorners: updatedMatch.predeterminedResult?.awayCorners,
+            homeCards: updatedMatch.predeterminedResult?.homeCards,
+            awayCards: updatedMatch.predeterminedResult?.awayCards,
+            penaltyAwarded: updatedMatch.predeterminedResult?.penaltyAwarded,
+            firstGoalscorer: updatedMatch.predeterminedResult?.firstGoalscorer,
+            anytimeGoalscorers: updatedMatch.predeterminedResult?.anytimeGoalscorers,
+            lastGoalscorer: updatedMatch.predeterminedResult?.lastGoalscorer
+          }
+        }
+        await betSettlementService.settleMatchBets(finishMeta)
+      }
+    } catch (e) {}
   } catch (error) {
     console.error('Update match error:', error)
     res.status(500).json({ error: 'Server error' })
@@ -1858,6 +1894,7 @@ router.get('/live/real-time', async (req, res) => {
 
       return {
         id: matchObj._id,
+        source: 'db',
         league: leagueName,
         subcategory: matchObj.sport || 'Live',
         startTime: matchObj.startTime,

@@ -186,7 +186,7 @@ multiBetSchema.methods.updateOverallStatus = function () {
   } else if (voidMatches.length > 0 && pendingMatches.length === 0) {
     this.status = 'Partial'
     this.settledAt = new Date()
-    
+
     // Recalculate payout for Partial status
     let newOdds = 1.0
     this.matches.forEach(m => {

@@ -5,14 +5,14 @@ const User = require('../models/User')
 // Regular authentication middleware
 const auth = async (req, res, next) => {
   try {
-    let token;
+    let token
     // Robust header extraction to support both Express and Fastify/Node requests
     if (typeof req.header === 'function') {
-      token = req.header('Authorization');
+      token = req.header('Authorization')
     } else if (req.headers && req.headers.authorization) {
-      token = req.headers.authorization;
+      token = req.headers.authorization
     } else if (req.headers && req.headers.Authorization) {
-      token = req.headers.Authorization;
+      token = req.headers.Authorization
     }
 
     if (token) {
@@ -40,14 +40,14 @@ const auth = async (req, res, next) => {
 // Admin authentication middleware
 const adminAuth = async (req, res, next) => {
   try {
-    let token;
+    let token
     // Robust header extraction to support both Express and Fastify/Node requests
     if (typeof req.header === 'function') {
-      token = req.header('Authorization');
+      token = req.header('Authorization')
     } else if (req.headers && req.headers.authorization) {
-      token = req.headers.authorization;
+      token = req.headers.authorization
     } else if (req.headers && req.headers.Authorization) {
-      token = req.headers.Authorization;
+      token = req.headers.Authorization
     }
 
     if (token) {

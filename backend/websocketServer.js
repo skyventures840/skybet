@@ -494,7 +494,8 @@ class WebSocketServer {
 
         return {
           id: matchObj._id,
-          league: matchObj.leagueId || 'Live Match',
+          source: 'db',
+          league: matchObj.leagueId?.name || matchObj.sport || 'Match',
           subcategory: matchObj.sport || 'Live',
           startTime: matchObj.startTime,
           homeTeam: matchObj.homeTeam,
@@ -549,10 +550,11 @@ class WebSocketServer {
         return '45+'
       } else if (diffMins <= 65) {
         return 'HT'
-      } else if (diffMins <= 110) {
-        return `${diffMins - 20}'`
+      } else if (diffMins <= 105) {
+        return `${diffMins - 15}'`
       } else {
-        return '90+'
+        const stoppage = Math.min(diffMins - 105, 10)
+        return `90+${stoppage}`
       }
     }
 

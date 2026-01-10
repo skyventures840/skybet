@@ -57,7 +57,7 @@ router.post('/', auth, async (req, res) => {
 
     try {
       await multiBet.save()
-      
+
       // Invalidate caches
       bus.emit('multibets:changed')
       bus.emit('users:changed')

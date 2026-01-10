@@ -86,7 +86,7 @@ router.post('/matches', adminAuth, [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() })
     }
-    const { leagueName, teams, startTime, odds = {}, sport, videoUrl, videoPosterUrl, videoDisplayControl = 'scheduled' } = req.body
+    const { leagueName, teams, startTime, odds = {}, sport, videoUrl, videoPosterUrl, videoDisplayControl = 'scheduled', predeterminedResult, scheduledEvents, status } = req.body
     // Find or create league
     let league = await League.findOne({ name: leagueName })
     if (!league) {
@@ -154,6 +154,40 @@ router.post('/matches', adminAuth, [
       }
     })
 
+    // Normalize predetermined result if provided
+    let normalizedPredetermined
+    if (predeterminedResult && typeof predeterminedResult === 'object') {
+      const pr = predeterminedResult
+      normalizedPredetermined = {
+        homeScore: pr.homeScore != null ? Number(pr.homeScore) : undefined,
+        awayScore: pr.awayScore != null ? Number(pr.awayScore) : undefined,
+        homeScoreHT: pr.homeScoreHT != null ? Number(pr.homeScoreHT) : undefined,
+        awayScoreHT: pr.awayScoreHT != null ? Number(pr.awayScoreHT) : undefined,
+        homeCorners: pr.homeCorners != null ? Number(pr.homeCorners) : undefined,
+        awayCorners: pr.awayCorners != null ? Number(pr.awayCorners) : undefined,
+        homeCards: pr.homeCards != null ? Number(pr.homeCards) : undefined,
+        awayCards: pr.awayCards != null ? Number(pr.awayCards) : undefined,
+        penaltyAwarded: !!pr.penaltyAwarded,
+        firstGoalscorer: pr.firstGoalscorer || undefined,
+        anytimeGoalscorers: pr.anytimeGoalscorers || undefined,
+        lastGoalscorer: pr.lastGoalscorer || undefined,
+        shouldSettle: pr.shouldSettle !== false
+      }
+    }
+
+    // Normalize scheduled events if provided
+    let normalizedEvents
+    if (Array.isArray(scheduledEvents)) {
+      normalizedEvents = scheduledEvents.map(e => ({
+        minute: e.minute != null ? Number(e.minute) : undefined,
+        type: e.type || 'goal',
+        team: e.team,
+        player: e.player,
+        description: e.description,
+        processed: !!e.processed
+      })).filter(ev => ev.minute != null && ev.team)
+    }
+
     const match = new Match({
       leagueId: league._id, // Use the MongoDB ObjectId instead of the string leagueId
       externalId,
@@ -162,11 +196,13 @@ router.post('/matches', adminAuth, [
       startTime: new Date(startTime),
       odds: oddsMap,
       sport: sport || 'football',
-      status: 'upcoming',
+      status: status || 'upcoming',
       videoUrl: videoUrl || null,
       videoPosterUrl: videoPosterUrl || null,
       videoDisplayControl,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      ...(normalizedPredetermined ? { predeterminedResult: normalizedPredetermined } : {}),
+      ...(normalizedEvents ? { scheduledEvents: normalizedEvents } : {})
     })
     await match.save()
 
@@ -282,6 +318,54 @@ router.post('/matches', adminAuth, [
           { $set: oddsDoc },
           { upsert: true }
         )
+      }
+    }
+
+    // If match is created as finished with valid scores, upsert to Results and Scores for linkage
+    if ((status === 'finished') && normalizedPredetermined && normalizedPredetermined.homeScore != null && normalizedPredetermined.awayScore != null) {
+      try {
+        const Results = require('../models/Results')
+        const Scores = require('../models/Scores')
+        const resultsDoc = {
+          eventId: externalId,
+          sport_key: sport || 'football',
+          sport_title: leagueName,
+          commence_time: match.startTime,
+          completed: true,
+          home_team: teams.home,
+          away_team: teams.away,
+          scores: [
+            { name: teams.home, score: String(normalizedPredetermined.homeScore) },
+            { name: teams.away, score: String(normalizedPredetermined.awayScore) }
+          ],
+          homeScoreHT: normalizedPredetermined.homeScoreHT,
+          awayScoreHT: normalizedPredetermined.awayScoreHT,
+          homeCorners: normalizedPredetermined.homeCorners,
+          awayCorners: normalizedPredetermined.awayCorners,
+          homeCards: normalizedPredetermined.homeCards,
+          awayCards: normalizedPredetermined.awayCards,
+          penaltyAwarded: normalizedPredetermined.penaltyAwarded,
+          firstGoalscorer: normalizedPredetermined.firstGoalscorer,
+          anytimeGoalscorers: normalizedPredetermined.anytimeGoalscorers,
+          lastGoalscorer: normalizedPredetermined.lastGoalscorer,
+          last_update: new Date()
+        }
+        await Results.findOneAndUpdate(
+          { eventId: externalId },
+          { $set: resultsDoc },
+          { upsert: true, new: true }
+        )
+        const scoresDoc = {
+          ...resultsDoc,
+          status: 'completed'
+        }
+        await Scores.findOneAndUpdate(
+          { eventId: externalId },
+          { $set: scoresDoc },
+          { upsert: true, new: true }
+        )
+      } catch (e) {
+        console.warn('Failed to upsert initial Results/Scores for finished custom match:', e?.message || e)
       }
     }
     res.status(201).json({ id: match._id })
@@ -1448,6 +1532,124 @@ router.put('/bets/:betId', adminAuth, [
   } catch (error) {
     console.error('Edit bet error:', error)
     res.status(500).json({ error: 'Failed to edit bet' })
+  }
+})
+
+// Manually settle all bets for a finished match (admin fallback)
+router.post('/settle/match/:id', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params
+    let match = null
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      match = await Match.findById(id).lean()
+    }
+    if (!match) {
+      match = await Match.findOne({ externalId: id }).lean()
+    }
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' })
+    }
+    if (match.status !== 'finished') {
+      return res.status(400).json({ error: 'Match is not finished' })
+    }
+    const eventId = match.externalId || match._id.toString()
+    const finishMeta = {
+      eventId,
+      originalId: match._id.toString(),
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      source: 'db',
+      directResults: {
+        homeScore: match.homeScore ?? match.predeterminedResult?.homeScore ?? null,
+        awayScore: match.awayScore ?? match.predeterminedResult?.awayScore ?? null,
+        homeCorners: match.predeterminedResult?.homeCorners ?? null,
+        awayCorners: match.predeterminedResult?.awayCorners ?? null,
+        homeCards: match.predeterminedResult?.homeCards ?? null,
+        awayCards: match.predeterminedResult?.awayCards ?? null,
+        penaltyAwarded: !!match.predeterminedResult?.penaltyAwarded,
+        firstGoalscorer: match.predeterminedResult?.firstGoalscorer ?? null,
+        anytimeGoalscorers: match.predeterminedResult?.anytimeGoalscorers ?? null,
+        lastGoalscorer: match.predeterminedResult?.lastGoalscorer ?? null
+      }
+    }
+    const settled = await require('../services/betSettlementService').settleMatchBets(finishMeta)
+    return res.json({ success: true, settled })
+  } catch (error) {
+    console.error('Manual settle error:', error)
+    res.status(500).json({ error: 'Failed to manually settle match bets' })
+  }
+})
+
+// Settle bets by odds gameId using finished DB match or completed Results
+router.post('/settle/odds/:gameId', adminAuth, async (req, res) => {
+  try {
+    const gameId = String(req.params.gameId)
+    let match = await Match.findOne({ externalId: gameId }).lean()
+    if (!match) {
+      const oddsDoc = await Odds.findOne({ gameId }).lean()
+      if (!oddsDoc) {
+        return res.status(404).json({ error: 'Odds not found for gameId' })
+      }
+      match = await Match.findOne({
+        status: 'finished',
+        homeTeam: { $regex: new RegExp(oddsDoc.home_team, 'i') },
+        awayTeam: { $regex: new RegExp(oddsDoc.away_team, 'i') }
+      }).lean()
+      if (!match) {
+        const resultDoc = await Results.findOne({ eventId: gameId, completed: true }).lean()
+        if (!resultDoc || !Array.isArray(resultDoc.scores) || resultDoc.scores.length < 2) {
+          return res.status(400).json({ error: 'No finished match or completed results found for gameId' })
+        }
+        const homeScore = parseInt((resultDoc.scores[0].score ?? resultDoc.scores.find(s => s.name === resultDoc.home_team)?.score))
+        const awayScore = parseInt((resultDoc.scores[1].score ?? resultDoc.scores.find(s => s.name === resultDoc.away_team)?.score))
+        const finishMeta = {
+          eventId: gameId,
+          homeTeam: resultDoc.home_team,
+          awayTeam: resultDoc.away_team,
+          source: 'results',
+          directResults: {
+            homeScore: Number.isNaN(homeScore) ? null : homeScore,
+            awayScore: Number.isNaN(awayScore) ? null : awayScore,
+            homeScoreHT: resultDoc.homeScoreHT ?? null,
+            awayScoreHT: resultDoc.awayScoreHT ?? null,
+            homeCorners: resultDoc.homeCorners ?? null,
+            awayCorners: resultDoc.awayCorners ?? null,
+            homeCards: resultDoc.homeCards ?? null,
+            awayCards: resultDoc.awayCards ?? null,
+            penaltyAwarded: !!resultDoc.penaltyAwarded
+          }
+        }
+        const settled = await require('../services/betSettlementService').settleMatchBets(finishMeta)
+        return res.json({ success: true, settled })
+      }
+    }
+    if (match.status !== 'finished') {
+      return res.status(400).json({ error: 'Match is not finished' })
+    }
+    const finishMeta = {
+      eventId: gameId,
+      originalId: match._id.toString(),
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      source: 'db',
+      directResults: {
+        homeScore: match.homeScore ?? match.predeterminedResult?.homeScore ?? null,
+        awayScore: match.awayScore ?? match.predeterminedResult?.awayScore ?? null,
+        homeCorners: match.predeterminedResult?.homeCorners ?? null,
+        awayCorners: match.predeterminedResult?.awayCorners ?? null,
+        homeCards: match.predeterminedResult?.homeCards ?? null,
+        awayCards: match.predeterminedResult?.awayCards ?? null,
+        penaltyAwarded: !!match.predeterminedResult?.penaltyAwarded,
+        firstGoalscorer: match.predeterminedResult?.firstGoalscorer ?? null,
+        anytimeGoalscorers: match.predeterminedResult?.anytimeGoalscorers ?? null,
+        lastGoalscorer: match.predeterminedResult?.lastGoalscorer ?? null
+      }
+    }
+    const settled = await require('../services/betSettlementService').settleMatchBets(finishMeta)
+    return res.json({ success: true, settled })
+  } catch (error) {
+    console.error('Manual settle by odds gameId error:', error)
+    res.status(500).json({ error: 'Failed to settle bets by odds gameId' })
   }
 })
 
