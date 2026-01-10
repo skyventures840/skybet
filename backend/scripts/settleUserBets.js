@@ -7,12 +7,14 @@ const Results = require('../models/Results')
 const Scores = require('../models/Scores')
 const Odds = require('../models/Odds')
 const { OddsApiService } = require('../services/oddsApiService')
+const Match = require('../models/Match')
 const betSettlementService = require('../services/betSettlementService')
 
 const args = process.argv.slice(2)
 const userArgIndex = args.indexOf('--user')
 const identifier = userArgIndex !== -1 ? args[userArgIndex + 1] : 'skyventures'
 const dryRun = args.includes('--dryRun')
+const allMode = args.includes('--all')
 
 function extractScoresFromResult (result) {
   let homeScore = null
@@ -21,11 +23,13 @@ function extractScoresFromResult (result) {
     const homeScoreData = result.scores.find(s => s.name === result.home_team)
     const awayScoreData = result.scores.find(s => s.name === result.away_team)
     if (homeScoreData && awayScoreData) {
-      homeScore = parseInt(homeScoreData.score) || 0
-      awayScore = parseInt(awayScoreData.score) || 0
+      homeScore = (homeScoreData.score != null && homeScoreData.score !== '') ? parseInt(homeScoreData.score) : null
+      awayScore = (awayScoreData.score != null && awayScoreData.score !== '') ? parseInt(awayScoreData.score) : null
     } else if (result.scores.length >= 2) {
-      homeScore = parseInt(result.scores[0].score) || 0
-      awayScore = parseInt(result.scores[1].score) || 0
+      const hs = result.scores[0]?.score
+      const as = result.scores[1]?.score
+      homeScore = (hs != null && hs !== '') ? parseInt(hs) : null
+      awayScore = (as != null && as !== '') ? parseInt(as) : null
     }
   }
   return { homeScore, awayScore }
@@ -66,6 +70,34 @@ async function findMatchingScore (bet) {
     if (byTeams) return byTeams
   }
   return null
+}
+
+async function findDbCustomScores (matchId) {
+  try {
+    let matchDoc = null
+    if (mongoose.isValidObjectId(matchId)) {
+      matchDoc = await Match.findById(matchId).lean()
+    }
+    if (!matchDoc) {
+      matchDoc = await Match.findOne({ externalId: matchId }).lean()
+    }
+    if (!matchDoc) return null
+    const pr = matchDoc.predeterminedResult || {}
+    const hs = pr.homeScore != null ? pr.homeScore : matchDoc.homeScore
+    const as = pr.awayScore != null ? pr.awayScore : matchDoc.awayScore
+    if (hs != null && as != null) {
+      return {
+        homeScore: Number(hs),
+        awayScore: Number(as),
+        homeTeam: matchDoc.homeTeam,
+        awayTeam: matchDoc.awayTeam,
+        eventId: matchDoc.externalId || String(matchDoc._id)
+      }
+    }
+    return null
+  } catch (e) {
+    return null
+  }
 }
 
 async function pushToBetslip (userId, eventId, homeScore, awayScore) {
@@ -120,13 +152,13 @@ async function pushToBetslip (userId, eventId, homeScore, awayScore) {
 async function run () {
   try {
     await mongoose.connect(process.env.MONGODB_EXTERNAL_URI || process.env.MONGODB_URI)
-    const user = await User.findByUsernameOrEmail(identifier)
-    if (!user) {
+    const user = allMode ? null : await User.findByUsernameOrEmail(identifier)
+    if (!allMode && !user) {
       console.log('User not found:', identifier)
       process.exit(1)
     }
 
-    const pendingBets = await Bet.find({ userId: user._id, status: 'pending' })
+    const pendingBets = allMode ? await Bet.find({ status: 'pending' }) : await Bet.find({ userId: user._id, status: 'pending' })
     let checked = 0
     let withResults = 0
     let settled = 0
@@ -147,34 +179,73 @@ async function run () {
         }
         if (!finalResult) {
           const scoreDoc = await findMatchingScore(bet)
-          if (!scoreDoc) continue
+          if (!scoreDoc) {
+            const dbScores = await findDbCustomScores(bet.matchId)
+            if (!dbScores) continue
+            await pushToBetslip(bet.userId, dbScores.eventId, dbScores.homeScore, dbScores.awayScore)
+            pushedLegs++
+            const mbs2a = await MultiBet.find({ userId: bet.userId, 'matches.matchId': dbScores.eventId })
+            if (mbs2a.length > 0) updatedMultibets += mbs2a.length
+            if (!dryRun) {
+              const matchMeta = { eventId: dbScores.eventId, homeTeam: dbScores.homeTeam, awayTeam: dbScores.awayTeam }
+              const ok = await betSettlementService.settleSingleBet(bet, { homeScore: dbScores.homeScore, awayScore: dbScores.awayScore }, matchMeta)
+              if (ok) settled++
+            }
+            continue
+          }
           const { homeScore, awayScore } = extractScoresFromResult({
             scores: scoreDoc.scores,
             home_team: scoreDoc.home_team,
             away_team: scoreDoc.away_team
           })
-          if (homeScore === null || awayScore === null) continue
-          await pushToBetslip(user._id, scoreDoc.eventId, homeScore, awayScore)
+          if (homeScore === null || awayScore === null) {
+            const dbScores2 = await findDbCustomScores(bet.matchId)
+            if (!dbScores2) continue
+            await pushToBetslip(bet.userId, dbScores2.eventId, dbScores2.homeScore, dbScores2.awayScore)
+            pushedLegs++
+            const mbs2b = await MultiBet.find({ userId: bet.userId, 'matches.matchId': dbScores2.eventId })
+            if (mbs2b.length > 0) updatedMultibets += mbs2b.length
+            if (!dryRun) {
+              const matchMeta = { eventId: dbScores2.eventId, homeTeam: dbScores2.homeTeam, awayTeam: dbScores2.awayTeam }
+              const ok = await betSettlementService.settleSingleBet(bet, { homeScore: dbScores2.homeScore, awayScore: dbScores2.awayScore }, matchMeta)
+              if (ok) settled++
+            }
+            continue
+          }
+          await pushToBetslip(bet.userId, scoreDoc.eventId, homeScore, awayScore)
           pushedLegs++
-          const mbs2 = await MultiBet.find({ userId: user._id, 'matches.matchId': scoreDoc.eventId })
+          const mbs2 = await MultiBet.find({ userId: bet.userId, 'matches.matchId': scoreDoc.eventId })
           if (mbs2.length > 0) updatedMultibets += mbs2.length
           if (!dryRun) {
             const matchMeta = { eventId: scoreDoc.eventId, homeTeam: scoreDoc.home_team, awayTeam: scoreDoc.away_team }
-            const ok = await betSettlementService.settleSingleBet(bet, homeScore, awayScore, matchMeta)
+            const ok = await betSettlementService.settleSingleBet(bet, { homeScore, awayScore }, matchMeta)
             if (ok) settled++
           }
           continue
         }
         withResults++
         const { homeScore, awayScore } = extractScoresFromResult(finalResult)
-        if (homeScore === null || awayScore === null) continue
-        await pushToBetslip(user._id, finalResult.eventId, homeScore, awayScore)
+        if (homeScore === null || awayScore === null) {
+          const dbScores3 = await findDbCustomScores(bet.matchId)
+          if (!dbScores3) continue
+          await pushToBetslip(bet.userId, dbScores3.eventId, dbScores3.homeScore, dbScores3.awayScore)
+          pushedLegs++
+          const mbs3a = await MultiBet.find({ userId: bet.userId, 'matches.matchId': dbScores3.eventId })
+          if (mbs3a.length > 0) updatedMultibets += mbs3a.length
+          if (!dryRun) {
+            const matchMeta = { eventId: dbScores3.eventId, homeTeam: dbScores3.homeTeam, awayTeam: dbScores3.awayTeam }
+            const ok = await betSettlementService.settleSingleBet(bet, { homeScore: dbScores3.homeScore, awayScore: dbScores3.awayScore }, matchMeta)
+            if (ok) settled++
+          }
+          continue
+        }
+        await pushToBetslip(bet.userId, finalResult.eventId, homeScore, awayScore)
         pushedLegs++
-        const mbs = await MultiBet.find({ userId: user._id, 'matches.matchId': finalResult.eventId })
+        const mbs = await MultiBet.find({ userId: bet.userId, 'matches.matchId': finalResult.eventId })
         if (mbs.length > 0) updatedMultibets += mbs.length
         if (!dryRun) {
           const matchMeta = { eventId: finalResult.eventId, homeTeam: finalResult.home_team, awayTeam: finalResult.away_team }
-          const ok = await betSettlementService.settleSingleBet(bet, homeScore, awayScore, matchMeta)
+          const ok = await betSettlementService.settleSingleBet(bet, { homeScore, awayScore }, matchMeta)
           if (ok) settled++
         }
       } else {
@@ -189,31 +260,55 @@ async function run () {
           }
           if (!finalLegResult) {
             const scoreDocLeg = await Scores.findOne({ eventId: leg.matchId, completed: true })
-            if (!scoreDocLeg) continue
-            const { homeScore, awayScore } = extractScoresFromResult({
-              scores: scoreDocLeg.scores,
-              home_team: scoreDocLeg.home_team,
-              away_team: scoreDocLeg.away_team
-            })
-            if (homeScore === null || awayScore === null) continue
-            await pushToBetslip(user._id, scoreDocLeg.eventId, homeScore, awayScore)
-            pushedLegs++
-            const mbs3 = await MultiBet.find({ userId: user._id, 'matches.matchId': scoreDocLeg.eventId })
-            if (mbs3.length > 0) updatedMultibets += mbs3.length
+            if (!scoreDocLeg) {
+              const dbScoresLeg = await findDbCustomScores(leg.matchId)
+              if (!dbScoresLeg) continue
+              await pushToBetslip(bet.userId, dbScoresLeg.eventId, dbScoresLeg.homeScore, dbScoresLeg.awayScore)
+              pushedLegs++
+              const mbs3a = await MultiBet.find({ userId: bet.userId, 'matches.matchId': dbScoresLeg.eventId })
+              if (mbs3a.length > 0) updatedMultibets += mbs3a.length
+            } else {
+              const { homeScore, awayScore } = extractScoresFromResult({
+                scores: scoreDocLeg.scores,
+                home_team: scoreDocLeg.home_team,
+                away_team: scoreDocLeg.away_team
+              })
+              if (homeScore === null || awayScore === null) {
+                const dbScoresLeg2 = await findDbCustomScores(leg.matchId)
+                if (!dbScoresLeg2) continue
+                await pushToBetslip(bet.userId, dbScoresLeg2.eventId, dbScoresLeg2.homeScore, dbScoresLeg2.awayScore)
+                pushedLegs++
+                const mbs3b = await MultiBet.find({ userId: bet.userId, 'matches.matchId': dbScoresLeg2.eventId })
+                if (mbs3b.length > 0) updatedMultibets += mbs3b.length
+              } else {
+                await pushToBetslip(bet.userId, scoreDocLeg.eventId, homeScore, awayScore)
+                pushedLegs++
+                const mbs3 = await MultiBet.find({ userId: bet.userId, 'matches.matchId': scoreDocLeg.eventId })
+                if (mbs3.length > 0) updatedMultibets += mbs3.length
+              }
+            }
           } else {
             withResults++
             const { homeScore, awayScore } = extractScoresFromResult(finalLegResult)
-            if (homeScore === null || awayScore === null) continue
-            await pushToBetslip(user._id, finalLegResult.eventId, homeScore, awayScore)
-            pushedLegs++
-            const mbs4 = await MultiBet.find({ userId: user._id, 'matches.matchId': finalLegResult.eventId })
-            if (mbs4.length > 0) updatedMultibets += mbs4.length
+            if (homeScore === null || awayScore === null) {
+              const dbScoresLeg3 = await findDbCustomScores(leg.matchId)
+              if (!dbScoresLeg3) continue
+              await pushToBetslip(bet.userId, dbScoresLeg3.eventId, dbScoresLeg3.homeScore, dbScoresLeg3.awayScore)
+              pushedLegs++
+              const mbs4a = await MultiBet.find({ userId: bet.userId, 'matches.matchId': dbScoresLeg3.eventId })
+              if (mbs4a.length > 0) updatedMultibets += mbs4a.length
+            } else {
+              await pushToBetslip(bet.userId, finalLegResult.eventId, homeScore, awayScore)
+              pushedLegs++
+              const mbs4 = await MultiBet.find({ userId: bet.userId, 'matches.matchId': finalLegResult.eventId })
+              if (mbs4.length > 0) updatedMultibets += mbs4.length
+            }
           }
         }
       }
     }
 
-    console.log('User', String(user._id))
+    console.log('Mode', allMode ? 'ALL USERS' : String(user._id))
     console.log('Checked', checked)
     console.log('WithResults', withResults)
     console.log('PushedLegs', pushedLegs)

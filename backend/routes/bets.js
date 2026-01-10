@@ -718,10 +718,29 @@ router.get('/my-bets', auth, cacheUserBets(60), [
           if (resDoc && Array.isArray(resDoc.scores)) {
             const hs = resDoc.scores.find(s => s.name === matchInfo.homeTeam) || resDoc.scores[0]
             const as = resDoc.scores.find(s => s.name === matchInfo.awayTeam) || resDoc.scores[1]
-            homeScore = hs ? parseInt(hs.score) || 0 : null
-            awayScore = as ? parseInt(as.score) || 0 : null
+            homeScore = hs && hs.score != null && hs.score !== '' ? parseInt(hs.score) : null
+            awayScore = as && as.score != null && as.score !== '' ? parseInt(as.score) : null
             if (homeScore != null && awayScore != null) {
               finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+            }
+          }
+          if (homeScore == null || awayScore == null) {
+            let matchDoc = null
+            if (mongoose.isValidObjectId(bet.matchId)) {
+              matchDoc = await Match.findById(bet.matchId).lean()
+            }
+            if (!matchDoc) {
+              matchDoc = await Match.findOne({ externalId: bet.matchId }).lean()
+            }
+            if (matchDoc) {
+              const pr = matchDoc.predeterminedResult || {}
+              const hsDB = pr.homeScore != null ? pr.homeScore : matchDoc.homeScore
+              const asDB = pr.awayScore != null ? pr.awayScore : matchDoc.awayScore
+              if (hsDB != null && asDB != null) {
+                homeScore = Number(hsDB)
+                awayScore = Number(asDB)
+                finalOutcome = homeScore > awayScore ? '1' : homeScore < awayScore ? '2' : 'X'
+              }
             }
           }
         } catch (e) {}

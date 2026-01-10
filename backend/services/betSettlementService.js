@@ -2,7 +2,6 @@ const Bet = require('../models/Bet')
 const User = require('../models/User')
 const Match = require('../models/Match')
 const Results = require('../models/Results')
-const Scores = require('../models/Scores')
 const MultiBet = require('../models/MultiBet')
 const logger = require('../utils/logger')
 const { bus } = require('../utils/cache')
@@ -92,7 +91,7 @@ class BetSettlementService {
   async updateLiveMatchBets (match) {
     try {
       const results = this.extractResults(match)
-      
+
       // If we don't have valid scores yet, skip
       if (results.homeScore === null || results.awayScore === null) return
 
@@ -126,10 +125,10 @@ class BetSettlementService {
 
       // Emit change event so UI updates
       try { bus.emit('bets:changed') } catch (e) {}
-      
+
       // Determine match identifier for broadcasting
       const matchIdStr = match.eventId || (match._id ? match._id.toString() : null)
-      
+
       if (matchIdStr && global.websocketServer && typeof global.websocketServer.broadcastMatchResult === 'function') {
         try {
           global.websocketServer.broadcastMatchResult(matchIdStr, {
@@ -299,7 +298,8 @@ class BetSettlementService {
         penaltyAwarded: predetermined.penaltyAwarded,
         firstGoalscorer: predetermined.firstGoalscorer,
         anytimeGoalscorers: predetermined.anytimeGoalscorers,
-        lastGoalscorer: predetermined.lastGoalscorer
+        lastGoalscorer: predetermined.lastGoalscorer,
+        shouldSettle: predetermined.shouldSettle
       }
 
       if (!matchMap.has(eventId)) {
@@ -340,6 +340,11 @@ class BetSettlementService {
       // Extract comprehensive results from the match data
       const results = this.extractResults(match)
 
+      if (match.source === 'db' && match.directResults && match.directResults.shouldSettle === false) {
+        logger.info(`Skipping settlement for match ${match.eventId} due to shouldSettle=false`)
+        return 0
+      }
+
       if (results.homeScore === null || results.awayScore === null) {
         logger.warn(`Invalid scores for match ${match.eventId}`)
         return 0
@@ -347,7 +352,7 @@ class BetSettlementService {
 
       await this.updateBetslipWithResult(match, results)
       const pendingBets = await this.findMatchingBets(match)
-      
+
       // Settle MultiBets
       const settledMultiBetsCount = await this.settleMultiBets(match)
 
@@ -410,7 +415,7 @@ class BetSettlementService {
         { 'matches.matchId': { $in: matchIds } },
         {
           $set: {
-            'matches.$.outcome': finalOutcome,
+            'matches.$.matchStatus': 'Finished',
             'matches.$.result': resultData
           }
         }
@@ -470,11 +475,15 @@ class BetSettlementService {
       const awayScoreData = match.scores.find(s => s.name === match.awayTeam)
 
       if (homeScoreData && awayScoreData) {
-        results.homeScore = parseInt(homeScoreData.score) || 0
-        results.awayScore = parseInt(awayScoreData.score) || 0
+        const hs = parseInt(homeScoreData.score)
+        const as = parseInt(awayScoreData.score)
+        if (!Number.isNaN(hs)) results.homeScore = hs
+        if (!Number.isNaN(as)) results.awayScore = as
       } else if (match.scores.length >= 2) {
-        results.homeScore = parseInt(match.scores[0].score) || 0
-        results.awayScore = parseInt(match.scores[1].score) || 0
+        const hs2 = parseInt(match.scores[0].score)
+        const as2 = parseInt(match.scores[1].score)
+        if (!Number.isNaN(hs2)) results.homeScore = hs2
+        if (!Number.isNaN(as2)) results.awayScore = as2
       }
     }
 
@@ -485,26 +494,24 @@ class BetSettlementService {
    * Find bets that match the completed match
    */
   async findMatchingBets (match) {
-    const queries = [
-      { matchId: match.eventId, status: 'pending' }
-    ]
-
+    const matchIds = [match.eventId]
     if (match.originalId && match.originalId !== match.eventId) {
-      queries.push({ matchId: match.originalId, status: 'pending' })
+      matchIds.push(match.originalId)
     }
 
-    queries.push({
-      status: 'pending',
-      $and: [
-        { homeTeam: { $regex: new RegExp(escapeRegex(match.homeTeam), 'i') } },
-        { awayTeam: { $regex: new RegExp(escapeRegex(match.awayTeam), 'i') } }
-      ]
-    })
-
     let allBets = []
-    for (const query of queries) {
-      const bets = await Bet.find(query)
-      allBets = allBets.concat(bets)
+    const idBets = await Bet.find({ matchId: { $in: matchIds }, status: 'pending' })
+    allBets = allBets.concat(idBets)
+
+    if (allBets.length === 0) {
+      const regexBets = await Bet.find({
+        status: 'pending',
+        $and: [
+          { homeTeam: { $regex: new RegExp(escapeRegex(match.homeTeam), 'i') } },
+          { awayTeam: { $regex: new RegExp(escapeRegex(match.awayTeam), 'i') } }
+        ]
+      })
+      allBets = allBets.concat(regexBets)
     }
 
     const uniqueBets = allBets.filter((bet, index, self) =>
@@ -545,6 +552,7 @@ class BetSettlementService {
         case 'btts':
         case 'both_teams_to_score':
         case 'bothteamstoscore':
+        case 'both teams to score':
           outcome = this.evaluateBTTSBet(bet.selection, homeScore, awayScore)
           marketOutcome = (homeScore > 0 && awayScore > 0) ? 'Yes' : 'No'
           break
