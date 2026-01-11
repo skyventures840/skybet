@@ -9,6 +9,7 @@ import SportsStrip from '../components/SportsStrip';
 import enhancedCache from '../services/enhancedCache';
 import oddsWebSocket from '../services/oddsWebSocket';
 import { getSportIcon } from '../utils/sportIcons';
+import MobileAdvertPopup from '../components/MobileAdvertPopup';
 
 const Home = () => {
   console.log('🏠 Home component is rendering!');
@@ -1185,6 +1186,7 @@ const Home = () => {
   return (
     <div className="home-page">
       <div className="main-content">
+        <MobileAdvertPopup />
         <HeroSlider />
         
         {/* Popular Matches section - keep unchanged */}

@@ -492,7 +492,7 @@ const Bets = () => {
   // Removed legacy status helpers (color/icon) since redesigned UI no longer uses them
 
   // Parse a pick to identify standardized market type and point
-  const parsePick = (selection, point) => {
+  const parsePick = (selection, point, matchCtx = null) => {
     const raw = selection ? String(selection).trim() : '';
     const low = raw.toLowerCase();
     let kind = null; // 'totals' | 'winner' | 'handicap' | 'btts'
@@ -502,6 +502,8 @@ const Bets = () => {
     let bandMin = null;
     let bandMax = null;
     let player = null;
+    let scoreHome = null;
+    let scoreAway = null;
 
     const parenMatch = raw.match(/\(([-+]?\d+(?:\.\d+)?)\)/);
     const numberMatch = raw.match(/(-?\d+(?:\.\d+)?)/);
@@ -529,6 +531,15 @@ const Bets = () => {
     if (/^home\b|home\s*win/i.test(low)) { kind = 'winner'; type = '1'; side = 'home'; }
     if (/^away\b|away\s*win/i.test(low)) { kind = 'winner'; type = '2'; side = 'away'; }
     if (/^draw\b|tie\b/i.test(low)) { kind = 'winner'; type = 'x'; side = 'draw'; }
+    if (!kind && matchCtx) {
+      const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const selNorm = norm(raw);
+      const homeNorm = norm(matchCtx.homeTeam || matchCtx.home_team || '');
+      const awayNorm = norm(matchCtx.awayTeam || matchCtx.away_team || '');
+      const contains = (a, b) => a.includes(b) || b.includes(a);
+      if (homeNorm && contains(selNorm, homeNorm)) { kind = 'winner'; type = '1'; side = 'home'; }
+      else if (awayNorm && contains(selNorm, awayNorm)) { kind = 'winner'; type = '2'; side = 'away'; }
+    }
 
     // Handicap/Spread: detect side and signed point
     if (/handicap|spread|\b\d\s*\(|home\s*\(|away\s*\(/i.test(low)) {
@@ -556,9 +567,17 @@ const Bets = () => {
       if (/\beven\b/i.test(low)) { kind = 'odd_even'; type = 'even'; }
     }
 
-    const bandMatch = raw.match(/\b(\d+)\s*-\s*(\d+)\b/);
+    // Correct Score vs Multi Goals disambiguation:
+    // - If pattern "A-B" without "goals" keyword -> Correct Score
+    // - If "A-B goals" or "A+" -> Multi Goals
+    const scoreMatch = raw.match(/^\s*(\d+)\s*-\s*(\d+)\s*(?!goals)\s*$/i);
+    const bandMatch = raw.match(/\b(\d+)\s*-\s*(\d+)\s*goals?\b/i);
     const plusMatch = raw.match(/\b(\d+)\s*\+\b/);
-    if (bandMatch) {
+    if (scoreMatch) {
+      kind = 'correct_score';
+      scoreHome = Number(scoreMatch[1]);
+      scoreAway = Number(scoreMatch[2]);
+    } else if (bandMatch) {
       kind = 'multi_goals';
       bandMin = Number(bandMatch[1]);
       bandMax = Number(bandMatch[2]);
@@ -577,7 +596,7 @@ const Bets = () => {
       if (nameMatch) player = nameMatch[1].trim();
     }
 
-    return { kind, type, side, point: refPoint, bandMin, bandMax, player, raw };
+    return { kind, type, side, point: refPoint, bandMin, bandMax, player, raw, scoreHome, scoreAway };
   };
 
   // Derive outcome text from match result, aligned to the pick context
@@ -589,7 +608,7 @@ const Bets = () => {
     const as = match?.result?.awayScore;
     const hasScores = typeof hs === 'number' && typeof as === 'number';
 
-    const pick = parsePick(match?.selection, match?.point);
+    const pick = parsePick(match?.selection, match?.point, match);
     const marketNorm = normalizeMarketKey(match?.market || (selectedBet ? selectedBet.market : '') || '');
 
     if (!hasScores) return null;
@@ -658,6 +677,10 @@ const Bets = () => {
       return total % 2 === 0 ? 'Even' : 'Odd';
     }
 
+    if (pick.kind === 'correct_score') {
+      return `${hs}-${as}`;
+    }
+
     if (pick.kind === 'multi_goals') {
       const total = hs + as;
       if (pick.bandMin != null && pick.bandMax != null) {
@@ -698,7 +721,7 @@ const Bets = () => {
     const hasScores = typeof hs === 'number' && typeof as === 'number';
     if (!hasScores) return 'pending';
 
-    const pick = parsePick(match?.selection, match?.point);
+    const pick = parsePick(match?.selection, match?.point, match);
     const outcomeText = deriveOutcome(match);
     const lowOutcome = (outcomeText || '').toLowerCase().replace(/\s+/g, '');
     const marketNorm = normalizeMarketKey(match?.market || (selectedBet ? selectedBet.market : '') || '');
@@ -751,6 +774,11 @@ const Bets = () => {
     if (pick.kind === 'odd_even' && (pick.type === 'odd' || pick.type === 'even')) {
       const lowTarget = pick.type.toLowerCase();
       return lowOutcome === lowTarget ? 'won' : 'lost';
+    }
+
+    if (pick.kind === 'correct_score') {
+      const target = `${pick.scoreHome}-${pick.scoreAway}`;
+      return lowOutcome === target.toLowerCase() ? 'won' : 'lost';
     }
 
     if (pick.kind === 'multi_goals') {
@@ -1254,9 +1282,12 @@ const Bets = () => {
                       <div className="matches-card-list">
                         {displayMatches.map((match, index) => {
                           const ft = getFtResult(match);
-                          const pick = parsePick(match?.selection, match?.point);
+                          const pick = parsePick(match?.selection, match?.point, match);
                           const typeLabel = (() => {
                             // Prefer explicit market header from each match entry
+                            if (pick && pick.kind === 'correct_score') return 'Correct Score';
+                            const selText = match?.selection ? String(match.selection) : '';
+                            if (/^\s*\d+\s*-\s*\d+\s*$/.test(selText) && !/goals?/i.test(selText)) return 'Correct Score';
                             const matchMarketDisplay = match?.marketTypeDisplay || match?.marketDisplay || null;
                             if (matchMarketDisplay) return matchMarketDisplay;
                             const matchMarketKey = match?.market || '';

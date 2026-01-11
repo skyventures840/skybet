@@ -84,9 +84,11 @@ const HeroSlider = () => {
               <div className="slide-content">
                 <h2 className="slide-title">{slide.caption1}</h2>
                 <p className="slide-subtitle">{slide.caption2}</p>
-                <a href={slide.buttonUrl} target="_blank" rel="noopener noreferrer">
-                  <button className="slide-cta">{slide.buttonText}</button>
-                </a>
+                {(slide.buttonText && slide.buttonUrl) ? (
+                  <a href={slide.buttonUrl} target="_blank" rel="noopener noreferrer">
+                    <button className="slide-cta">{slide.buttonText}</button>
+                  </a>
+                ) : null}
               </div>
             </div>
           ))}

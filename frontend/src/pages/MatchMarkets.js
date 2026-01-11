@@ -710,19 +710,21 @@ const MatchMarkets = () => {
     // ... Copying render from memory/standard pattern ...
     
     // Function to add bet to betslip
-    const addToBetslip = (marketKey, outcome, marketTitle) => {
-        if (!match) return;
-        const isGrouped = String(marketKey || '').toLowerCase().startsWith('grouped_');
-        const normalizedKey = isGrouped ? normalizeMarketKey(marketTitle) : normalizeMarketKey(marketKey);
-        const marketTypeDisplay = (() => {
-            if (!normalizedKey) return 'Market';
-            if (normalizedKey === 'winner') return 'Winner';
-            if (normalizedKey.startsWith('totals')) return 'Totals';
-            if (normalizedKey.startsWith('spreads')) return 'Handicap';
-            return getMarketTitle(normalizedKey);
-        })();
+  const addToBetslip = (marketKey, outcome, marketTitle) => {
+    if (!match) return;
+    const isGrouped = String(marketKey || '').toLowerCase().startsWith('grouped_');
+    const normalizedKey = isGrouped ? normalizeMarketKey(marketTitle) : normalizeMarketKey(marketKey);
+    const marketTypeDisplay = (() => {
+        const sel = String(outcome?.name || '').toLowerCase();
+        if (/^\s*\d+\s*-\s*\d+\s*$/.test(sel) && !/goals?/i.test(sel)) return 'Correct Score';
+        if (!normalizedKey) return 'Market';
+        if (normalizedKey === 'winner') return 'Winner';
+        if (normalizedKey.startsWith('totals')) return 'Totals';
+        if (normalizedKey.startsWith('spreads')) return 'Handicap';
+        return getMarketTitle(normalizedKey);
+    })();
 
-        const bet = {
+    const bet = {
             matchId: match._id || match.id,
             match: `${match.homeTeam || match.home_team} vs ${match.awayTeam || match.away_team}`,
             homeTeam: match.homeTeam || match.home_team,
@@ -730,12 +732,12 @@ const MatchMarkets = () => {
             league: match.league || match.sport_title,
             startTime: match.startTime || match.commence_time,
             market: normalizedKey,
-            marketDisplay: getMarketTitle(normalizedKey),
-            marketType: normalizedKey,
-            marketTypeDisplay,
-            selection: outcome.name,
-            point: outcome.point,
-            odds: outcome.price,
+        marketDisplay: marketTypeDisplay,
+        marketType: normalizedKey,
+        marketTypeDisplay,
+        selection: outcome.name,
+        point: outcome.point,
+        odds: outcome.price,
             stake: 0,
             potentialWin: 0
         };

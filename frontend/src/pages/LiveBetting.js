@@ -15,14 +15,65 @@ const LiveBetting = () => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const { user } = useSelector(state => state.auth);
 
-  // Helper: determine live status from multiple possible flags/variants
-  const isLiveStatus = (status, startTime) => {
+  // Helper: determine live status with sport-specific time windows
+  const isLiveStatus = (status, startTime, sport) => {
     const s = String(status || '').toLowerCase();
-    if (['live', 'in_play', 'inplay', 'ongoing', 'running'].includes(s)) return true;
+    if (['live', 'in_play', 'inplay', 'ongoing', 'running'].includes(s)) {
+      // Still require time window check to avoid stale 'live'
+      if (!startTime) return true;
+      try {
+        const start = new Date(startTime);
+        const diffMins = Math.floor((Date.now() - start.getTime()) / 60000);
+        const sk = String(sport || '').toLowerCase();
+        const MAX_WINDOWS_MIN = {
+          soccer: 115,
+          football: 115,
+          basketball: 150,
+          tennis: 180,
+          hockey: 150,
+          icehockey: 150,
+          baseball: 180,
+          rugby: 110,
+          other: 180
+        };
+        const key = sk.includes('soccer') ? 'soccer'
+          : sk.includes('football') ? 'football'
+          : sk.includes('basketball') || sk.includes('nba') ? 'basketball'
+          : sk.includes('tennis') ? 'tennis'
+          : sk.includes('icehockey') || sk.includes('hockey') ? 'hockey'
+          : sk.includes('baseball') || sk.includes('mlb') ? 'baseball'
+          : sk.includes('rugby') ? 'rugby'
+          : 'other';
+        const maxWindow = MAX_WINDOWS_MIN[key] || 180;
+        return diffMins >= 0 && diffMins <= maxWindow;
+      } catch (_) { return true; }
+    }
     if (!startTime) return false;
     try {
       const start = new Date(startTime);
-      return start <= new Date();
+      const diffMins = Math.floor((Date.now() - start.getTime()) / 60000);
+      const sk = String(sport || '').toLowerCase();
+      const MAX_WINDOWS_MIN = {
+        soccer: 115,
+        football: 115,
+        basketball: 150,
+        tennis: 180,
+        hockey: 150,
+        icehockey: 150,
+        baseball: 180,
+        rugby: 110,
+        other: 180
+      };
+      const key = sk.includes('soccer') ? 'soccer'
+        : sk.includes('football') ? 'football'
+        : sk.includes('basketball') || sk.includes('nba') ? 'basketball'
+        : sk.includes('tennis') ? 'tennis'
+        : sk.includes('icehockey') || sk.includes('hockey') ? 'hockey'
+        : sk.includes('baseball') || sk.includes('mlb') ? 'baseball'
+        : sk.includes('rugby') ? 'rugby'
+        : 'other';
+      const maxWindow = MAX_WINDOWS_MIN[key] || 180;
+      return diffMins >= 0 && diffMins <= maxWindow;
     } catch (_) { return false; }
   };
 
@@ -143,7 +194,7 @@ const LiveBetting = () => {
             });
             const transformed = transformOddsToLiveMatches(oddsMatches)
               // Only keep truly live matches
-              .filter(m => isLiveStatus(m.status, m.startTime));
+              .filter(m => isLiveStatus(m.status, m.startTime, m.sport));
             console.log(`[LIVE BETTING] Fallback produced ${transformed.length} live matches from odds feed`);
             setLiveMatches(transformed);
             try { sessionStorage.setItem('live_matches_data', JSON.stringify(transformed)); } catch { void 0; }
@@ -249,7 +300,7 @@ const LiveBetting = () => {
         setLiveMatches(() => {
           const next = matches.map(m => ({
             ...m,
-            isLive: isLiveStatus(m.status, m.startTime)
+            isLive: isLiveStatus(m.status, m.startTime, m.sport || m.sport_key)
           }));
           try { sessionStorage.setItem('live_matches_data', JSON.stringify(next)); } catch { void 0; }
           return next;

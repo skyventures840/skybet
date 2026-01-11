@@ -46,6 +46,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
+  const [chartsEnabled, setChartsEnabled] = useState(false);
 
   // State for dashboard data
   const [dashboardData, setDashboardData] = useState({
@@ -231,9 +232,10 @@ const AdminDashboard = () => {
   const [heroError, setHeroError] = useState(null);
   const [showHeroModal, setShowHeroModal] = useState(false);
   const [editingHero, setEditingHero] = useState(null);
-  const [heroForm, setHeroForm] = useState({ image: '', caption1: '', caption2: '', buttonText: '', buttonUrl: '' });
+  const [heroForm, setHeroForm] = useState({ image: '', caption1: '', caption2: '', buttonText: '', buttonUrl: '', popupAdvert: false });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [deletingHeroId, setDeletingHeroId] = useState(null);
 
   // Fetch hero slides
   const fetchHeroSlides = async () => {
@@ -251,7 +253,7 @@ const AdminDashboard = () => {
 
   const openHeroModal = (slide = null) => {
     setEditingHero(slide);
-    setHeroForm(slide ? { ...slide } : { image: '', caption1: '', caption2: '', buttonText: '', buttonUrl: '' });
+    setHeroForm(slide ? { image: slide.image || '', caption1: slide.caption1 || '', caption2: slide.caption2 || '', buttonText: slide.buttonText || '', buttonUrl: slide.buttonUrl || '', popupAdvert: !!(slide.popupAdvert || slide.isAdvert || slide.tag === 'advert') } : { image: '', caption1: '', caption2: '', buttonText: '', buttonUrl: '', popupAdvert: false });
     setShowHeroModal(true);
     setUploadError(null);
   };
@@ -295,12 +297,21 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteHero = async (id) => {
+    if (deletingHeroId) return;
     if (!window.confirm('Delete this hero slide?')) return;
     try {
-      await apiService.deleteHeroSlide(id);
+      const validId = id || null;
+      if (!validId) {
+        throw new Error('Missing hero slide id');
+      }
+      setDeletingHeroId(validId);
+      await apiService.deleteHeroSlide(validId);
+      try { await apiService.invalidateCachePrefix('/admin/hero'); } catch (e) { void e; }
       fetchHeroSlides();
     } catch (err) {
       setHeroError('Failed to delete hero slide');
+    } finally {
+      setDeletingHeroId(null);
     }
   };
 
@@ -317,20 +328,28 @@ const AdminDashboard = () => {
               <th>Caption 2</th>
               <th>Button Text</th>
               <th>Button URL</th>
+              <th>Popup Advert</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {heroSlides.map(slide => (
-              <tr key={slide._id}>
+              <tr key={slide._id || slide.id}>
                 <td>{slide.image && <img src={slide.image} alt="hero" style={{ width: 80, height: 40, objectFit: 'cover' }} />}</td>
                 <td>{slide.caption1}</td>
                 <td>{slide.caption2}</td>
                 <td>{slide.buttonText}</td>
                 <td><a href={slide.buttonUrl} target="_blank" rel="noopener noreferrer">{slide.buttonUrl}</a></td>
+                <td>{slide.popupAdvert || slide.isAdvert || slide.tag === 'advert' ? 'Yes' : 'No'}</td>
                 <td>
                   <button className="btn-edit" onClick={() => openHeroModal(slide)}>Edit</button>
-                  <button className="btn-delete" onClick={() => handleDeleteHero(slide._id)}>Delete</button>
+                  <button 
+                    className="btn-delete" 
+                    onClick={() => handleDeleteHero(slide._id || slide.id)}
+                    disabled={!!deletingHeroId}
+                  >
+                    {deletingHeroId === (slide._id || slide.id) ? 'Deleting...' : 'Delete'}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -351,19 +370,55 @@ const AdminDashboard = () => {
               </div>
               <div className="form-group">
                 <label style={{ color: 'black' }}>Caption 1</label>
-                <input type="text" name="caption1" value={heroForm.caption1} onChange={handleHeroFormChange} required />
+                <input 
+                  type="text" 
+                  name="caption1" 
+                  value={heroForm.caption1} 
+                  onChange={handleHeroFormChange} 
+                  required={!heroForm.popupAdvert} 
+                />
               </div>
               <div className="form-group">
                 <label style={{ color: 'black' }}>Caption 2</label>
-                <input type="text" name="caption2" value={heroForm.caption2} onChange={handleHeroFormChange} required />
+                <input 
+                  type="text" 
+                  name="caption2" 
+                  value={heroForm.caption2} 
+                  onChange={handleHeroFormChange} 
+                  required={!heroForm.popupAdvert} 
+                />
               </div>
               <div className="form-group">
                 <label style={{ color: 'black' }}>Button Text</label>
-                <input type="text" name="buttonText" value={heroForm.buttonText} onChange={handleHeroFormChange} required />
+                <input 
+                  type="text" 
+                  name="buttonText" 
+                  value={heroForm.buttonText} 
+                  onChange={handleHeroFormChange} 
+                  required={!heroForm.popupAdvert} 
+                />
               </div>
               <div className="form-group">
                 <label style={{ color: 'black' }}>Button URL</label>
-                <input type="text" name="buttonUrl" value={heroForm.buttonUrl} onChange={handleHeroFormChange} required />
+                <input 
+                  type="text" 
+                  name="buttonUrl" 
+                  value={heroForm.buttonUrl} 
+                  onChange={handleHeroFormChange} 
+                  required={!heroForm.popupAdvert} 
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    name="popupAdvert"
+                    checked={!!heroForm.popupAdvert}
+                    onChange={(e) => setHeroForm(prev => ({ ...prev, popupAdvert: e.target.checked }))}
+                    style={{ width: 18, height: 18, pointerEvents: 'auto', display: 'inline-block' }}
+                  />
+                  <span style={{ color: 'black' }}>Show on mobile as popup advert</span>
+                </label>
               </div>
               <div className="form-actions">
                 <button type="submit" className="btn-edit">{editingHero ? 'Update' : 'Create'}</button>
@@ -415,6 +470,17 @@ const AdminDashboard = () => {
     const interval = setInterval(fetchStats, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      let rid = requestAnimationFrame(() => setChartsEnabled(true));
+      return () => {
+        cancelAnimationFrame(rid);
+        setChartsEnabled(false);
+      };
+    } else {
+      setChartsEnabled(false);
+    }
+  }, [activeTab]);
 
   // Auto-fetch bets when bet-management tab is active
   useEffect(() => {
@@ -460,18 +526,22 @@ const AdminDashboard = () => {
       </div>
 
       <div className="charts">
-        <div className="chart-container" style={{ maxHeight: '300px' }}>
-          <h3>Betting Activity</h3>
-          <Bar ref={barChartRef} data={bettingActivityData} options={{ responsive: true, maintainAspectRatio: false }} />
-        </div>
-        <div className="chart-container" style={{ maxHeight: '300px' }}>
-          <h3>Deposits & Withdrawals</h3>
-          <Line ref={lineChartRef} data={depositWithdrawalData} options={{ responsive: true, maintainAspectRatio: false }} />
-        </div>
-        <div className="chart-container" style={{ maxHeight: '300px' }}>
-          <h3>User Distribution</h3>
-          <Doughnut ref={doughnutChartRef} data={userDistributionData} options={{ responsive: true, maintainAspectRatio: false }} />
-        </div>
+        {chartsEnabled && (
+          <>
+            <div className="chart-container" style={{ maxHeight: '300px' }}>
+              <h3>Betting Activity</h3>
+              <Bar ref={barChartRef} data={bettingActivityData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+            <div className="chart-container" style={{ maxHeight: '300px' }}>
+              <h3>Deposits & Withdrawals</h3>
+              <Line ref={lineChartRef} data={depositWithdrawalData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+            <div className="chart-container" style={{ maxHeight: '300px' }}>
+              <h3>User Distribution</h3>
+              <Doughnut ref={doughnutChartRef} data={userDistributionData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

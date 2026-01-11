@@ -491,30 +491,32 @@ const MatchDetail = () => {
         return matchData;
     };
 
-    const addToBetslip = (marketName, option) => {
-        const normalizedKey = normalizeMarketKey(marketName);
-        const marketTypeDisplay = (() => {
-            if (!normalizedKey) return 'Market';
-            if (normalizedKey === 'winner') return 'Winner';
-            if (normalizedKey.startsWith('totals') || normalizedKey.startsWith('alternate_totals') || normalizedKey.startsWith('team_totals') || normalizedKey.startsWith('alternate_team_totals')) return 'Totals';
-            if (normalizedKey.startsWith('spreads') || normalizedKey.startsWith('alternate_spreads')) return 'Handicap';
-            if (normalizedKey === 'outrights') return 'Outrights';
-            return getMarketTitle(normalizedKey);
-        })();
+  const addToBetslip = (marketName, option) => {
+    const normalizedKey = normalizeMarketKey(marketName);
+    const marketTypeDisplay = (() => {
+        const sel = String(option?.name || '').toLowerCase();
+        if (/^\s*\d+\s*-\s*\d+\s*$/.test(sel) && !/goals?/i.test(sel)) return 'Correct Score';
+        if (!normalizedKey) return 'Market';
+        if (normalizedKey === 'winner') return 'Winner';
+        if (normalizedKey.startsWith('totals') || normalizedKey.startsWith('alternate_totals') || normalizedKey.startsWith('team_totals') || normalizedKey.startsWith('alternate_team_totals')) return 'Totals';
+        if (normalizedKey.startsWith('spreads') || normalizedKey.startsWith('alternate_spreads')) return 'Handicap';
+        if (normalizedKey === 'outrights') return 'Outrights';
+        return getMarketTitle(normalizedKey);
+    })();
 
-        const bet = {
+    const bet = {
             matchId: match._id || match.id,
             match: `${match.homeTeam} vs ${match.awayTeam}`,
             homeTeam: match.homeTeam,
             awayTeam: match.awayTeam,
             league: match.competition,
             market: normalizedKey,
-            marketDisplay: marketTypeDisplay,
-            selection: option?.name,
-            point: option?.point,
-            marketType: normalizedKey,
-            marketTypeDisplay,
-            odds: option?.odds,
+        marketDisplay: marketTypeDisplay,
+        selection: option?.name,
+        point: option?.point,
+        marketType: normalizedKey,
+        marketTypeDisplay,
+        odds: option?.odds,
             stake: 0,
             sport: match.sport
         };

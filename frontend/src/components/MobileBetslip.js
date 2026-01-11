@@ -131,6 +131,11 @@ const MobileBetslip = () => {
   const getMarketTypeDisplay = (bet) => {
     if (bet.marketTypeDisplay) return bet.marketTypeDisplay;
     if (bet.marketDisplay) return bet.marketDisplay;
+    const sel = (bet.selection || '').toLowerCase();
+    if (sel) {
+      if (/^\s*\d+\s*-\s*\d+\s*$/.test(sel) && !/goals?/i.test(sel)) return 'Correct Score';
+      if (/\b\d+\s*-\s*\d+\s*goals?\b/.test(sel) || /\b\d+\+\b/.test(sel)) return 'Multi Goals';
+    }
     const key = bet.market ? normalizeMarketKey(bet.market) : '';
     if (key) {
       if (key === 'winner') return 'Winner';
@@ -140,16 +145,11 @@ const MobileBetslip = () => {
       return getMarketTitle(key);
     }
     if (bet.type && ['1','X','2','home','away','draw'].includes(bet.type)) return 'Winner';
-    const sel = (bet.selection || '').toLowerCase();
-    if (sel) {
-      if (/\d+\s*-\s*\d+/.test(sel)) return 'Correct Score';
-      if (sel.includes('over') || sel.includes('under') || typeof bet.point === 'number') return 'Totals';
-      if (sel.includes('both teams') || sel.includes('btts')) return 'Both Teams to Score';
-      if (sel.includes('corner')) return 'Corners';
-      if (sel.includes('card')) return 'Cards';
-      if (/\d+\s*-\s*\d+\s*goals/.test(sel) || /\d+\+/.test(sel)) return 'Multi Goals';
-      if (sel.includes('handicap') || sel.includes('+') || sel.includes('-')) return 'Handicap';
-    }
+    if (sel.includes('over') || sel.includes('under') || typeof bet.point === 'number') return 'Totals';
+    if (sel.includes('both teams') || sel.includes('btts')) return 'Both Teams to Score';
+    if (sel.includes('corner')) return 'Corners';
+    if (sel.includes('card')) return 'Cards';
+    if (sel.includes('handicap') || sel.includes('+') || sel.includes('-')) return 'Handicap';
     return 'Winner';
   };
 
