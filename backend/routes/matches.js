@@ -1834,6 +1834,7 @@ router.get('/live/real-time', async (req, res) => {
     const leagueMetaMap = await buildLeagueMetaMap()
 
     // Transform matches to include live data and real-time odds
+    const updates = []
     const transformedLiveMatches = liveMatches.map(match => {
       const matchObj = match
 
@@ -1883,6 +1884,12 @@ router.get('/live/real-time', async (req, res) => {
       else if (s.includes('baseball') || s.includes('mlb')) maxWindow = 180
 
       const statusComputed = (diffMins >= 0 && diffMins <= maxWindow) ? 'live' : 'finished'
+      if (statusComputed === 'finished' && matchObj.status !== 'finished') {
+        updates.push({
+          id: matchObj._id,
+          payload: { status: 'finished', finishedAt: now }
+        })
+      }
 
       let liveTime = undefined
       if (statusComputed === 'live') {
@@ -1944,6 +1951,12 @@ router.get('/live/real-time', async (req, res) => {
         fullLeagueTitle
       }
     })
+
+    // Persist status corrections (fire-and-forget)
+    try {
+      await Promise.all(updates.map(u => Match.updateOne({ _id: u.id }, { $set: u.payload })))
+      if (updates.length > 0) bus.emit('matches:changed')
+    } catch (_) {}
 
     console.log(`[LIVE MATCHES] Returning ${transformedLiveMatches.length} transformed live matches`)
 

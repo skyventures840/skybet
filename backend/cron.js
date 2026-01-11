@@ -34,8 +34,10 @@ try {
 function getMatchDuration (sport) {
   const s = sport ? sport.toLowerCase() : ''
 
-  // Soccer: 90 mins + 15 break + ~15 added = 120 mins
-  if (s.includes('soccer') || s.includes('football')) return 115 * 60 * 1000
+  // Soccer: 90 mins + 15 break + ~10 added ≈ 115 mins
+  if (s.includes('soccer')) return 115 * 60 * 1000
+  // American Football: 4x15 + breaks ≈ 110 mins
+  if (s.includes('americanfootball') || s.includes('nfl') || s.includes('ncaaf')) return 110 * 60 * 1000
 
   // Basketball: 4 quarters + breaks = ~2.5 hours
   if (s.includes('basketball') || s.includes('nba')) return 150 * 60 * 1000
@@ -282,6 +284,39 @@ async function updateMatchStatuses () {
   } catch (error) {
     logger.error('Error updating match statuses:', error)
   }
+}
+
+function getMaxWindowMinutes (sport) {
+  const s = sport ? sport.toLowerCase() : ''
+  if (s.includes('soccer')) return 115
+  if (s.includes('americanfootball') || s.includes('nfl') || s.includes('ncaaf')) return 110
+  if (s.includes('basketball') || s.includes('nba')) return 150
+  if (s.includes('tennis')) return 180
+  if (s.includes('hockey') || s.includes('nhl') || s.includes('icehockey')) return 150
+  if (s.includes('baseball') || s.includes('mlb')) return 180
+  if (s.includes('rugby')) return 110
+  return 180
+}
+
+async function forceFinishStaleLiveMatches () {
+  try {
+    const lives = await mongoose.model('Match').find({ status: 'live' }).select('_id startTime sport').lean()
+    const now = Date.now()
+    const idsToFinish = []
+    for (const m of lives) {
+      if (!m.startTime) continue
+      const start = new Date(m.startTime).getTime()
+      const diffMins = Math.floor((now - start) / 60000)
+      const maxWindow = getMaxWindowMinutes(m.sport)
+      if (diffMins >= 0 && diffMins > maxWindow) {
+        idsToFinish.push(m._id)
+      }
+    }
+    if (idsToFinish.length > 0) {
+      await mongoose.model('Match').updateMany({ _id: { $in: idsToFinish } }, { $set: { status: 'finished', finishedAt: new Date() } })
+      try { if (global.websocketServer && typeof global.websocketServer.broadcastLiveMatchesUpdate === 'function') await global.websocketServer.broadcastLiveMatchesUpdate() } catch (_) {}
+    }
+  } catch (e) {}
 }
 
 /**
@@ -764,6 +799,12 @@ const startCronJobs = async () => {
     } finally {
       isStatusUpdating = false
     }
+  })
+
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      await forceFinishStaleLiveMatches()
+    } catch (_) {}
   })
 
   // Process scheduled events and update live bet statuses every minute

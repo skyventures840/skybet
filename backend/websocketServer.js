@@ -544,6 +544,7 @@ class WebSocketServer {
 
     // Soccer specific logic
     if (sport && (sport.includes('soccer') || sport.includes('football'))) {
+      if (diffMins > 115) return null
       if (diffMins <= 45) {
         return `${diffMins}'`
       } else if (diffMins <= 50) {
@@ -558,6 +559,21 @@ class WebSocketServer {
       }
     }
 
+    // Generic cap windows
+    const s = String(sport || '').toLowerCase()
+    if (s.includes('basketball')) {
+      if (diffMins > 150) return null
+    } else if (s.includes('tennis')) {
+      if (diffMins > 180) return null
+    } else if (s.includes('hockey')) {
+      if (diffMins > 150) return null
+    } else if (s.includes('baseball')) {
+      if (diffMins > 180) return null
+    } else if (s.includes('rugby')) {
+      if (diffMins > 110) return null
+    } else {
+      if (diffMins > 180) return null
+    }
     return `${diffMins}'`
   }
 

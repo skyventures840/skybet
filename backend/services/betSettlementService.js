@@ -902,7 +902,8 @@ class BetSettlementService {
   // --- Evaluation Helper Functions ---
 
   evaluateMatchWinnerBet (selection, homeScore, awayScore, match) {
-    const sel = selection.toLowerCase()
+    const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+    const sel = norm(selection)
     if (sel.includes('home') || sel === '1') return homeScore > awayScore
     if (sel.includes('away') || sel === '2') return awayScore > homeScore
     if (sel.includes('draw') || sel === 'x') return homeScore === awayScore
@@ -910,8 +911,11 @@ class BetSettlementService {
     if (match) {
       const homeTeam = match.homeTeam || match.home_team
       const awayTeam = match.awayTeam || match.away_team
-      if (homeTeam && sel.includes(homeTeam.toLowerCase())) return homeScore > awayScore
-      if (awayTeam && sel.includes(awayTeam.toLowerCase())) return awayScore > homeScore
+      const homeNorm = norm(homeTeam)
+      const awayNorm = norm(awayTeam)
+      const contains = (a, b) => a.includes(b) || b.includes(a)
+      if (homeNorm && contains(sel, homeNorm)) return homeScore > awayScore
+      if (awayNorm && contains(sel, awayNorm)) return awayScore > homeScore
     }
     return false
   }
