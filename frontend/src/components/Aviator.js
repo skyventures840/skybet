@@ -466,7 +466,16 @@ const Aviator = () => {
     
     // E = 0.99 / (1 - r)
     const crash = 0.99 / (1 - r);
-    return Math.max(1.00, Math.floor(crash * 100) / 100);
+    return Math.max(1.00, Math.round(crash * 100) / 100);
+  };
+  
+  const fetchCrashPoint = async () => {
+    try {
+      const res = await apiService.nextAviatorCrashPoint();
+      const v = res?.data?.crashPoint;
+      if (typeof v === 'number' && v >= 1) return Math.max(1.00, Math.round(v * 100) / 100);
+    } catch (e) { void e; }
+    return generateCrashPoint();
   };
 
   // Start Game Loop
@@ -475,7 +484,27 @@ const Aviator = () => {
     gameStateRef.current = 'FLYING';
     setMultiplier(1.00);
     startTimeRef.current = Date.now();
+    // Set a safe baseline immediately to avoid 0.00x interference
     crashPointRef.current = generateCrashPoint();
+    // Avoid repeating identical crash values consecutively
+    if (!window.__lastCrash) window.__lastCrash = null;
+    if (window.__lastCrash != null && Math.abs(crashPointRef.current - window.__lastCrash) < 0.001) {
+      const jitter = (Math.random() * 0.03) + 0.01; // 0.01 - 0.04
+      crashPointRef.current = Math.max(1.00, Math.round((crashPointRef.current + jitter) * 100) / 100);
+    }
+    fetchCrashPoint()
+      .then(v => {
+        if (typeof v === 'number' && v >= 1) {
+          if (window.__lastCrash != null && Math.abs(v - window.__lastCrash) < 0.001) {
+            const jitter = (Math.random() * 0.03) + 0.01;
+            v = Math.max(1.00, Math.round((v + jitter) * 100) / 100);
+          }
+          crashPointRef.current = v;
+        }
+      })
+      .catch(() => {
+        // keep baseline
+      });
     trailRef.current = [];
     cashingOutRef.current = { 1: false, 2: false };
     

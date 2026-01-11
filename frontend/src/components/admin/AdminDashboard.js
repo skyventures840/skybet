@@ -76,6 +76,14 @@ const AdminDashboard = () => {
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [showAllBets, setShowAllBets] = useState(false);
   const [openActionId, setOpenActionId] = useState(null);
+  const [aviatorRules, setAviatorRules] = useState([]);
+  const [aviatorLoading, setAviatorLoading] = useState(false);
+  const [newFloor, setNewFloor] = useState('');
+  const [scheduleStart, setScheduleStart] = useState('');
+  const [scheduleEnd, setScheduleEnd] = useState('');
+  const [scheduleMin, setScheduleMin] = useState('');
+  const [scheduleMax, setScheduleMax] = useState('');
+  const [schedulePriority, setSchedulePriority] = useState(10);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1138,6 +1146,240 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const renderAviatorManagement = () => (
+    <div className="admin-settings-container aviator-management">
+      <div className="settings-section">
+        <h3 className="text-white">Aviator Management</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-4 bg-gray-900 rounded border border-gray-700">
+            <div className="mb-3 text-white font-semibold">Global Floor</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                value={newFloor}
+                onChange={(e) => setNewFloor(e.target.value)}
+                className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                placeholder="e.g. 5.5"
+              />
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer"
+                onClick={async () => {
+                  if (!newFloor) return;
+                  try {
+                    setAviatorLoading(true);
+                    await apiService.createAviatorRule({
+                      name: `Floor ${newFloor}x`,
+                      type: 'global_floor',
+                      floorMultiplier: parseFloat(newFloor),
+                      active: true,
+                      priority: 0
+                    });
+                    setNewFloor('');
+                    await fetchAviatorRules();
+                  } catch (e) { alert('Failed to save floor rule'); }
+                  finally { setAviatorLoading(false); }
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-900 rounded border border-gray-700">
+            <div className="mb-3 text-white font-semibold">Scheduled Control Window</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-white text-sm mb-1">Start</label>
+                <input
+                  type="time"
+                  value={scheduleStart}
+                  onChange={(e) => setScheduleStart(e.target.value)}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                />
+              </div>
+              <div>
+                <label className="block text-white text-sm mb-1">End</label>
+                <input
+                  type="time"
+                  value={scheduleEnd}
+                  onChange={(e) => setScheduleEnd(e.target.value)}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                />
+              </div>
+              <div>
+                <label className="block text-white text-sm mb-1">Min</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={scheduleMin}
+                  onChange={(e) => setScheduleMin(e.target.value)}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                  placeholder="10"
+                />
+              </div>
+              <div>
+                <label className="block text-white text-sm mb-1">Max</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={scheduleMax}
+                  onChange={(e) => setScheduleMax(e.target.value)}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                  placeholder="15"
+                />
+              </div>
+              <div>
+                <label className="block text-white text-sm mb-1">Priority</label>
+                <input
+                  type="number"
+                  value={schedulePriority}
+                  onChange={(e) => setSchedulePriority(parseInt(e.target.value || '0', 10))}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer"
+                onClick={async () => {
+                  if (!scheduleStart || !scheduleEnd || !scheduleMin || !scheduleMax) return;
+                  try {
+                    setAviatorLoading(true);
+                    await apiService.createAviatorRule({
+                      name: `Window ${scheduleStart}-${scheduleEnd} ${scheduleMin}-${scheduleMax}x`,
+                      type: 'schedule',
+                      startTime: scheduleStart,
+                      endTime: scheduleEnd,
+                      rangeMin: parseFloat(scheduleMin),
+                      rangeMax: parseFloat(scheduleMax),
+                      active: true,
+                      priority: schedulePriority
+                    });
+                    setScheduleStart(''); setScheduleEnd(''); setScheduleMin(''); setScheduleMax('');
+                    await fetchAviatorRules();
+                  } catch (e) { alert('Failed to save schedule rule'); }
+                  finally { setAviatorLoading(false); }
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="settings-section">
+        <div className="flex justify-between items-center">
+          <h3 className="text-white">Active Rules</h3>
+          <button
+            className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded"
+            onClick={fetchAviatorRules}
+          >
+            Refresh
+          </button>
+        </div>
+        {aviatorLoading ? (
+          <div style={{ padding: '12px 0' }}>
+            <SkeletonLoader type="generic" count={3} />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="admin-table w-full text-white">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Active</th>
+                  <th>Details</th>
+                  <th>Priority</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aviatorRules.map(r => (
+                  <tr key={r._id}>
+                    <td>{r.name}</td>
+                    <td>{r.type}</td>
+                    <td>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!!r.active}
+                          onChange={async (e) => {
+                            try {
+                              await apiService.updateAviatorRule(r._id, { active: e.target.checked });
+                              await fetchAviatorRules();
+                            } catch (e) { void e; }
+                          }}
+                        />
+                      </label>
+                    </td>
+                    <td>
+                      {r.type === 'global_floor' ? (
+                        <span>{r.floorMultiplier}x</span>
+                      ) : (
+                        <span>{r.startTime}-{r.endTime} • {r.rangeMin}-{r.rangeMax}x</span>
+                      )}
+                    </td>
+                    <td>{r.priority}</td>
+                    <td className="space-x-2">
+                      <button
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded"
+                        onClick={async () => {
+                          try {
+                            await apiService.updateAviatorRule(r._id, { active: true });
+                            await fetchAviatorRules();
+                          } catch (e) { alert('Failed to activate'); }
+                        }}
+                      >
+                        Activate
+                      </button>
+                      <button
+                        className="bg-gray-600 hover:bg-gray-700 text-white py-1 px-3 rounded"
+                        onClick={async () => {
+                          try {
+                            await apiService.updateAviatorRule(r._id, { active: false });
+                            await fetchAviatorRules();
+                          } catch (e) { alert('Failed to disable'); }
+                        }}
+                      >
+                        Disable
+                      </button>
+                      <button
+                        className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded"
+                        onClick={async () => { try { await apiService.deleteAviatorRule(r._id); await fetchAviatorRules(); } catch (e) { void e; } }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  async function fetchAviatorRules () {
+    try {
+      setAviatorLoading(true)
+      const res = await apiService.getAviatorRules()
+      setAviatorRules(res?.data?.rules || [])
+    } finally {
+      setAviatorLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'aviator-management') {
+      fetchAviatorRules()
+    }
+  }, [activeTab])
+
   return (
     <div className={`admin-dashboard ${sidebarCollapsed ? 'collapsed' : ''}`}>
       <div className="admin-sidebar">
@@ -1194,6 +1436,13 @@ const AdminDashboard = () => {
               <FontAwesomeIcon icon={faCog} />
               {!sidebarCollapsed && <span>Settings</span>}
             </li>
+            <li 
+              className={activeTab === 'aviator-management' ? 'active' : ''}
+              onClick={() => setActiveTab('aviator-management')}
+            >
+              <FontAwesomeIcon icon={faFutbol} />
+              {!sidebarCollapsed && <span>Aviator Management</span>}
+            </li>
           </ul>
         </nav>
       </div>
@@ -1205,6 +1454,7 @@ const AdminDashboard = () => {
         {activeTab === 'match-management' && <ManageMatches />}
         {activeTab === 'hero' && renderHeroSection()}
         {activeTab === 'settings' && renderSettings()}
+        {activeTab === 'aviator-management' && renderAviatorManagement()}
       </div>
 
       {/* Bet Edit Modal */}

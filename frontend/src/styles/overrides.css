@@ -233,17 +233,41 @@
     margin: 0 !important;
     border-radius: 0 !important;
   }
+}
 
-  .sport-container {
-    margin-bottom: 12px !important;
-  }
-
-  .matches-grid .match-card:last-child,
-  .matches-grid .match-container:last-child,
-  .subcategory-section .match-card:last-child,
-  .subcategory-section .match-container:last-child {
-    border-radius: var(--radius-md) !important;
-  }
+.aviator-management {
+  color: #fff !important;
+}
+.aviator-management h3,
+.aviator-management label,
+.aviator-management th,
+.aviator-management td {
+  color: #fff !important;
+}
+.aviator-management input,
+.aviator-management select,
+.aviator-management textarea {
+  background-color: #1f2937 !important;
+  border-color: #4b5563 !important;
+  color: #fff !important;
+}
+.aviator-management input::placeholder,
+.aviator-management textarea::placeholder {
+  color: #9ca3af !important;
+}
+.aviator-management button {
+  cursor: pointer !important;
+  color: #fff !important;
+}
+.aviator-management input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) !important;
+}
+.aviator-management input[type="time"]::-webkit-datetime-edit,
+.aviator-management input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.aviator-management input[type="time"]::-webkit-datetime-edit-hour-field,
+.aviator-management input[type="time"]::-webkit-datetime-edit-minute-field,
+.aviator-management input[type="time"]::-webkit-datetime-edit-ampm-field {
+  color: #fff !important;
 }
 
 /* Desktop: render betslip type and pick as plain text (no cards) */

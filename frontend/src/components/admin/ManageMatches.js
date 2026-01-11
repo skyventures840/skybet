@@ -273,7 +273,7 @@ const ManageMatches = () => {
           home: formData.homeTeam || 'Home',
           away: formData.awayTeam || 'Away'
         },
-        startTime: formData.startTime || new Date().toISOString(),
+        startTime: formData.startTime ? new Date(formData.startTime).toISOString() : new Date().toISOString(),
         odds: formData.odds && Object.keys(formData.odds).length > 0 ? formData.odds : {},
         sport: (formData.sport || 'football').toLowerCase(),
         status: formData.status || 'upcoming',
@@ -374,7 +374,16 @@ const ManageMatches = () => {
       sport: match.sport,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
-      startTime: match.startTime.slice(0, 16),
+      startTime: (() => {
+        const d = new Date(match.startTime);
+        const pad = (n) => String(n).padStart(2, '0');
+        const y = d.getFullYear();
+        const m = pad(d.getMonth() + 1);
+        const day = pad(d.getDate());
+        const h = pad(d.getHours());
+        const min = pad(d.getMinutes());
+        return `${y}-${m}-${day}T${h}:${min}`;
+      })(),
       status: match.status,
       homeScore: match.homeScore,
       awayScore: match.awayScore,

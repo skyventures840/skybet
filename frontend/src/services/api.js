@@ -434,6 +434,65 @@ const apiService = {
   getAdminUsers: () => cachedGet('/admin/users', 30000),
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+
+  // Aviator management (with dev fallback to port 5001)
+  getAviatorRules: async () => {
+    try {
+      return await api.get('/aviator/rules');
+    } catch (err) {
+      const on3000 = typeof window !== 'undefined' && String(window.location.port) === '3000';
+      if (on3000) {
+        const stored = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : null;
+        const token = stored && stored.token ? `Bearer ${stored.token}` : undefined;
+        const alt = axios.create({ baseURL: 'http://localhost:5001/api', withCredentials: true, headers: { 'Content-Type': 'application/json', Authorization: token }, timeout: 12000 });
+        return await alt.get('/aviator/rules');
+      }
+      throw err;
+    }
+  },
+  createAviatorRule: async (data) => {
+    try {
+      return await api.post('/aviator/rules', data);
+    } catch (err) {
+      const on3000 = typeof window !== 'undefined' && String(window.location.port) === '3000';
+      if (on3000) {
+        const stored = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : null;
+        const token = stored && stored.token ? `Bearer ${stored.token}` : undefined;
+        const alt = axios.create({ baseURL: 'http://localhost:5001/api', withCredentials: true, headers: { 'Content-Type': 'application/json', Authorization: token }, timeout: 12000 });
+        return await alt.post('/aviator/rules', data);
+      }
+      throw err;
+    }
+  },
+  updateAviatorRule: async (id, data) => {
+    try {
+      return await api.put(`/aviator/rules/${id}`, data);
+    } catch (err) {
+      const on3000 = typeof window !== 'undefined' && String(window.location.port) === '3000';
+      if (on3000) {
+        const stored = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : null;
+        const token = stored && stored.token ? `Bearer ${stored.token}` : undefined;
+        const alt = axios.create({ baseURL: 'http://localhost:5001/api', withCredentials: true, headers: { 'Content-Type': 'application/json', Authorization: token }, timeout: 12000 });
+        return await alt.put(`/aviator/rules/${id}`, data);
+      }
+      throw err;
+    }
+  },
+  deleteAviatorRule: async (id) => {
+    try {
+      return await api.delete(`/aviator/rules/${id}`);
+    } catch (err) {
+      const on3000 = typeof window !== 'undefined' && String(window.location.port) === '3000';
+      if (on3000) {
+        const stored = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : null;
+        const token = stored && stored.token ? `Bearer ${stored.token}` : undefined;
+        const alt = axios.create({ baseURL: 'http://localhost:5001/api', withCredentials: true, headers: { 'Content-Type': 'application/json', Authorization: token }, timeout: 12000 });
+        return await alt.delete(`/aviator/rules/${id}`);
+      }
+      throw err;
+    }
+  },
+  nextAviatorCrashPoint: () => api.get('/aviator/next-crash'),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   blockUser: (userId) => {
     return api.put(`/users/${userId}/block`);

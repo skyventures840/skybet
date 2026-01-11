@@ -627,8 +627,8 @@ const Bets = () => {
 
     // Winner (1/X/2)
     if (pick.kind === 'winner' && (pick.type === '1' || pick.type === 'x' || pick.type === '2')) {
-      if (hs > as) return 'Home Win';
-      if (hs < as) return 'Away Win';
+      if (hs > as) return match.homeTeam || 'Home';
+      if (hs < as) return match.awayTeam || 'Away';
       return 'Draw';
     }
 
@@ -703,8 +703,8 @@ const Bets = () => {
     }
 
     // Fallback: general outcome from scores
-    if (hs > as) return 'Home Win';
-    if (hs < as) return 'Away Win';
+    if (hs > as) return match.homeTeam || 'Home';
+    if (hs < as) return match.awayTeam || 'Away';
     return 'Draw';
   };
 
@@ -713,13 +713,15 @@ const Bets = () => {
     const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
     const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
     if (!isCompleted) return 'pending';
-    const st = String(match?.status || '').toLowerCase();
-    if (st === 'win') return 'won';
-    if (st === 'loss') return 'lost';
     const hs = match?.result?.homeScore;
     const as = match?.result?.awayScore;
     const hasScores = typeof hs === 'number' && typeof as === 'number';
-    if (!hasScores) return 'pending';
+    if (!hasScores) {
+      const st = String(match?.status || '').toLowerCase();
+      if (st === 'win') return 'won';
+      if (st === 'loss') return 'lost';
+      return 'pending';
+    }
 
     const pick = parsePick(match?.selection, match?.point, match);
     const outcomeText = deriveOutcome(match);
@@ -734,13 +736,23 @@ const Bets = () => {
       return lowOutcome === lowTarget ? 'won' : 'lost';
     }
     if (pick.kind === 'winner' && pick.type === '1') {
-      return lowOutcome === 'homewin' ? 'won' : 'lost';
+      const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const homeNorm = norm(match.homeTeam || match.home_team || '');
+      const outcomeNorm = norm(outcomeText);
+      const isHomeOutcome = outcomeNorm === 'home win' || outcomeNorm === homeNorm || outcomeNorm === 'home';
+      return isHomeOutcome ? 'won' : 'lost';
     }
     if (pick.kind === 'winner' && pick.type === '2') {
-      return lowOutcome === 'awaywin' ? 'won' : 'lost';
+      const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const awayNorm = norm(match.awayTeam || match.away_team || '');
+      const outcomeNorm = norm(outcomeText);
+      const isAwayOutcome = outcomeNorm === 'away win' || outcomeNorm === awayNorm || outcomeNorm === 'away';
+      return isAwayOutcome ? 'won' : 'lost';
     }
     if (pick.kind === 'winner' && pick.type === 'x') {
-      return lowOutcome === 'draw' ? 'won' : 'lost';
+      const outcomeNorm = (outcomeText || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const isDrawOutcome = outcomeNorm === 'draw' || outcomeNorm === 'x';
+      return isDrawOutcome ? 'won' : 'lost';
     }
 
     if (pick.kind === 'handicap' && pick.point != null && (pick.side === 'home' || pick.side === 'away')) {
@@ -750,9 +762,14 @@ const Bets = () => {
       return lowOutcome === lowTarget ? 'won' : 'lost';
     }
 
-    if ((pick.kind === 'btts' || marketNorm === 'both_teams_to_score') && (pick.type === 'yes' || pick.type === 'no' || /yes|no/i.test(pick.raw || ''))) {
+    if (pick.kind === 'btts' || marketNorm === 'both_teams_to_score') {
       const sel = (match?.selection || '').toLowerCase();
-      const inferredType = sel.includes('no') ? 'no' : sel.includes('yes') ? 'yes' : (pick.type || '');
+      let inferredType = pick.type;
+      if (!inferredType) {
+        if (/\bng\b|\bno\b/.test(sel)) inferredType = 'no';
+        else if (/\bgg\b|\byes\b/.test(sel)) inferredType = 'yes';
+        else inferredType = 'yes';
+      }
       const lowTarget = inferredType.toLowerCase();
       return lowOutcome === lowTarget ? 'won' : 'lost';
     }
@@ -1107,12 +1124,18 @@ const Bets = () => {
                         </div>
                         <div className="bet-summary-amounts">
                           <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
-                          <span className={`bet-status status-${(bet.status || 'pending').toLowerCase()}`}>
-                            {(() => {
-                              const s = (bet.status || 'pending').toLowerCase();
-                              return s === 'won' ? 'Won' : s === 'lost' ? 'Lost' : s === 'void' ? 'Void' : 'Pending';
-                            })()}
-                          </span>
+                          {(() => {
+                            const agg = (() => {
+                              const statuses = (displayMatches || []).map(m => m.derivedStatus);
+                              if (statuses.includes('lost')) return 'lost';
+                              if (statuses.includes('pending')) return 'pending';
+                              if (statuses.includes('void')) return 'void';
+                              if (statuses.length > 0 && statuses.every(s => s === 'won')) return 'won';
+                              return (bet.status || 'pending').toLowerCase();
+                            })();
+                            const label = agg === 'won' ? 'Won' : agg === 'lost' ? 'Lost' : agg === 'void' ? 'Void' : 'Pending';
+                            return <span className={`bet-status status-${agg}`}>{label}</span>;
+                          })()}
                         </div>
                       </div>
                     )}
