@@ -42,6 +42,9 @@ module.exports = [
         IntersectionObserver: "readonly",
         queueMicrotask: "readonly",
         alert: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        Audio: "readonly",
         // React globals
         React: "readonly",
         __REACT_DEVTOOLS_GLOBAL_HOOK__: "readonly"
