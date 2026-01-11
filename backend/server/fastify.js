@@ -189,6 +189,11 @@ async function start () {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true)
 
+        // Development convenience: allow localhost origins automatically
+        if (!isProduction && /^(http:\/\/(localhost|127\.0\.0\.1):\d{2,5})$/i.test(origin)) {
+          return callback(null, true)
+        }
+
         if (allowedOrigins.indexOf(origin) !== -1) {
           callback(null, true)
         } else {

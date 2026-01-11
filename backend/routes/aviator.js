@@ -1,5 +1,7 @@
 const express = require('express')
 const router = express.Router()
+const AviatorRule = require('../models/AviatorRule')
+const { adminAuth } = require('../middleware/auth')
 const User = require('../models/User')
 const Bet = require('../models/Bet')
 const { auth } = require('../middleware/auth')
@@ -152,6 +154,118 @@ router.post('/cancel', auth, async (req, res) => {
   } catch (error) {
     console.error('Aviator cancel error:', error)
     res.status(500).json({ error: 'Server error' })
+  }
+})
+
+function toMinutes (hhmm) {
+  if (!hhmm || typeof hhmm !== 'string') return null
+  const parts = hhmm.split(':')
+  if (parts.length < 2) return null
+  const h = parseInt(parts[0], 10)
+  const m = parseInt(parts[1], 10)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  return (h * 60) + m
+}
+
+function baseCrashRng () {
+  const r = Math.random()
+  if (r < 0.01) return 1.00
+  const crash = 0.99 / (1 - r)
+  return Math.max(1.00, Math.round(crash * 100) / 100)
+}
+
+async function computeOverrideCrash () {
+  const now = new Date()
+  const minutesNow = now.getHours() * 60 + now.getMinutes()
+  const rules = await AviatorRule.find({ active: true }).sort({ priority: -1, updatedAt: -1 }).lean()
+  const base = baseCrashRng()
+  // Apply schedule as floor-only to preserve randomness
+  for (const r of rules) {
+    if (r.type !== 'schedule') continue
+    const s = toMinutes(r.startTime)
+    const e = toMinutes(r.endTime)
+    if (s == null || e == null || r.rangeMin == null) continue
+    const inWindow = s <= e ? (minutesNow >= s && minutesNow <= e) : (minutesNow >= s || minutesNow <= e)
+    if (inWindow) {
+      const min = Math.max(1, Number(r.rangeMin))
+      const floored = Math.max(min, base)
+      return Math.max(1.00, Math.round(floored * 100) / 100)
+    }
+  }
+  let floorRule = null
+  for (const r of rules) {
+    if (r.type !== 'global_floor') continue
+    if (r.floorMultiplier != null && r.floorMultiplier >= 1) { floorRule = r; break }
+  }
+  if (floorRule) {
+    const floor = Math.max(1, Number(floorRule.floorMultiplier))
+    return Math.max(1.00, Math.max(floor, base))
+  }
+  return Math.max(1.00, base)
+}
+
+router.get('/next-crash', auth, async (req, res) => {
+  try {
+    const v = await computeOverrideCrash()
+    res.json({ crashPoint: v })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+router.get('/rules', auth, adminAuth, async (req, res) => {
+  try {
+    const rules = await AviatorRule.find({}).sort({ priority: -1, createdAt: -1 }).lean()
+    res.json({ rules })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+router.post('/rules', auth, adminAuth, async (req, res) => {
+  try {
+    const payload = req.body || {}
+    const rule = new AviatorRule({
+      name: payload.name || 'Rule',
+      type: payload.type,
+      active: payload.active ?? true,
+      floorMultiplier: payload.floorMultiplier ?? null,
+      startTime: payload.startTime ?? null,
+      endTime: payload.endTime ?? null,
+      rangeMin: payload.rangeMin ?? null,
+      rangeMax: payload.rangeMax ?? null,
+      priority: payload.priority ?? 0,
+      createdBy: req.user.id
+    })
+    await rule.save()
+    res.json({ success: true, rule })
+  } catch (e) {
+    res.status(400).json({ error: e.message })
+  }
+})
+
+router.put('/rules/:id', auth, adminAuth, async (req, res) => {
+  try {
+    const updates = req.body || {}
+    const rule = await AviatorRule.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true }
+    )
+    if (!rule) return res.status(404).json({ error: 'Not found' })
+    res.json({ success: true, rule })
+  } catch (e) {
+    res.status(400).json({ error: e.message })
+  }
+})
+
+router.delete('/rules/:id', auth, adminAuth, async (req, res) => {
+  try {
+    const rule = await AviatorRule.findByIdAndDelete(req.params.id)
+    if (!rule) return res.status(404).json({ error: 'Not found' })
+    res.json({ success: true })
+  } catch (e) {
+    res.status(400).json({ error: e.message })
   }
 })
 

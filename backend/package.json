@@ -8,8 +8,6 @@
     "start:production": "node start-production.js",
     "dev": "nodemon server.js",
     "cron": "node run-cron.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "validate-env": "node validate-env.js",

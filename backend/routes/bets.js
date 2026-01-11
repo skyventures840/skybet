@@ -809,6 +809,41 @@ router.get('/my-bets', auth, cacheUserBets(60), [
         return { ...m, result: enrichedResult, outcome, matchStatus }
       })
 
+      let displayStatus = bet.status
+      try {
+        const marketKey = String(bet.market || '').toLowerCase()
+        const selRaw = String(bet.selection || '').toLowerCase()
+        const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+        const contains = (a, b) => a.includes(b) || b.includes(a)
+        const homeNorm = norm(matchInfo.homeTeam || '')
+        const awayNorm = norm(matchInfo.awayTeam || '')
+        const selNorm = norm(selRaw)
+        let selCode = null
+        const isWinnerMarket = marketKey.includes('winner') || marketKey.includes('h2h') || marketKey.includes('moneyline')
+        if (isWinnerMarket || ['1', 'x', '2'].includes(selRaw) || selRaw.includes('home') || selRaw.includes('away') || selRaw.includes('draw') || contains(selNorm, homeNorm) || contains(selNorm, awayNorm)) {
+          if (selRaw === '1' || selRaw.includes('home') || contains(selNorm, homeNorm)) selCode = '1'
+          else if (selRaw === '2' || selRaw.includes('away') || contains(selNorm, awayNorm)) selCode = '2'
+          else if (selRaw === 'x' || selRaw.includes('draw') || selRaw.includes('tie')) selCode = 'X'
+        }
+        const final = resultInfo.finalOutcome || null
+        const isCompleted = isFinal && final != null
+        if (isCompleted && selCode) displayStatus = selCode === final ? 'won' : 'lost'
+
+        // Harmonize BTTS (Both Teams To Score) as well, independent of finalOutcome
+        const isBTTS = marketKey.includes('both_teams_to_score') || /btts|both\s*teams\s*to\s*score|gg|ng/i.test(selRaw)
+        if (isFinal && (resultInfo.homeScore != null && resultInfo.awayScore != null) && isBTTS) {
+          const bothScored = Number(resultInfo.homeScore) > 0 && Number(resultInfo.awayScore) > 0
+          let wantYes = null
+          if (/\bng\b|\bno\b/i.test(selRaw)) wantYes = false
+          else if (/\bgg\b|\byes\b/i.test(selRaw)) wantYes = true
+          else {
+            // Default to YES if selection is generic BTTS without qualifier
+            wantYes = true
+          }
+          displayStatus = (bothScored === wantYes) ? 'won' : 'lost'
+        }
+      } catch (_) {}
+
       return {
         id: bet._id,
         match: matchInfo,
@@ -820,7 +855,7 @@ router.get('/my-bets', auth, cacheUserBets(60), [
         stake: bet.stake,
         potentialWin: bet.potentialWin,
         actualWin: bet.actualWin,
-        status: bet.status,
+        status: displayStatus,
         settledAt: bet.settledAt,
         matchId: bet.matchId,
         matches
