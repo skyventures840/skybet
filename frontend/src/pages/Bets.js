@@ -504,6 +504,7 @@ const Bets = () => {
     let player = null;
     let scoreHome = null;
     let scoreAway = null;
+    let pickedTeam = null;
 
     const parenMatch = raw.match(/\(([-+]?\d+(?:\.\d+)?)\)/);
     const numberMatch = raw.match(/(-?\d+(?:\.\d+)?)/);
@@ -537,8 +538,8 @@ const Bets = () => {
       const homeNorm = norm(matchCtx.homeTeam || matchCtx.home_team || '');
       const awayNorm = norm(matchCtx.awayTeam || matchCtx.away_team || '');
       const contains = (a, b) => a.includes(b) || b.includes(a);
-      if (homeNorm && contains(selNorm, homeNorm)) { kind = 'winner'; type = '1'; side = 'home'; }
-      else if (awayNorm && contains(selNorm, awayNorm)) { kind = 'winner'; type = '2'; side = 'away'; }
+      if (homeNorm && contains(selNorm, homeNorm)) { kind = 'winner'; type = '1'; side = 'home'; pickedTeam = matchCtx.homeTeam || matchCtx.home_team || null; }
+      else if (awayNorm && contains(selNorm, awayNorm)) { kind = 'winner'; type = '2'; side = 'away'; pickedTeam = matchCtx.awayTeam || matchCtx.away_team || null; }
     }
 
     // Handicap/Spread: detect side and signed point
@@ -596,7 +597,13 @@ const Bets = () => {
       if (nameMatch) player = nameMatch[1].trim();
     }
 
-    return { kind, type, side, point: refPoint, bandMin, bandMax, player, raw, scoreHome, scoreAway };
+    if (kind === 'winner' && !pickedTeam && matchCtx) {
+      if (type === '1') pickedTeam = matchCtx.homeTeam || matchCtx.home_team || null;
+      else if (type === '2') pickedTeam = matchCtx.awayTeam || matchCtx.away_team || null;
+      else if (type === 'x') pickedTeam = 'Draw';
+    }
+
+    return { kind, type, side, point: refPoint, bandMin, bandMax, player, raw, scoreHome, scoreAway, pickedTeam };
   };
 
   // Derive outcome text from match result, aligned to the pick context
@@ -611,7 +618,30 @@ const Bets = () => {
     const pick = parsePick(match?.selection, match?.point, match);
     const marketNorm = normalizeMarketKey(match?.market || (selectedBet ? selectedBet.market : '') || '');
 
-    if (!hasScores) return null;
+    if (!hasScores) {
+      const foRaw = match?.result?.finalOutcome;
+      if (foRaw != null) {
+        const fo = String(foRaw).toLowerCase();
+        if (marketNorm === 'both_teams_to_score') {
+          if (fo.includes('yes')) return 'Yes';
+          if (fo.includes('no')) return 'No';
+        }
+        if (pick.kind === 'odd_even' || marketNorm === 'odd_even') {
+          if (fo.includes('even')) return 'Even';
+          if (fo.includes('odd')) return 'Odd';
+        }
+        if (pick.kind === 'winner' || marketNorm === 'winner') {
+          if (fo.includes('home') && fo.includes('win')) return match.homeTeam || 'Home';
+          if (fo.includes('away') && fo.includes('win')) return match.awayTeam || 'Away';
+          if (fo.includes('draw') || fo === 'x') return 'Draw';
+          if (fo === '1' || fo === 'home') return match.homeTeam || 'Home';
+          if (fo === '2' || fo === 'away') return match.awayTeam || 'Away';
+          if (fo === 'x' || fo === 'draw') return 'Draw';
+        }
+        return fo ? fo.charAt(0).toUpperCase() + fo.slice(1) : null;
+      }
+      return null;
+    }
 
     // Totals (Over/Under)
     if (pick.kind === 'totals' && (pick.type === 'over' || pick.type === 'under')) {
@@ -718,8 +748,9 @@ const Bets = () => {
     const hasScores = typeof hs === 'number' && typeof as === 'number';
     if (!hasScores) {
       const st = String(match?.status || '').toLowerCase();
-      if (st === 'win') return 'won';
-      if (st === 'loss') return 'lost';
+      if (st === 'won' || st === 'win') return 'won';
+      if (st === 'lost' || st === 'loss') return 'lost';
+      if (st === 'void') return 'void';
       return 'pending';
     }
 
@@ -1127,10 +1158,11 @@ const Bets = () => {
                           {(() => {
                             const agg = (() => {
                               const statuses = (displayMatches || []).map(m => m.derivedStatus);
-                              if (statuses.includes('lost')) return 'lost';
                               if (statuses.includes('pending')) return 'pending';
-                              if (statuses.includes('void')) return 'void';
-                              if (statuses.length > 0 && statuses.every(s => s === 'won')) return 'won';
+                              const wonCount = statuses.filter(s => s === 'won').length;
+                              const totalCount = statuses.length;
+                              if (totalCount > 0 && wonCount === totalCount) return 'won';
+                              if (totalCount > 0) return 'lost';
                               return (bet.status || 'pending').toLowerCase();
                             })();
                             const label = agg === 'won' ? 'Won' : agg === 'lost' ? 'Lost' : agg === 'void' ? 'Void' : 'Pending';

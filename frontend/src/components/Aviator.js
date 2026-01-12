@@ -122,7 +122,7 @@ const Aviator = () => {
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
   const [multiplier, setMultiplier] = useState(1.00);
-  const [history, setHistory] = useState(() => generateInitialHistory(14));
+  const [history, setHistory] = useState([]);
   const [countdown, setCountdown] = useState(5);
   
   const dispatch = useDispatch();
@@ -134,6 +134,22 @@ const Aviator = () => {
       navigate('/login');
     }
   }, [isLoggedIn, navigate]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiService.getAviatorHistory();
+        const arr = (res?.data?.history || []).map(h => {
+          const v = typeof h === 'number' ? h : (typeof h?.value === 'number' ? h.value : parseFloat(h?.value));
+          return Number.isFinite(v) ? v : null;
+        }).filter(v => v != null && v >= 1).slice(0, 14);
+        if (!cancelled) setHistory(arr);
+      } catch (e) {
+        if (!cancelled) setHistory(generateInitialHistory(14));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // User State
   const [balanceMode] = useState('real');
@@ -460,7 +476,16 @@ const Aviator = () => {
   const generateCrashPoint = () => {
     // Simple algorithm: 1 / (random) but with house edge
     // For simulation: heavy weight on low numbers
-    const r = Math.random();
+    const r = (() => {
+      try {
+        if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+          const arr = new Uint32Array(1);
+          window.crypto.getRandomValues(arr);
+          return arr[0] / 4294967296;
+        }
+      } catch (e) { void e; }
+      return Math.random();
+    })();
     // 1% chance of instant crash at 1.00x
     if (r < 0.01) return 1.00;
     
@@ -473,7 +498,24 @@ const Aviator = () => {
     try {
       const res = await apiService.nextAviatorCrashPoint();
       const v = res?.data?.crashPoint;
-      if (typeof v === 'number' && v >= 1) return Math.max(1.00, Math.round(v * 100) / 100);
+      if (typeof v === 'number' && v >= 1) {
+        const m2 = Math.max(1.00, Math.round(v * 100) / 100);
+        try {
+          const last = typeof window !== 'undefined' ? window.__lastCrash : null;
+          if (last != null) {
+            const eq2 = Math.round(m2 * 100) === Math.round(Number(last) * 100);
+            const eq1 = Math.round(m2 * 10) === Math.round(Number(last) * 10);
+            const eq0 = Math.round(m2) === Math.round(Number(last));
+            if (eq2 || eq1 || eq0) {
+              const dir = Math.random() < 0.5 ? -1 : 1;
+              const step = 0.05 + Math.random() * 0.05;
+              const jittered = Math.max(1.00, Math.round((m2 + dir * step) * 100) / 100);
+              return jittered;
+            }
+          }
+        } catch (e) { void e; }
+        return m2;
+      }
     } catch (e) { void e; }
     return generateCrashPoint();
   };
@@ -484,27 +526,22 @@ const Aviator = () => {
     gameStateRef.current = 'FLYING';
     setMultiplier(1.00);
     startTimeRef.current = Date.now();
-    // Set a safe baseline immediately to avoid 0.00x interference
-    crashPointRef.current = generateCrashPoint();
-    // Avoid repeating identical crash values consecutively
-    if (!window.__lastCrash) window.__lastCrash = null;
-    if (window.__lastCrash != null && Math.abs(crashPointRef.current - window.__lastCrash) < 0.001) {
-      const jitter = (Math.random() * 0.03) + 0.01; // 0.01 - 0.04
-      crashPointRef.current = Math.max(1.00, Math.round((crashPointRef.current + jitter) * 100) / 100);
-    }
-    fetchCrashPoint()
-      .then(v => {
-        if (typeof v === 'number' && v >= 1) {
-          if (window.__lastCrash != null && Math.abs(v - window.__lastCrash) < 0.001) {
-            const jitter = (Math.random() * 0.03) + 0.01;
-            v = Math.max(1.00, Math.round((v + jitter) * 100) / 100);
-          }
-          crashPointRef.current = v;
-        }
-      })
-      .catch(() => {
-        // keep baseline
-      });
+    // Decide crash before animation to avoid UI overshoot
+    const baseline = generateCrashPoint();
+    crashPointRef.current = baseline;
+    Promise.race([
+      fetchCrashPoint(),
+      new Promise(resolve => setTimeout(() => resolve(baseline), 300))
+    ])
+    .then(v => {
+      const num = typeof v === 'number' && v >= 1 ? Math.max(1.00, Math.round(v * 100) / 100) : baseline;
+      crashPointRef.current = num;
+      try { window.__lastCrash = num; } catch (e) { void e; }
+      requestRef.current = requestAnimationFrame(animateGame);
+    })
+    .catch(() => {
+      requestRef.current = requestAnimationFrame(animateGame);
+    });
     trailRef.current = [];
     cashingOutRef.current = { 1: false, 2: false };
     
@@ -585,7 +622,7 @@ const Aviator = () => {
     });
     setLiveBets([...activeUserBets, ...fakeBets]);
 
-    requestRef.current = requestAnimationFrame(animateGame);
+    // animation starts after crash decided above
   }, []);
 
   // Animation Loop
@@ -659,11 +696,13 @@ const Aviator = () => {
   };
 
   const handleCrash = (finalMultiplier) => {
+    const m2 = Math.max(1.00, Math.round(finalMultiplier * 100) / 100);
     setGameState('CRASHED');
     gameStateRef.current = 'CRASHED';
-    setMultiplier(finalMultiplier);
+    setMultiplier(m2);
+    try { window.__lastCrash = m2; } catch (e) { void e; }
     crashTimeRef.current = Date.now();
-    setHistory(prev => [finalMultiplier, ...prev].slice(0, 100));
+    setHistory(prev => [m2, ...prev].slice(0, 100));
     
     // Mark all active live bets as lost (losses blend)
     setLiveBets(prev => prev.map(bet => {

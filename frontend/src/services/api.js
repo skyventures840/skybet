@@ -551,6 +551,7 @@ const apiService = {
   placeAviatorBet: (data) => api.post('/aviator/bet', data),
   cashOutAviator: (data) => api.post('/aviator/cashout', data),
   cancelAviatorBet: (data) => api.post('/aviator/cancel', data),
+  getAviatorHistory: () => api.get('/aviator/history'),
 
   // Payment endpoints
   createPayment: (paymentData) => api.post('/payments/create', paymentData),
