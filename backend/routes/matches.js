@@ -1023,6 +1023,97 @@ router.get('/:matchId/markets', async (req, res) => {
       hasOdds: !!match.odds
     })
 
+    // When a DB match is found and full markets are requested, try to enrich from Odds collection
+    if (isFull) {
+      try {
+        const windowMs = 12 * 60 * 60 * 1000
+        const start = match.startTime ? new Date(match.startTime) : null
+        const timeFilter = start ? { $gte: new Date(start.getTime() - windowMs), $lte: new Date(start.getTime() + windowMs) } : undefined
+        const oddsCandidateQuery = {
+          home_team: match.homeTeam,
+          away_team: match.awayTeam
+        }
+        if (timeFilter) oddsCandidateQuery.commence_time = timeFilter
+        const oddsData = await Odds.findOne(oddsCandidateQuery)
+          .select('gameId home_team away_team sport_key sport_title commence_time bookmakers')
+          .lean()
+        if (oddsData && Array.isArray(oddsData.bookmakers) && oddsData.bookmakers.length > 0) {
+          const normalizeMarketKey = (key) => {
+            const k = (key || '').toLowerCase()
+            const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_')
+            if (noLay === 'h2h' || noLay === 'moneyline' || noLay === 'h2h_3_way') return 'h2h'
+            if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads'
+            if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals'
+            if (noLay === 'double_chance') return 'double_chance'
+            if (noLay === 'draw_no_bet') return 'draw_no_bet'
+            if (noLay === 'both_teams_to_score' || noLay === 'btts') return 'both_teams_to_score'
+            return noLay
+          }
+          const normalizeTitleAndDescription = (key) => {
+            let title = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            let description = `Betting market for ${key.replace(/_/g, ' ')}`
+            if (key === 'h2h') {
+              title = 'H2H'
+              description = 'Head to Head - Pick the winner of the match'
+            } else if (key === 'totals') {
+              title = 'Total Goals'
+              description = 'Over/Under total goals in the match'
+            } else if (key === 'spreads') {
+              title = 'Point Spread'
+              description = 'Handicap betting with point spread'
+            } else if (key === 'outrights') {
+              title = 'Outright Winner'
+              description = 'Tournament or competition winner'
+            }
+            return { title, description }
+          }
+          const markets = []
+          const processed = new Set()
+          oddsData.bookmakers.forEach(bookmaker => {
+            (bookmaker.markets || []).forEach(market => {
+              const normalizedKey = normalizeMarketKey(market.key || '')
+              if (processed.has(normalizedKey)) return
+              processed.add(normalizedKey)
+              const { title, description } = normalizeTitleAndDescription(normalizedKey)
+              markets.push({
+                key: normalizedKey,
+                title,
+                description,
+                outcomes: (market.outcomes || []).map(o => ({
+                  name: o.name,
+                  price: o.price,
+                  point: o.point || null
+                }))
+              })
+            })
+          })
+          const responseData = {
+            id: match._id,
+            sport_key: match.sport || oddsData.sport_key || 'soccer',
+            sport_title: match.league || oddsData.sport_title || 'Football',
+            commence_time: match.startTime || oddsData.commence_time,
+            home_team: match.homeTeam || oddsData.home_team,
+            away_team: match.awayTeam || oddsData.away_team,
+            league: match.league || oddsData.sport_title,
+            status: match.status || 'upcoming',
+            last_update: match.updatedAt || new Date().toISOString(),
+            bookmakers: [{ key: 'merged', title: 'Merged', last_update: new Date().toISOString(), markets }],
+            odds: match.odds || {}
+          }
+          try {
+            cacheSet(cacheKeyPath, {}, responseData, 180)
+            res.set('X-Cache', 'MISS')
+            res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300')
+            const etag = computeEtag(responseData)
+            if (etag) res.set('ETag', etag)
+          } catch (_) {}
+          return res.json(responseData)
+        }
+      } catch (e) {
+        // fall back to internal odds handling below
+      }
+    }
+
     // Handle the actual odds structure: odds.default.odds.{key}
     let oddsData = null
     if (match.odds) {

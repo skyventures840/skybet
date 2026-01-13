@@ -338,8 +338,14 @@ router.get('/next-crash', auth, async (req, res) => {
   }
 })
 
-router.get('/history', auth, async (req, res) => {
+router.get('/history', async (req, res) => {
   try {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+      'Surrogate-Control': 'no-store'
+    })
     res.json({ history: lastCrashes })
   } catch (e) {
     res.status(500).json({ error: 'Server error' })
