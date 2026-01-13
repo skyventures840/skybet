@@ -122,7 +122,7 @@ const Aviator = () => {
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
   const [multiplier, setMultiplier] = useState(1.00);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(() => generateInitialHistory(14));
   const [countdown, setCountdown] = useState(5);
   
   const dispatch = useDispatch();
@@ -130,7 +130,15 @@ const Aviator = () => {
   const isLoggedIn = useSelector(state => state.auth?.loggedIn);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    const hasToken = (() => {
+      try {
+        const raw = localStorage.getItem('user');
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        return !!parsed?.token;
+      } catch { return false; }
+    })();
+    if (!isLoggedIn && !hasToken) {
       navigate('/login');
     }
   }, [isLoggedIn, navigate]);
@@ -143,9 +151,17 @@ const Aviator = () => {
           const v = typeof h === 'number' ? h : (typeof h?.value === 'number' ? h.value : parseFloat(h?.value));
           return Number.isFinite(v) ? v : null;
         }).filter(v => v != null && v >= 1).slice(0, 14);
-        if (!cancelled) setHistory(arr);
+        if (!cancelled) {
+          const minCount = 13;
+          const need = Math.max(0, minCount - arr.length);
+          const padded = need > 0 ? [...arr, ...generateInitialHistory(need)] : arr;
+          setHistory(padded.slice(0, 100));
+        }
       } catch (e) {
-        if (!cancelled) setHistory(generateInitialHistory(14));
+        if (!cancelled) {
+          const seeded = generateInitialHistory(14);
+          setHistory(seeded.slice(0, 100));
+        }
       }
     })();
     return () => { cancelled = true; };

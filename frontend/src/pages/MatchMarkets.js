@@ -5,6 +5,8 @@ import { useDispatch } from 'react-redux';
 import apiService from '../services/api';
 import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
 import enhancedCache from '../services/enhancedCache';
+import LockedOdds from '../components/LockedOdds';
+import { assessOddsRisk } from '../utils/riskManagement';
 
 export const transformInternalOddsToMarketsPublic = (matchData) => {
     if (!matchData?.odds) return [];
@@ -381,6 +383,20 @@ const MatchMarkets = () => {
                 markets.push({ key: 'totals', title: 'Totals', outcomes });
                 consume('over', 'under', 'total', 'TM', 'TU', 'tm', 'tu', 'Total');
             }
+        }
+
+        // 4. Handicap (spreads) from numeric keys
+        const homeHandicap = oddsData.homeHandicap;
+        const awayHandicap = oddsData.awayHandicap;
+        const handicapLine = oddsData.handicapLine;
+        if (homeHandicap && awayHandicap) {
+            const outcomes = [];
+            const formattedLineHome = handicapLine != null ? (handicapLine >= 0 ? `+${handicapLine}` : `${handicapLine}`) : null;
+            const formattedLineAway = handicapLine != null ? (handicapLine >= 0 ? `+${handicapLine}` : `${handicapLine}`) : null;
+            outcomes.push({ name: formattedLineHome ? `${homeName} (${formattedLineHome})` : homeName, price: Number(homeHandicap) });
+            outcomes.push({ name: formattedLineAway ? `${awayName} (${formattedLineAway})` : awayName, price: Number(awayHandicap) });
+            markets.push({ key: 'spreads', title: 'Handicap', outcomes });
+            consume('homeHandicap', 'awayHandicap', 'handicapLine');
         }
 
         // 5. Corners
@@ -810,12 +826,24 @@ const MatchMarkets = () => {
                             <span className="market-chevron">▼</span>
                         </button>
                         <div className="market-outcomes">
-                            {market.outcomes.map((outcome, index) => (
+                            {market.outcomes.map((outcome, index) => {
+                                const riskAssessment = assessOddsRisk(match, Number(outcome.price), outcome.name);
+                                if (riskAssessment.shouldDisable) {
+                                    return (
+                                        <LockedOdds
+                                            key={index}
+                                            riskAssessment={riskAssessment}
+                                            className="outcome-button"
+                                        />
+                                    );
+                                }
+                                return (
                                     <button key={index} className="outcome-button" onClick={() => addToBetslip(market.key, outcome, market.title)}>
                                         <div className="outcome-name">{outcome.name} {outcome.point && `(${outcome.point})`}</div>
                                         <div className="outcome-odds">{outcome.price ? Number(outcome.price).toFixed(2) : '-'}</div>
                                     </button>
-                                ))}
+                                );
+                            })}
                         </div>
                         </div>
                     ))}

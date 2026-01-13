@@ -84,6 +84,9 @@ const AdminDashboard = () => {
   const [scheduleMin, setScheduleMin] = useState('');
   const [scheduleMax, setScheduleMax] = useState('');
   const [schedulePriority, setSchedulePriority] = useState(10);
+  const [floorSaving, setFloorSaving] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [ruleActionBusy, setRuleActionBusy] = useState({});
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1164,25 +1167,30 @@ const AdminDashboard = () => {
                 placeholder="e.g. 5.5"
               />
               <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer"
+                className={`bg-green-600 ${floorSaving ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'} text-white font-bold py-2 px-4 rounded`}
+                disabled={floorSaving}
+                aria-busy={floorSaving}
                 onClick={async () => {
-                  if (!newFloor) return;
+                  if (!newFloor || floorSaving) return;
                   try {
-                    setAviatorLoading(true);
-                    await apiService.createAviatorRule({
+                    setFloorSaving(true);
+                    const resp = await apiService.createAviatorRule({
                       name: `Floor ${newFloor}x`,
                       type: 'global_floor',
                       floorMultiplier: parseFloat(newFloor),
                       active: true,
                       priority: 0
                     });
+                    if (resp?.data?.rule) {
+                      setAviatorRules(prev => [resp.data.rule, ...prev]);
+                    }
                     setNewFloor('');
-                    await fetchAviatorRules();
+                    fetchAviatorRules();
                   } catch (e) { alert('Failed to save floor rule'); }
-                  finally { setAviatorLoading(false); }
+                  finally { setFloorSaving(false); }
                 }}
               >
-                Save
+                {floorSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
@@ -1243,12 +1251,14 @@ const AdminDashboard = () => {
             </div>
             <div className="mt-3">
               <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer"
+                className={`bg-green-600 ${scheduleSaving ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'} text-white font-bold py-2 px-4 rounded`}
+                disabled={scheduleSaving}
+                aria-busy={scheduleSaving}
                 onClick={async () => {
-                  if (!scheduleStart || !scheduleEnd || !scheduleMin || !scheduleMax) return;
+                  if (!scheduleStart || !scheduleEnd || !scheduleMin || !scheduleMax || scheduleSaving) return;
                   try {
-                    setAviatorLoading(true);
-                    await apiService.createAviatorRule({
+                    setScheduleSaving(true);
+                    const resp = await apiService.createAviatorRule({
                       name: `Window ${scheduleStart}-${scheduleEnd} ${scheduleMin}-${scheduleMax}x`,
                       type: 'schedule',
                       startTime: scheduleStart,
@@ -1258,13 +1268,16 @@ const AdminDashboard = () => {
                       active: true,
                       priority: schedulePriority
                     });
+                    if (resp?.data?.rule) {
+                      setAviatorRules(prev => [resp.data.rule, ...prev]);
+                    }
                     setScheduleStart(''); setScheduleEnd(''); setScheduleMin(''); setScheduleMax('');
-                    await fetchAviatorRules();
+                    fetchAviatorRules();
                   } catch (e) { alert('Failed to save schedule rule'); }
-                  finally { setAviatorLoading(false); }
+                  finally { setScheduleSaving(false); }
                 }}
               >
-                Save
+                {scheduleSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
@@ -1303,18 +1316,52 @@ const AdminDashboard = () => {
                     <td>{r.name}</td>
                     <td>{r.type}</td>
                     <td>
-                      <label className="inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={!!r.active}
-                          onChange={async (e) => {
-                            try {
-                              await apiService.updateAviatorRule(r._id, { active: e.target.checked });
-                              await fetchAviatorRules();
-                            } catch (e) { void e; }
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            backgroundColor: r.active ? '#065f46' : '#7f1d1d',
+                            color: '#fff',
+                            minWidth: 64,
+                            textAlign: 'center'
                           }}
-                        />
-                      </label>
+                        >
+                          {r.active ? 'Active' : 'Inactive'}
+                        </span>
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={!!r.active}
+                            disabled={!!ruleActionBusy[r._id]}
+                            onChange={async (e) => {
+                              if (ruleActionBusy[r._id]) return;
+                              const nextActive = e.target.checked;
+                              const prevActive = !!r.active;
+                              setRuleActionBusy(prev => ({ ...prev, [r._id]: 'toggle' }));
+                              setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: nextActive } : x));
+                              try {
+                                await apiService.updateAviatorRule(r._id, { active: nextActive });
+                                setTimeout(() => { fetchAviatorRules(); }, 0);
+                              } catch (err) {
+                                const msg = err?.response?.data?.error || 'Failed to update active status';
+                                alert(msg);
+                                setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
+                                setTimeout(() => { fetchAviatorRules(); }, 0);
+                              } finally {
+                                setRuleActionBusy(prev => {
+                                  const rest = { ...prev };
+                                  delete rest[r._id];
+                                  return rest;
+                                });
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
                     </td>
                     <td>
                       {r.type === 'global_floor' ? (
@@ -1326,32 +1373,97 @@ const AdminDashboard = () => {
                     <td>{r.priority}</td>
                     <td className="space-x-2">
                       <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded"
+                        className={`bg-blue-600 ${ruleActionBusy[r._id] ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-700'} text-white py-1 px-3 rounded`}
+                        disabled={!!ruleActionBusy[r._id]}
+                        aria-busy={!!ruleActionBusy[r._id]}
                         onClick={async () => {
+                          if (ruleActionBusy[r._id]) return;
+                          setRuleActionBusy(prev => ({ ...prev, [r._id]: 'activate' }));
+                          const prevActive = !!r.active;
+                          setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: true } : x));
                           try {
                             await apiService.updateAviatorRule(r._id, { active: true });
-                            await fetchAviatorRules();
-                          } catch (e) { alert('Failed to activate'); }
+                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                          } catch (e) {
+                            const msg = e?.response?.data?.error || 'Failed to activate';
+                            alert(msg);
+                            setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
+                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                          } 
+                          finally {
+                            setRuleActionBusy(prev => {
+                              const rest = { ...prev };
+                              delete rest[r._id];
+                              return rest;
+                            });
+                          }
                         }}
                       >
-                        Activate
+                        {ruleActionBusy[r._id] === 'activate' ? 'Activating…' : 'Activate'}
                       </button>
                       <button
-                        className="bg-gray-600 hover:bg-gray-700 text-white py-1 px-3 rounded"
+                        className={`bg-gray-600 ${ruleActionBusy[r._id] ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-700'} text-white py-1 px-3 rounded`}
+                        disabled={!!ruleActionBusy[r._id]}
+                        aria-busy={!!ruleActionBusy[r._id]}
                         onClick={async () => {
+                          if (ruleActionBusy[r._id]) return;
+                          setRuleActionBusy(prev => ({ ...prev, [r._id]: 'disable' }));
+                          const prevActive = !!r.active;
+                          setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: false } : x));
                           try {
                             await apiService.updateAviatorRule(r._id, { active: false });
-                            await fetchAviatorRules();
-                          } catch (e) { alert('Failed to disable'); }
+                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                          } catch (e) {
+                            const msg = e?.response?.data?.error || 'Failed to disable';
+                            alert(msg);
+                            setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
+                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                          } 
+                          finally {
+                            setRuleActionBusy(prev => {
+                              const rest = { ...prev };
+                              delete rest[r._id];
+                              return rest;
+                            });
+                          }
                         }}
                       >
-                        Disable
+                        {ruleActionBusy[r._id] === 'disable' ? 'Disabling…' : 'Disable'}
                       </button>
                       <button
-                        className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded"
-                        onClick={async () => { try { await apiService.deleteAviatorRule(r._id); await fetchAviatorRules(); } catch (e) { void e; } }}
+                        className={`bg-red-600 ${ruleActionBusy[r._id] ? 'opacity-60 cursor-not-allowed' : 'hover:bg-red-700'} text-white py-1 px-3 rounded`}
+                        disabled={!!ruleActionBusy[r._id]}
+                        aria-busy={!!ruleActionBusy[r._id]}
+                        onClick={async () => {
+                          if (ruleActionBusy[r._id]) return;
+                          setRuleActionBusy(prev => ({ ...prev, [r._id]: 'delete' }));
+                          let deletedRule = null;
+                          setAviatorRules(prev => {
+                            const idx = prev.findIndex(x => x._id === r._id);
+                            deletedRule = idx >= 0 ? prev[idx] : null;
+                            return prev.filter(x => x._id !== r._id);
+                          });
+                          try {
+                            await apiService.deleteAviatorRule(r._id);
+                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                          } catch (e) {
+                            const msg = e?.response?.data?.error || 'Failed to delete';
+                            alert(msg);
+                            if (deletedRule) {
+                              setAviatorRules(prev => [deletedRule, ...prev]);
+                            }
+                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                          } 
+                          finally {
+                            setRuleActionBusy(prev => {
+                              const rest = { ...prev };
+                              delete rest[r._id];
+                              return rest;
+                            });
+                          }
+                        }}
                       >
-                        Delete
+                        {ruleActionBusy[r._id] === 'delete' ? 'Deleting…' : 'Delete'}
                       </button>
                     </td>
                   </tr>

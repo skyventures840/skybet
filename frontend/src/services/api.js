@@ -315,6 +315,13 @@ api.interceptors.response.use(
 
     if (error.response) {
       if (error.response.status === 401) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('user') || '{}');
+          const isAdmin = !!stored?.user?.isAdmin;
+          if (isAdmin) {
+            return Promise.reject(error);
+          }
+        } catch (e) { /* ignore */ }
         const isBackground = !!originalRequest?.signal;
         if (isBackground) {
           return Promise.reject(error);
@@ -551,7 +558,7 @@ const apiService = {
   placeAviatorBet: (data) => api.post('/aviator/bet', data),
   cashOutAviator: (data) => api.post('/aviator/cashout', data),
   cancelAviatorBet: (data) => api.post('/aviator/cancel', data),
-  getAviatorHistory: () => api.get('/aviator/history'),
+  getAviatorHistory: () => instantGetPublic('/aviator/history', 10000),
 
   // Payment endpoints
   createPayment: (paymentData) => api.post('/payments/create', paymentData),

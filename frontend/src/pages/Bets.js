@@ -4,6 +4,7 @@ import apiService from '../services/api';
 import websocketService from '../services/websocketService';
 import enhancedCache from '../services/enhancedCache';
 import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
+import { aggregateBetStatus } from '../utils/betStatusAggregate';
 
 const Bets = () => {
   const [betHistory, setBetHistory] = useState([]);
@@ -1156,15 +1157,10 @@ const Bets = () => {
                         <div className="bet-summary-amounts">
                           <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
                           {(() => {
-                            const agg = (() => {
-                              const statuses = (displayMatches || []).map(m => m.derivedStatus);
-                              if (statuses.includes('pending')) return 'pending';
-                              const wonCount = statuses.filter(s => s === 'won').length;
-                              const totalCount = statuses.length;
-                              if (totalCount > 0 && wonCount === totalCount) return 'won';
-                              if (totalCount > 0) return 'lost';
-                              return (bet.status || 'pending').toLowerCase();
-                            })();
+                            const agg = aggregateBetStatus(
+                              (displayMatches || []).map(m => m.derivedStatus),
+                              (bet.status || 'pending')
+                            );
                             const label = agg === 'won' ? 'Won' : agg === 'lost' ? 'Lost' : agg === 'void' ? 'Void' : 'Pending';
                             return <span className={`bet-status status-${agg}`}>{label}</span>;
                           })()}

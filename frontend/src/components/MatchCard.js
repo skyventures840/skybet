@@ -116,7 +116,7 @@ const LiveTimer = ({ startTime, sport, liveTime }) => {
     );
 };
 
-const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
+const MatchCard = memo(({ match, sport, league, showLeagueHeader = true, showOddsHeaders = true }) => {
     if (!match) return null;
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -482,13 +482,15 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                     <h3 className="league-title">
                         <span className="league-text">{displayLeagueTitle}</span>
                     </h3>
-                    <div className="odds-headers">
-                        {basicOddsTypes.map(oddsType => (
-                            <div key={oddsType} className="odds-header">
-                                {oddsType}
-                            </div>
-                        ))}
-                    </div>
+                    {showOddsHeaders && (
+                        <div className="odds-headers">
+                            {basicOddsTypes.map(oddsType => (
+                                <div key={oddsType} className="odds-header">
+                                    {oddsType}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
             
@@ -545,13 +547,15 @@ const MatchCard = memo(({ match, sport, league, showLeagueHeader = true }) => {
                         )}
                         
                         {/* Odds Headers */}
-                        <div className="odds-headers-container">
-                            {basicOddsTypes.map(oddsType => (
-                                <div key={oddsType} className="odds-header">
-                                    {oddsType}
-                                </div>
-                            ))}
-                        </div>
+                        {showOddsHeaders && (
+                            <div className="odds-headers-container">
+                                {basicOddsTypes.map(oddsType => (
+                                    <div key={oddsType} className="odds-header">
+                                        {oddsType}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         
                         {/* Odds Buttons */}
                         <div className="odds-buttons-container">

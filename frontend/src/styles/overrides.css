@@ -545,8 +545,8 @@
 .match-container {
   height: auto !important;
   min-height: 100px !important; /* aggressively reduced */
-  width: 90% !important; /* force width to be smaller than container */
-  max-width: 90% !important;
+  width: 80% !important; /* slightly narrower on desktop */
+  max-width: 80% !important;
   margin-left: auto !important;
   margin-right: auto !important;
   overflow: hidden !important;

@@ -160,7 +160,16 @@ function App() {
     });
   }, []);
 
-  const isLoggedIn = useSelector(state => state.auth?.loggedIn || false);
+  const isLoggedInStore = useSelector(state => state.auth?.loggedIn || false);
+  const hasToken = (() => {
+    try {
+      const raw = localStorage.getItem('user');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return !!parsed?.token;
+    } catch { return false; }
+  })();
+  const isLoggedIn = isLoggedInStore || hasToken;
   const isAdmin = useSelector(state => state.auth?.isAdmin || false);
   
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/reset-password';
