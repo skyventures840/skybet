@@ -235,6 +235,50 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .matches-section .matches-list,
+  .matches-section .competition-group,
+  .subcategory-matches {
+    gap: 0 !important;
+  }
+
+  .match-card,
+  .match-container {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .match-card .league-header {
+    padding: 6px 10px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .match-card .match-row {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+    min-height: 0 !important;
+  }
+
+  .match-card .match-teams {
+    gap: 2px !important;
+  }
+
+  .match-card .odds-headers-container,
+  .match-card .odds-buttons-container {
+    padding: 0 10px !important;
+    margin: 0 !important;
+    gap: 6px !important;
+  }
+
+  .subcategory-match-card .match-row {
+    padding: 6px 10px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    margin: 0 !important;
+  }
+}
+
 .aviator-management {
   color: #fff !important;
 }
@@ -1768,7 +1812,7 @@
 
   .matches-container {
     height: auto !important;
-    max-height: 55vh !important; /* Adjusted to align with Live Spin border */
+    max-height: 96vh !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding-right: 4px !important; /* Prevent scrollbar overlapping content */

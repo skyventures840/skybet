@@ -558,7 +558,10 @@ const apiService = {
   placeAviatorBet: (data) => api.post('/aviator/bet', data),
   cashOutAviator: (data) => api.post('/aviator/cashout', data),
   cancelAviatorBet: (data) => api.post('/aviator/cancel', data),
-  getAviatorHistory: () => instantGetPublic('/aviator/history', 10000),
+  getAviatorHistory: () => {
+    const nonce = `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+    return apiPublic.get(`/aviator/history?nc=${nonce}`, { timeout: 15000 });
+  },
 
   // Payment endpoints
   createPayment: (paymentData) => api.post('/payments/create', paymentData),

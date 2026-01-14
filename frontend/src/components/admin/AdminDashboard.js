@@ -1343,22 +1343,22 @@ const AdminDashboard = () => {
                               const prevActive = !!r.active;
                               setRuleActionBusy(prev => ({ ...prev, [r._id]: 'toggle' }));
                               setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: nextActive } : x));
-                              try {
-                                await apiService.updateAviatorRule(r._id, { active: nextActive });
-                                setTimeout(() => { fetchAviatorRules(); }, 0);
-                              } catch (err) {
-                                const msg = err?.response?.data?.error || 'Failed to update active status';
-                                alert(msg);
-                                setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
-                                setTimeout(() => { fetchAviatorRules(); }, 0);
-                              } finally {
-                                setRuleActionBusy(prev => {
-                                  const rest = { ...prev };
-                                  delete rest[r._id];
-                                  return rest;
-                                });
-                              }
-                            }}
+                            try {
+                              await apiService.updateAviatorRule(r._id, { active: nextActive });
+                              await fetchAviatorRules();
+                            } catch (err) {
+                              const msg = err?.response?.data?.error || 'Failed to update active status';
+                              alert(msg);
+                              setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
+                              await fetchAviatorRules();
+                            } finally {
+                              setRuleActionBusy(prev => {
+                                const rest = { ...prev };
+                                delete rest[r._id];
+                                return rest;
+                              });
+                            }
+                          }}
                           />
                         </label>
                       </div>
@@ -1383,12 +1383,12 @@ const AdminDashboard = () => {
                           setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: true } : x));
                           try {
                             await apiService.updateAviatorRule(r._id, { active: true });
-                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                            await fetchAviatorRules();
                           } catch (e) {
                             const msg = e?.response?.data?.error || 'Failed to activate';
                             alert(msg);
                             setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
-                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                            await fetchAviatorRules();
                           } 
                           finally {
                             setRuleActionBusy(prev => {
@@ -1412,12 +1412,12 @@ const AdminDashboard = () => {
                           setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: false } : x));
                           try {
                             await apiService.updateAviatorRule(r._id, { active: false });
-                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                            await fetchAviatorRules();
                           } catch (e) {
                             const msg = e?.response?.data?.error || 'Failed to disable';
                             alert(msg);
                             setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
-                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                            await fetchAviatorRules();
                           } 
                           finally {
                             setRuleActionBusy(prev => {
@@ -1445,14 +1445,14 @@ const AdminDashboard = () => {
                           });
                           try {
                             await apiService.deleteAviatorRule(r._id);
-                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                            await fetchAviatorRules();
                           } catch (e) {
                             const msg = e?.response?.data?.error || 'Failed to delete';
                             alert(msg);
                             if (deletedRule) {
                               setAviatorRules(prev => [deletedRule, ...prev]);
                             }
-                            setTimeout(() => { fetchAviatorRules(); }, 0);
+                            await fetchAviatorRules();
                           } 
                           finally {
                             setRuleActionBusy(prev => {

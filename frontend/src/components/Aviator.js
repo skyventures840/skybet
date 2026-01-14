@@ -146,16 +146,10 @@ const Aviator = () => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiService.getAviatorHistory();
-        const arr = (res?.data?.history || []).map(h => {
-          const v = typeof h === 'number' ? h : (typeof h?.value === 'number' ? h.value : parseFloat(h?.value));
-          return Number.isFinite(v) ? v : null;
-        }).filter(v => v != null && v >= 1).slice(0, 14);
+        await apiService.getAviatorHistory();
         if (!cancelled) {
-          const minCount = 13;
-          const need = Math.max(0, minCount - arr.length);
-          const padded = need > 0 ? [...arr, ...generateInitialHistory(need)] : arr;
-          setHistory(padded.slice(0, 100));
+          const randomHistory = generateInitialHistory(14);
+          setHistory(randomHistory.slice(0, 100));
         }
       } catch (e) {
         if (!cancelled) {
@@ -515,22 +509,7 @@ const Aviator = () => {
       const res = await apiService.nextAviatorCrashPoint();
       const v = res?.data?.crashPoint;
       if (typeof v === 'number' && v >= 1) {
-        const m2 = Math.max(1.00, Math.round(v * 100) / 100);
-        try {
-          const last = typeof window !== 'undefined' ? window.__lastCrash : null;
-          if (last != null) {
-            const eq2 = Math.round(m2 * 100) === Math.round(Number(last) * 100);
-            const eq1 = Math.round(m2 * 10) === Math.round(Number(last) * 10);
-            const eq0 = Math.round(m2) === Math.round(Number(last));
-            if (eq2 || eq1 || eq0) {
-              const dir = Math.random() < 0.5 ? -1 : 1;
-              const step = 0.05 + Math.random() * 0.05;
-              const jittered = Math.max(1.00, Math.round((m2 + dir * step) * 100) / 100);
-              return jittered;
-            }
-          }
-        } catch (e) { void e; }
-        return m2;
+        return Math.max(1.00, Math.round(v * 100) / 100);
       }
     } catch (e) { void e; }
     return generateCrashPoint();
@@ -542,22 +521,19 @@ const Aviator = () => {
     gameStateRef.current = 'FLYING';
     setMultiplier(1.00);
     startTimeRef.current = Date.now();
-    // Decide crash before animation to avoid UI overshoot
-    const baseline = generateCrashPoint();
-    crashPointRef.current = baseline;
-    Promise.race([
-      fetchCrashPoint(),
-      new Promise(resolve => setTimeout(() => resolve(baseline), 300))
-    ])
-    .then(v => {
-      const num = typeof v === 'number' && v >= 1 ? Math.max(1.00, Math.round(v * 100) / 100) : baseline;
-      crashPointRef.current = num;
-      try { window.__lastCrash = num; } catch (e) { void e; }
+    (async () => {
+      // Decide crash using backend rules; fallback to baseline on failure
+      const baseline = generateCrashPoint();
+      try {
+        const v = await fetchCrashPoint();
+        const num = typeof v === 'number' && v >= 1 ? Math.max(1.00, Math.round(v * 100) / 100) : baseline;
+        crashPointRef.current = num;
+        try { window.__lastCrash = num; } catch (e) { void e; }
+      } catch (e) {
+        crashPointRef.current = baseline;
+      }
       requestRef.current = requestAnimationFrame(animateGame);
-    })
-    .catch(() => {
-      requestRef.current = requestAnimationFrame(animateGame);
-    });
+    })();
     trailRef.current = [];
     cashingOutRef.current = { 1: false, 2: false };
     

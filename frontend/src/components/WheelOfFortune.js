@@ -353,9 +353,12 @@ const WheelOfFortune = () => {
     const randomIndex = Math.floor(Math.random() * totalSegments);
     const selectedSegment = wheelSegments[randomIndex];
 
-    // Calculate rotation angle with more rotations for dramatic effect
+    // Calculate rotation with precise pointer alignment (pointer at 270°)
     const baseRotation = 360 * 10;
-    const finalRotation = baseRotation + (randomIndex * segmentAngle);
+    const pointerAngle = 270; // Top center
+    const segmentCenter = (randomIndex * segmentAngle) + (segmentAngle / 2);
+    const alignOffset = pointerAngle - segmentCenter;
+    const finalRotation = baseRotation + alignOffset;
 
     // Apply rotation animation with faster speed
     if (wheelRef.current) {
