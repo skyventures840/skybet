@@ -293,7 +293,7 @@ class OddsApiService {
     }
 
     try {
-      const response = await this.client.get('/sports')
+      const response = await this.client.get('/sports', { params: { all: true } })
       this.lastResponseHeaders = response.headers
 
       const sports = response.data

@@ -185,13 +185,14 @@ function fairRandom () {
 }
 
 function getRecentBuckets () {
-  const arr = lastCrashes.slice(0, 4).map(x => {
+  const arr = lastCrashes.slice(0, 10).map(x => {
     const v = typeof x?.value === 'number' ? x.value : parseFloat(x?.value)
     return Number.isFinite(v) ? v : null
   }).filter(v => v != null)
   const buckets1d = new Set(arr.map(v => Math.round(v * 10)))
   const buckets0 = new Set(arr.map(v => Math.round(v)))
-  return { buckets1d, buckets0 }
+  const buckets2d = new Set(arr.map(v => Math.round(v * 100)))
+  return { buckets2d, buckets1d, buckets0 }
 }
 
 function baseCrashRng () {
@@ -204,12 +205,29 @@ function baseCrashRng () {
 
 // Removed deprecated Pareto sampler
 
+function sampleCrashInWindow (min, max) {
+  if (!(min >= 1) || !(max > min)) {
+    return Math.max(1.00, Math.min(MAX_CRASH, baseCrashRng()))
+  }
+  let val = min + (max - min) * fairRandom()
+  val = Math.round(val * 100) / 100
+  if (val <= min) {
+    val = Math.min(max - 0.01, min + 0.01 + (max - min - 0.02) * fairRandom())
+    val = Math.round(val * 100) / 100
+  }
+  if (val >= max) {
+    val = Math.max(min + 0.01, max - 0.01 - (max - min - 0.02) * fairRandom())
+    val = Math.round(val * 100) / 100
+  }
+  return Math.max(min, Math.min(max, val))
+}
+
 async function computeOverrideCrash () {
   const now = new Date()
   const minutesNow = now.getHours() * 60 + now.getMinutes()
   const rules = await AviatorRule.find({ active: true }).sort({ priority: -1, updatedAt: -1 }).lean()
   const base = baseCrashRng()
-  const { buckets1d, buckets0 } = getRecentBuckets()
+  const { buckets2d, buckets1d, buckets0 } = getRecentBuckets()
   const isRepeat = (a, b) => {
     if (a == null || b == null) return false
     const eq2 = Math.round(a * 100) === Math.round(b * 100)
@@ -231,7 +249,7 @@ async function computeOverrideCrash () {
       if (hasMin && hasMax && (max - min) < 0.05) max = min + 0.05
       let val = base
       if (hasMin && hasMax) {
-        val = Math.max(min, Math.min(val, max))
+        val = sampleCrashInWindow(min, max)
       } else if (hasMin) {
         val = Math.max(min, val)
       } else if (hasMax) {
@@ -239,24 +257,37 @@ async function computeOverrideCrash () {
       }
       const guardRef = lastCrashSample
       for (let i = 0; i < 20; i++) {
+        const b2 = Math.round(val * 100)
         const b1 = Math.round(val * 10)
         const b0 = Math.round(val)
-        if (isRepeat(val, guardRef) || buckets1d.has(b1) || buckets0.has(b0)) {
-          val = baseCrashRng()
-          if (hasMin && hasMax) val = Math.max(min, Math.min(val, max))
-          else if (hasMin) val = Math.max(min, val)
-          else if (hasMax) val = Math.min(max, val)
+        if (isRepeat(val, guardRef) || buckets2d.has(b2) || buckets1d.has(b1) || buckets0.has(b0)) {
+          if (hasMin && hasMax) {
+            val = sampleCrashInWindow(min, max)
+          } else {
+            val = baseCrashRng()
+            if (hasMin) val = Math.max(min, val)
+            else if (hasMax) val = Math.min(max, val)
+          }
         } else {
           break
         }
       }
       {
+        const b2f = Math.round(val * 100)
         const b1f = Math.round(val * 10)
         const b0f = Math.round(val)
-        if (isRepeat(val, guardRef) || buckets1d.has(b1f) || buckets0.has(b0f)) {
+        if (isRepeat(val, guardRef) || buckets2d.has(b2f) || buckets1d.has(b1f) || buckets0.has(b0f)) {
           const dir = fairRandom() < 0.5 ? -1 : 1
           const step = 0.07 + fairRandom() * 0.13
-          val = Math.max(min, Math.min(max, Math.round((val + dir * step) * 100) / 100))
+          val = Math.round((val + dir * step) * 100) / 100
+          if (hasMin && hasMax) {
+            if (val <= min) val = Math.min(max - 0.01, min + 0.01 + (max - min - 0.02) * fairRandom())
+            if (val >= max) val = Math.max(min + 0.01, max - 0.01 - (max - min - 0.02) * fairRandom())
+            val = Math.round(val * 100) / 100
+          } else {
+            if (hasMin) val = Math.max(min, val)
+            if (hasMax) val = Math.min(max, val)
+          }
         }
       }
       lastCrashSample = val

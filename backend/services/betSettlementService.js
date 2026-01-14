@@ -930,10 +930,10 @@ class BetSettlementService {
   }
 
   evaluateBTTSBet (selection, homeScore, awayScore) {
-    const sel = selection.toLowerCase()
+    const sel = String(selection || '').toLowerCase()
     const bothScored = homeScore > 0 && awayScore > 0
-    if (sel === 'yes' || sel.includes('yes')) return bothScored
-    if (sel === 'no' || sel.includes('no')) return !bothScored
+    if (sel === 'yes' || sel.includes('yes') || /\bgg\b/.test(sel)) return bothScored
+    if (sel === 'no' || sel.includes('no') || /\bng\b/.test(sel)) return !bothScored
     return false
   }
 

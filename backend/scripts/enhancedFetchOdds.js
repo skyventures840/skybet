@@ -548,7 +548,14 @@ class EnhancedOddsFetcher {
    * Get additional markets for a specific sport
    */
   getAdditionalMarkets (sportKey) {
-    return this.additionalMarketsBySport[sportKey] || this.additionalMarketsBySport.default
+    const custom = this.additionalMarketsBySport[sportKey]
+    if (Array.isArray(custom) && custom.length > 0) return custom
+    if (this.oddsService && typeof this.oddsService.getPriorityMarkets === 'function') {
+      try {
+        return this.oddsService.getPriorityMarkets()
+      } catch (_) {}
+    }
+    return this.additionalMarketsBySport.default
   }
 
   /**
@@ -864,137 +871,11 @@ async function main () {
 
     const fetcher = new EnhancedOddsFetcher()
 
-    // Define sports to process - comprehensive list from Odds API
-    let sports = [
-      // American Football
-      { key: 'americanfootball_nfl', title: 'NFL' },
-      { key: 'americanfootball_ncaaf', title: 'NCAAF' },
-      { key: 'americanfootball_cfl', title: 'CFL' },
-      { key: 'americanfootball_ufl', title: 'UFL' },
-      { key: 'americanfootball_nfl_preseason', title: 'NFL Preseason' },
-
-      // Basketball
-      { key: 'basketball_nba', title: 'NBA' },
-      { key: 'basketball_ncaab', title: 'NCAAB' },
-      { key: 'basketball_wnba', title: 'WNBA' },
-      { key: 'basketball_wncaab', title: 'WNCAAB' },
-      { key: 'basketball_euroleague', title: 'Euroleague' },
-      { key: 'basketball_nbl', title: 'NBL' },
-      { key: 'basketball_nba_preseason', title: 'NBA Preseason' },
-      { key: 'basketball_nba_summer_league', title: 'NBA Summer League' },
-
-      // Baseball
-      { key: 'baseball_mlb', title: 'MLB' },
-      { key: 'baseball_mlb_preseason', title: 'MLB Preseason' },
-      { key: 'baseball_milb', title: 'MiLB' },
-      { key: 'baseball_npb', title: 'NPB' },
-      { key: 'baseball_kbo', title: 'KBO' },
-      { key: 'baseball_ncaa', title: 'NCAA Baseball' },
-
-      // Ice Hockey
-      { key: 'icehockey_nhl', title: 'NHL' },
-      { key: 'icehockey_nhl_preseason', title: 'NHL Preseason' },
-      { key: 'icehockey_ahl', title: 'AHL' },
-      { key: 'icehockey_liiga', title: 'Liiga' },
-      { key: 'icehockey_mestis', title: 'Mestis' },
-      { key: 'icehockey_sweden_hockey_league', title: 'SHL' },
-      { key: 'icehockey_sweden_allsvenskan', title: 'Allsvenskan Hockey' },
-
-      // Soccer - Major European Leagues
-      { key: 'soccer_epl', title: 'English Premier League' },
-      { key: 'soccer_spain_la_liga', title: 'La Liga' },
-      { key: 'soccer_italy_serie_a', title: 'Serie A' },
-      { key: 'soccer_germany_bundesliga', title: 'Bundesliga' },
-      { key: 'soccer_france_ligue_one', title: 'Ligue 1' },
-      { key: 'soccer_uefa_champs_league', title: 'Champions League' },
-      { key: 'soccer_uefa_europa_league', title: 'Europa League' },
-      { key: 'soccer_uefa_nations_league', title: 'Nations League' },
-
-      // Soccer - International Competitions
-      { key: 'soccer_fifa_world_cup', title: 'FIFA World Cup' },
-      { key: 'soccer_conmebol_copa_america', title: 'Copa America' },
-
-      // Soccer - Other European Leagues
-      { key: 'soccer_efl_champ', title: 'EFL Championship' },
-      { key: 'soccer_england_league1', title: 'League One' },
-      { key: 'soccer_england_league2', title: 'League Two' },
-      { key: 'soccer_fa_cup', title: 'FA Cup' },
-      { key: 'soccer_league_cup', title: 'League Cup' },
-      { key: 'soccer_netherlands_eredivisie', title: 'Eredivisie' },
-      { key: 'soccer_belgium_first_div', title: 'Belgian First Division' },
-      { key: 'soccer_portugal_primeira_liga', title: 'Primeira Liga' },
-      { key: 'soccer_turkey_super_league', title: 'Super Lig' },
-      { key: 'soccer_greece_super_league', title: 'Super League Greece' },
-      { key: 'soccer_denmark_superliga', title: 'Superliga' },
-      { key: 'soccer_sweden_allsvenskan', title: 'Allsvenskan' },
-      { key: 'soccer_sweden_superettan', title: 'Superettan' },
-      { key: 'soccer_norway_eliteserien', title: 'Eliteserien' },
-      { key: 'soccer_finland_veikkausliiga', title: 'Veikkausliiga' },
-      { key: 'soccer_poland_ekstraklasa', title: 'Ekstraklasa' },
-      { key: 'soccer_austria_bundesliga', title: 'Austrian Bundesliga' },
-      { key: 'soccer_switzerland_superleague', title: 'Swiss Super League' },
-      { key: 'soccer_czech_republic_fnl', title: 'Czech First League' },
-      { key: 'soccer_russia_premier_league', title: 'Russian Premier League' },
-      { key: 'soccer_ukraine_premier_league', title: 'Ukrainian Premier League' },
-      { key: 'soccer_croatia_hnl', title: 'Croatian First League' },
-      { key: 'soccer_serbia_super_liga', title: 'Serbian SuperLiga' },
-
-      // Soccer - Americas & Other Regions
-      { key: 'soccer_usa_mls', title: 'MLS' },
-      { key: 'soccer_brazil_campeonato', title: 'Brasileirão' },
-      { key: 'soccer_argentina_primera_division', title: 'Primera División' },
-      { key: 'soccer_mexico_ligamx', title: 'Liga MX' },
-      { key: 'soccer_australia_aleague', title: 'A-League' },
-      { key: 'soccer_japan_j_league', title: 'J-League' },
-      { key: 'soccer_south_korea_k_league_1', title: 'K League 1' },
-      { key: 'soccer_china_super_league', title: 'Chinese Super League' },
-
-      // Tennis - Grand Slams
-      { key: 'tennis_atp_aus_open_singles', title: 'Australian Open (ATP)' },
-      { key: 'tennis_atp_french_open', title: 'French Open (ATP)' },
-      { key: 'tennis_atp_wimbledon', title: 'Wimbledon (ATP)' },
-      { key: 'tennis_atp_us_open', title: 'US Open (ATP)' },
-      { key: 'tennis_wta_aus_open_singles', title: 'Australian Open (WTA)' },
-      { key: 'tennis_wta_french_open', title: 'French Open (WTA)' },
-      { key: 'tennis_wta_wimbledon', title: 'Wimbledon (WTA)' },
-      { key: 'tennis_wta_us_open', title: 'US Open (WTA)' },
-
-      // Golf - Major Championships
-      { key: 'golf_pga_championship', title: 'PGA Championship' },
-      { key: 'golf_masters_tournament', title: 'Masters Tournament' },
-      { key: 'golf_us_open', title: 'US Open Golf' },
-      { key: 'golf_the_open_championship', title: 'The Open Championship' },
-
-      // MMA & Combat Sports
-      { key: 'mma_mixed_martial_arts', title: 'MMA' },
-      { key: 'boxing_heavyweight', title: 'Boxing' },
-
-      // Cricket
-      { key: 'cricket_icc_world_cup', title: 'Cricket World Cup' },
-      { key: 'cricket_international_t20', title: 'International T20' },
-      { key: 'cricket_odi', title: 'ODI Cricket' },
-      { key: 'cricket_test_match', title: 'Test Cricket' },
-      { key: 'cricket_ipl', title: 'IPL' },
-      { key: 'cricket_big_bash', title: 'Big Bash League' },
-      { key: 'cricket_caribbean_premier_league', title: 'CPL' },
-
-      // Rugby
-      { key: 'rugbyleague_nrl', title: 'NRL' },
-      { key: 'rugbyunion_world_cup', title: 'Rugby World Cup' },
-      { key: 'rugbyunion_six_nations', title: 'Six Nations' },
-      { key: 'rugbyunion_premiership', title: 'Premiership Rugby' },
-      { key: 'rugbyunion_super_rugby', title: 'Super Rugby' },
-
-      // Australian Rules Football
-      { key: 'aussierules_afl', title: 'AFL' },
-
-      // Esports
-      { key: 'esports_lol_worlds', title: 'LoL Worlds' },
-      { key: 'esports_valorant_champions', title: 'Valorant Champions' },
-      { key: 'esports_dota2_ti', title: 'Dota 2 TI' },
-      { key: 'esports_csgo_blast_premier', title: 'CS:GO BLAST Premier' },
-      { key: 'esports_call_of_duty', title: 'Call of Duty League' }
-    ]
+    // Fetch full sports list from API
+    const apiSportsList = await fetcher.oddsService.getSports()
+    let sports = (Array.isArray(apiSportsList) ? apiSportsList : [])
+      .filter(s => s && s.key && !s.key.includes('politics') && !s.key.includes('entertainment'))
+      .map(s => ({ key: s.key, title: s.title || s.group || s.key }))
 
     // Basic CLI arg parsing for filtering and limiting
     const argv = process.argv.slice(2)

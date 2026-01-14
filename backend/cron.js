@@ -530,6 +530,13 @@ async function updatePendingBetsScores () {
         logger.error(`Failed to update pending bets for ${sportKey}: ${e.message}`)
       }
 
+      try {
+        await oddsApiService.getResults(sportKey, 3, ids)
+        logger.info(`Updated results for ${ids.length} matches in ${sportKey}`)
+      } catch (e) {
+        logger.error(`Failed to update pending results for ${sportKey}: ${e.message}`)
+      }
+
       // Rate limit delay
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
@@ -647,9 +654,8 @@ const startCronJobs = async () => {
           const supportedSports = sportsList.filter(sport =>
             sport && sport.key &&
             !sport.key.includes('politics') &&
-            !sport.key.includes('entertainment') &&
-            sport.key !== 'golf_the_open_championship_winner'
-          ).slice(0, 5)
+            !sport.key.includes('entertainment')
+          )
 
           logger.info(`📊 Fetching scores and results for ${supportedSports.length} sports...`)
 
@@ -967,6 +973,8 @@ const startCronJobs = async () => {
       const base = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT_BACKEND || process.env.PORT || 10000}`
       await Promise.allSettled([
         axios.get(`${base}/api/matches/popular/trending`, { timeout: 15000 }),
+        axios.get(`${base}/api/matches`, { timeout: 15000 }),
+        axios.get(`${base}/api/sports`, { timeout: 15000 }),
         axios.get(`${base}/api/admin/hero`, { timeout: 15000 })
       ])
       // Prewarm additional markets for upcoming top matches (next 10)
@@ -978,6 +986,15 @@ const startCronJobs = async () => {
           .lean()
         await Promise.allSettled(upcoming.map(m => axios.get(`${base}/api/matches/${m._id}/markets`, { timeout: 15000 })))
       } catch (e) {}
+      try {
+        const now = new Date()
+        const upcomingOdds = await mongoose.model('Odds').find({ commence_time: { $gte: now } })
+          .select('gameId')
+          .sort({ commence_time: 1 })
+          .limit(10)
+          .lean()
+        await Promise.allSettled(upcomingOdds.map(o => axios.get(`${base}/api/matches/${o.gameId}/markets`, { timeout: 15000 })))
+      } catch (_) {}
     } catch (e) {
       logger.warn('Cache prewarm failed:', e && e.message ? e.message : e)
     }

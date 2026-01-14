@@ -11,9 +11,28 @@ const Results = require('../models/Results')
 const Scores = require('../models/Scores')
 const { cache, keyFor, bus } = require('../utils/cache')
 const { OddsApiService } = require('../services/oddsApiService')
+const crypto = require('crypto')
 
 // Initialize OddsApiService
 const oddsApiService = new OddsApiService()
+
+function computeEtag (obj) {
+  try {
+    let summary
+    if (Array.isArray(obj)) {
+      const cap = Math.min(obj.length, 200)
+      summary = { len: obj.length, items: obj.slice(0, cap) }
+    } else if (obj && typeof obj === 'object') {
+      summary = Object.keys(obj).slice(0, 50).reduce((acc, k) => { acc[k] = obj[k]; return acc }, {})
+    } else {
+      summary = obj
+    }
+    const json = JSON.stringify(summary)
+    return 'W/"' + crypto.createHash('sha1').update(json).digest('hex') + '"'
+  } catch (e) {
+    return null
+  }
+}
 
 // Helper to trigger match update
 const triggerMatchUpdate = async (matchId) => {
@@ -30,6 +49,13 @@ const triggerMatchUpdate = async (matchId) => {
           }
         })
         .catch(err => console.error(`Error triggering match update for ${matchId}:`, err.message))
+      oddsApiService.getResults(odd.sport_key, 3, [matchId])
+        .then(results => {
+          if (results && results.length > 0) {
+            console.log(`Triggered update for match ${matchId}, fetched ${results.length} results`)
+          }
+        })
+        .catch(err => console.error(`Error triggering results update for ${matchId}:`, err.message))
     }
   } catch (error) {
     console.error('Error in triggerMatchUpdate:', error)
@@ -241,7 +267,7 @@ function getCompetition (matchId) {
 
 // Place a new bet
 router.post('/', auth, [
-  body('matchId').notEmpty().trim(), // Remove isMongoId() validation for now
+  body('matchId').notEmpty().trim(),
   body('market').notEmpty().trim(),
   body('selection').notEmpty().trim(),
   body('stake').isFloat({ min: 0.01 }),
@@ -878,6 +904,15 @@ router.get('/my-bets', auth, cacheUserBets(60), [
       }
     }
 
+    try {
+      const etag = computeEtag(response)
+      res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300')
+      if (etag) res.set('ETag', etag)
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end()
+      }
+    } catch (_) {}
+
     // Cache the response if caching is enabled
     if (res.locals.cacheKey && res.locals.cacheTTL) {
       try {
@@ -1093,6 +1128,14 @@ router.get('/stats/summary', auth, cacheUserBetStats(300), async (req, res) => {
         console.error('Cache set error (stats):', error)
       }
     }
+    try {
+      const etag = computeEtag(summary)
+      res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300')
+      if (etag) res.set('ETag', etag)
+      if (etag && req.headers['if-none-match'] === etag) {
+        return res.status(304).end()
+      }
+    } catch (_) {}
     res.json(summary)
   } catch (error) {
     console.error('Get bet stats error:', error)

@@ -1966,7 +1966,7 @@ router.get('/live/real-time', async (req, res) => {
       const diffMs = now - start
       const diffMins = Math.floor(diffMs / (1000 * 60))
 
-      const s = String((meta?.sportName || matchObj.sport) || '').toLowerCase()
+      const s = String(matchObj.sport || '').toLowerCase()
       let maxWindow = 180
       if (s.includes('soccer') || s.includes('football')) maxWindow = 115
       else if (s.includes('basketball') || s.includes('nba')) maxWindow = 150
@@ -1982,7 +1982,7 @@ router.get('/live/real-time', async (req, res) => {
         })
       }
 
-      let liveTime = undefined
+      let liveTime
       if (statusComputed === 'live') {
         if (s.includes('soccer') || s.includes('football')) {
           if (diffMins <= 45) {
