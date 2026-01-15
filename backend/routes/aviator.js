@@ -14,6 +14,13 @@ const pfServerSeed = crypto.randomBytes(32)
 const pfCommit = crypto.createHash('sha256').update(pfServerSeed).digest('hex')
 let pfNonce = 0
 let pfLastNonceUsed = null
+let crashGenChain = Promise.resolve()
+
+function withCrashGenLock (fn) {
+  const p = crashGenChain.then(fn, fn)
+  crashGenChain = p.catch(() => {})
+  return p
+}
 
 // Get user balance for Aviator
 router.get('/balance', auth, async (req, res) => {
@@ -180,19 +187,17 @@ function fairRandom () {
   const h = crypto.createHmac('sha256', pfServerSeed).update(String(pfNonce)).digest()
   pfLastNonceUsed = pfNonce
   pfNonce += 1
-  const u32 = h.readUInt32BE(0)
-  return u32 / 4294967296
+  const u53 = h.readBigUInt64BE(0) >> 11n
+  return Number(u53) / 9007199254740992
 }
 
 function getRecentBuckets () {
-  const arr = lastCrashes.slice(0, 10).map(x => {
+  const arr = lastCrashes.slice(0, 1).map(x => {
     const v = typeof x?.value === 'number' ? x.value : parseFloat(x?.value)
     return Number.isFinite(v) ? v : null
   }).filter(v => v != null)
-  const buckets1d = new Set(arr.map(v => Math.round(v * 10)))
-  const buckets0 = new Set(arr.map(v => Math.round(v)))
   const buckets2d = new Set(arr.map(v => Math.round(v * 100)))
-  return { buckets2d, buckets1d, buckets0 }
+  return { buckets2d }
 }
 
 function baseCrashRng () {
@@ -201,6 +206,45 @@ function baseCrashRng () {
   const crash = 0.99 / (1 - r)
   const clamped = Math.max(1.00, Math.min(crash, MAX_CRASH))
   return Math.round(clamped * 100) / 100
+}
+
+function sampleCrashHeavyTail (min, max) {
+  const minV = Math.max(1.00, Number.isFinite(min) ? min : 1.00)
+  const maxVRaw = Number.isFinite(max) ? max : MAX_CRASH
+  const maxV = Math.max(minV, Math.min(MAX_CRASH, maxVRaw))
+
+  if (!(maxV > minV)) return Math.round(minV * 100) / 100
+
+  const rMin = minV <= 1.00 ? 0 : 1 - (0.99 / minV)
+  const rMax = 1 - (0.99 / maxV)
+  const lo = Math.max(0, Math.min(rMin, rMax))
+  const hi = Math.max(lo, Math.min(rMax, 0.9999999999999999))
+
+  const r = lo + (hi - lo) * fairRandom()
+  const crash = 0.99 / (1 - r)
+  const clamped = Math.max(minV, Math.min(maxV, crash))
+  return Math.round(clamped * 100) / 100
+}
+
+function sampleNonRepeatingCrash (gen, guardRef, buckets2d, minBound, maxBound) {
+  let val = gen()
+  const guard2 = guardRef == null ? null : Math.round(guardRef * 100)
+  for (let i = 0; i < 80; i++) {
+    const b2 = Math.round(val * 100)
+    if ((guard2 != null && b2 === guard2) || buckets2d.has(b2)) {
+      val = gen()
+      continue
+    }
+    return Math.round(val * 100) / 100
+  }
+
+  const min2 = Math.round(minBound * 100)
+  const max2 = Math.round(maxBound * 100)
+  if (guard2 == null || (max2 - min2) < 1) return Math.round(val * 100) / 100
+
+  if ((guard2 + 1) <= max2) return (guard2 + 1) / 100
+  if ((guard2 - 1) >= min2) return (guard2 - 1) / 100
+  return Math.round(val * 100) / 100
 }
 
 // Removed deprecated Pareto sampler
@@ -226,15 +270,8 @@ async function computeOverrideCrash () {
   const now = new Date()
   const minutesNow = now.getHours() * 60 + now.getMinutes()
   const rules = await AviatorRule.find({ active: true }).sort({ priority: -1, updatedAt: -1 }).lean()
-  const base = baseCrashRng()
-  const { buckets2d, buckets1d, buckets0 } = getRecentBuckets()
-  const isRepeat = (a, b) => {
-    if (a == null || b == null) return false
-    const eq2 = Math.round(a * 100) === Math.round(b * 100)
-    const eq1 = Math.round(a * 10) === Math.round(b * 10)
-    const eq0 = Math.round(a) === Math.round(b)
-    return eq2 || eq1 || eq0
-  }
+  const { buckets2d } = getRecentBuckets()
+  const guardRef = lastCrashSample
   for (const r of rules) {
     if (r.type !== 'schedule') continue
     const s = toMinutes(r.startTime)
@@ -247,49 +284,12 @@ async function computeOverrideCrash () {
       const min = hasMin ? Math.max(XM, Number(r.rangeMin)) : XM
       let max = hasMax ? Math.max(min, Number(r.rangeMax)) : MAX_CRASH
       if (hasMin && hasMax && (max - min) < 0.05) max = min + 0.05
-      let val = base
-      if (hasMin && hasMax) {
-        val = sampleCrashInWindow(min, max)
-      } else if (hasMin) {
-        val = Math.max(min, val)
-      } else if (hasMax) {
-        val = Math.min(max, val)
-      }
-      const guardRef = lastCrashSample
-      for (let i = 0; i < 20; i++) {
-        const b2 = Math.round(val * 100)
-        const b1 = Math.round(val * 10)
-        const b0 = Math.round(val)
-        if (isRepeat(val, guardRef) || buckets2d.has(b2) || buckets1d.has(b1) || buckets0.has(b0)) {
-          if (hasMin && hasMax) {
-            val = sampleCrashInWindow(min, max)
-          } else {
-            val = baseCrashRng()
-            if (hasMin) val = Math.max(min, val)
-            else if (hasMax) val = Math.min(max, val)
-          }
-        } else {
-          break
-        }
-      }
-      {
-        const b2f = Math.round(val * 100)
-        const b1f = Math.round(val * 10)
-        const b0f = Math.round(val)
-        if (isRepeat(val, guardRef) || buckets2d.has(b2f) || buckets1d.has(b1f) || buckets0.has(b0f)) {
-          const dir = fairRandom() < 0.5 ? -1 : 1
-          const step = 0.07 + fairRandom() * 0.13
-          val = Math.round((val + dir * step) * 100) / 100
-          if (hasMin && hasMax) {
-            if (val <= min) val = Math.min(max - 0.01, min + 0.01 + (max - min - 0.02) * fairRandom())
-            if (val >= max) val = Math.max(min + 0.01, max - 0.01 - (max - min - 0.02) * fairRandom())
-            val = Math.round(val * 100) / 100
-          } else {
-            if (hasMin) val = Math.max(min, val)
-            if (hasMax) val = Math.min(max, val)
-          }
-        }
-      }
+      const minBound = hasMin ? min : 1.00
+      const maxBound = hasMax ? max : MAX_CRASH
+      const gen = (hasMin && hasMax)
+        ? () => sampleCrashInWindow(min, max)
+        : () => sampleCrashHeavyTail(minBound, maxBound)
+      const val = sampleNonRepeatingCrash(gen, guardRef, buckets2d, minBound, maxBound)
       lastCrashSample = val
       return Math.round(val * 100) / 100
     }
@@ -301,69 +301,41 @@ async function computeOverrideCrash () {
   }
   if (floorRule) {
     const floor = Math.max(XM, Number(floorRule.floorMultiplier))
-    let val = Math.max(floor, baseCrashRng())
-    const guardRef = lastCrashSample
-    for (let i = 0; i < 20; i++) {
-      const b1 = Math.round(val * 10)
-      const b0 = Math.round(val)
-      if (isRepeat(val, guardRef) || buckets1d.has(b1) || buckets0.has(b0)) {
-        val = Math.max(floor, baseCrashRng())
-      } else {
-        break
-      }
-    }
-    {
-      const b1f = Math.round(val * 10)
-      const b0f = Math.round(val)
-      if (isRepeat(val, guardRef) || buckets1d.has(b1f) || buckets0.has(b0f)) {
-        const dir = fairRandom() < 0.5 ? -1 : 1
-        const step = 0.07 + fairRandom() * 0.13
-        val = Math.max(floor, Math.min(MAX_CRASH, Math.round((val + dir * step) * 100) / 100))
-      }
-    }
+    const minBound = floor
+    const maxBound = MAX_CRASH
+    const gen = () => sampleCrashHeavyTail(minBound, maxBound)
+    const val = sampleNonRepeatingCrash(gen, guardRef, buckets2d, minBound, maxBound)
     lastCrashSample = val
     return Math.round(val * 100) / 100
   }
   // No rules: use baseline heavy tail, ensure variation
-  let val = base
-  const guardRef = lastCrashSample
-  for (let i = 0; i < 20; i++) {
-    const b1 = Math.round(val * 10)
-    const b0 = Math.round(val)
-    if (isRepeat(val, guardRef) || buckets1d.has(b1) || buckets0.has(b0)) {
-      val = baseCrashRng()
-    } else {
-      break
-    }
-  }
-  {
-    const b1f = Math.round(val * 10)
-    const b0f = Math.round(val)
-    if (isRepeat(val, guardRef) || buckets1d.has(b1f) || buckets0.has(b0f)) {
-      const dir = fairRandom() < 0.5 ? -1 : 1
-      const step = 0.07 + fairRandom() * 0.13
-      val = Math.max(1.00, Math.min(MAX_CRASH, Math.round((val + dir * step) * 100) / 100))
-    }
-  }
+  const minBound = 1.00
+  const maxBound = MAX_CRASH
+  const gen = () => baseCrashRng()
+  const val = sampleNonRepeatingCrash(gen, guardRef, buckets2d, minBound, maxBound)
   lastCrashSample = val
   return Math.max(1.00, val)
 }
 
 router.get('/next-crash', auth, async (req, res) => {
   try {
-    const v = await computeOverrideCrash()
-    const m2 = Math.max(1.00, Math.round(v * 100) / 100)
-    lastCrashes.unshift({ value: m2, ts: Date.now() })
-    if (lastCrashes.length > 100) lastCrashes = lastCrashes.slice(0, 100)
+    const { m2, usedNonce } = await withCrashGenLock(async () => {
+      const v = await computeOverrideCrash()
+      const m2 = Math.max(1.00, Math.round(v * 100) / 100)
+      lastCrashes.unshift({ value: m2, ts: Date.now() })
+      if (lastCrashes.length > 100) lastCrashes = lastCrashes.slice(0, 100)
+      return { m2, usedNonce: pfLastNonceUsed ?? 0 }
+    })
     res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
       Pragma: 'no-cache',
       Expires: '0',
-      'Surrogate-Control': 'no-store'
+      'Surrogate-Control': 'no-store',
+      Vary: 'Authorization'
     })
     res.set('X-Provably-Fair-Commit', pfCommit)
-    res.set('X-Provably-Fair-Nonce', String(pfLastNonceUsed ?? 0))
-    res.json({ crashPoint: m2, pfNonce: pfLastNonceUsed ?? 0 })
+    res.set('X-Provably-Fair-Nonce', String(usedNonce))
+    res.json({ crashPoint: m2, pfNonce: usedNonce })
   } catch (e) {
     res.status(500).json({ error: 'Server error' })
   }
