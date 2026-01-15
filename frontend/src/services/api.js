@@ -499,7 +499,16 @@ const apiService = {
       throw err;
     }
   },
-  nextAviatorCrashPoint: () => api.get('/aviator/next-crash'),
+  nextAviatorCrashPoint: () => {
+    const nonce = `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+    return api.get(`/aviator/next-crash?nc=${nonce}`, {
+      headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache'
+      },
+      timeout: 15000
+    });
+  },
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   blockUser: (userId) => {
     return api.put(`/users/${userId}/block`);

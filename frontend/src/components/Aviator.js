@@ -146,10 +146,20 @@ const Aviator = () => {
     let cancelled = false;
     (async () => {
       try {
-        await apiService.getAviatorHistory();
+        const resp = await apiService.getAviatorHistory();
         if (!cancelled) {
-          const randomHistory = generateInitialHistory(14);
-          setHistory(randomHistory.slice(0, 100));
+          const raw = resp?.data?.history;
+          if (Array.isArray(raw) && raw.length > 0) {
+            const normalized = raw.map(x => {
+              const v = typeof x === 'number' ? x : (typeof x?.value === 'number' ? x.value : parseFloat(x?.value));
+              return Number.isFinite(v) ? Math.max(1.00, Math.round(v * 100) / 100) : null;
+            }).filter(v => v != null);
+            if (normalized.length > 0) {
+              setHistory(normalized.slice(0, 100));
+              return;
+            }
+          }
+          setHistory(generateInitialHistory(14).slice(0, 100));
         }
       } catch (e) {
         if (!cancelled) {
@@ -170,6 +180,10 @@ const Aviator = () => {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showBetHistory, setShowBetHistory] = useState(false);
   const [myBetHistory, setMyBetHistory] = useState([]);
+  const [myBetHistoryLoading, setMyBetHistoryLoading] = useState(false);
+  const myBetHistoryCacheRef = useRef([]);
+  const myBetHistoryReqRef = useRef(0);
+  const myBetHistoryFetchedAtRef = useRef(0);
   const menuRef = useRef(null);
   const flightAudioRef = useRef(null);
   const flyAwayAudioRef = useRef(null);
@@ -196,20 +210,46 @@ const Aviator = () => {
   }, []);
 
   // Fetch Bet History
-  const fetchMyHistory = useCallback(async () => {
+  const fetchMyHistory = useCallback(async (opts = {}) => {
+      const showLoader = opts.showLoader !== false;
+      const force = opts.force === true;
+      const now = Date.now();
+      if (!force && (now - myBetHistoryFetchedAtRef.current) < 15000 && Array.isArray(myBetHistoryCacheRef.current) && myBetHistoryCacheRef.current.length > 0) {
+          return;
+      }
+
+      const reqId = (myBetHistoryReqRef.current += 1);
+      if (showLoader) setMyBetHistoryLoading(true);
       try {
           const res = await apiService.getUserBets({ market: 'Aviator' });
+          if (reqId !== myBetHistoryReqRef.current) return;
           if (res.data && res.data.bets) {
               setMyBetHistory(res.data.bets);
+              myBetHistoryCacheRef.current = res.data.bets;
+              myBetHistoryFetchedAtRef.current = Date.now();
           }
       } catch (err) {
           console.error("Failed to fetch bet history", err);
+      } finally {
+          if (reqId === myBetHistoryReqRef.current && showLoader) {
+              setMyBetHistoryLoading(false);
+          }
       }
   }, []);
 
   useEffect(() => {
+    fetchMyHistory({ showLoader: false });
+  }, [fetchMyHistory]);
+
+  useEffect(() => {
     if (showBetHistory) {
-        fetchMyHistory();
+        const cached = myBetHistoryCacheRef.current;
+        if (Array.isArray(cached) && cached.length > 0) {
+            setMyBetHistory(cached);
+        }
+        fetchMyHistory({ force: true, showLoader: true });
+    } else {
+        setMyBetHistoryLoading(false);
     }
   }, [showBetHistory, fetchMyHistory]);
 
@@ -1506,12 +1546,21 @@ const Aviator = () => {
                                 
                                 {showBetHistory && (
                                     <div className="bet-history-panel">
+                                        {myBetHistoryLoading && myBetHistory.length > 0 && (
+                                            <div className="aviator-bet-history-spinner" aria-label="Loading bet history">
+                                                <div className="aviator-circle-loader" />
+                                            </div>
+                                        )}
                                         <div className="bet-history-item header">
                                             <span>Time</span>
                                             <span>Mult</span>
                                             <span>Result</span>
                                         </div>
-                                        {myBetHistory.length > 0 ? (
+                                        {myBetHistoryLoading && myBetHistory.length === 0 ? (
+                                            <div className="aviator-bet-history-spinner-center" aria-label="Loading bet history">
+                                                <div className="aviator-circle-loader aviator-circle-loader-lg" />
+                                            </div>
+                                        ) : myBetHistory.length > 0 ? (
                                             myBetHistory.map((bet, idx) => {
                                                 // Handle data structure differences between immediate fetch and bets.js response
                                                 const odds = bet.odds?.selected || bet.odds; // Some endpoints might flatten it

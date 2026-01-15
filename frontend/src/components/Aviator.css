@@ -969,10 +969,44 @@ input:checked + .slider:before {
 
 /* Bet History Panel inside Dropdown or separate */
 .bet-history-panel {
+  position: relative;
   max-height: 300px;
   overflow-y: auto;
   background-color: #0f0f0f;
   border-top: 1px solid #333;
+}
+
+.aviator-bet-history-spinner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+}
+
+.aviator-bet-history-spinner-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 12px;
+}
+
+.aviator-circle-loader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(233, 30, 99, 0.25);
+  border-top-color: #e91e63;
+  border-radius: 50%;
+  animation: aviatorCircleSpin 0.8s linear infinite;
+}
+
+.aviator-circle-loader.aviator-circle-loader-lg {
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+}
+
+@keyframes aviatorCircleSpin {
+  to { transform: rotate(360deg); }
 }
 
 .bet-history-item {
