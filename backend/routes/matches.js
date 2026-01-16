@@ -139,7 +139,7 @@ function cacheResponse (ttlSeconds = 300) {
       status: req.query.status,
       leagueId: req.query.leagueId,
       page: req.query.page || '1',
-      limit: req.query.limit || '20'
+      limit: req.query.limit || '50'
     }
 
     // Remove undefined values
@@ -181,6 +181,296 @@ function cacheResponse (ttlSeconds = 300) {
     next()
   }
 }
+
+const MATCHES_CACHE_TTL_SECONDS = 300
+const MATCHES_SNAPSHOT_MAX_AGE_MS = 15 * 60 * 1000
+const MATCHES_WARM_INTERVAL_MS = 60 * 1000
+const matchesSnapshots = new Map()
+const matchesRefreshInflight = new Map()
+
+function normalizedMatchesQueryParams (q = {}) {
+  const queryParams = {
+    sport: q.sport,
+    status: q.status,
+    leagueId: q.leagueId,
+    page: q.page || '1',
+    limit: q.limit || '50'
+  }
+
+  Object.keys(queryParams).forEach(key => {
+    if (queryParams[key] === undefined) delete queryParams[key]
+  })
+
+  return queryParams
+}
+
+function snapshotKeyFor (queryParams) {
+  return JSON.stringify({
+    sport: queryParams.sport,
+    status: queryParams.status,
+    leagueId: queryParams.leagueId,
+    page: queryParams.page,
+    limit: queryParams.limit
+  })
+}
+
+function respondCachedMatches (req, res, payload, cacheStatus) {
+  const etag = computeEtag(payload)
+  res.set('X-Cache', cacheStatus)
+  res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=300')
+  if (etag) res.set('ETag', etag)
+  if (etag && req.headers['if-none-match'] === etag) {
+    return res.status(304).end()
+  }
+  return res.json(payload)
+}
+
+async function computeMatchesPayload (queryParams) {
+  const sport = queryParams.sport
+  const status = queryParams.status
+  const leagueId = queryParams.leagueId
+  const page = parseInt(queryParams.page) || 1
+  const limit = Math.min(parseInt(queryParams.limit) || 50, 100)
+  const skip = (page - 1) * limit
+
+  const now = new Date()
+
+  const matchQuery = {
+    ...(sport && { sport }),
+    ...(status && { status }),
+    ...(leagueId && { leagueId }),
+    $or: [
+      { status: 'live' },
+      { status: 'upcoming', startTime: { $gte: now } },
+      { status: { $nin: ['finished', 'cancelled'] } }
+    ]
+  }
+
+  const oddsQuery = {
+    ...(sport && { sport_key: sport }),
+    ...(leagueId && { league: leagueId }),
+    commence_time: { $gte: now }
+  }
+
+  const [leagueMetaMap, adminMatches, oddsData, totalAdminMatches, totalOddsData] = await Promise.all([
+    buildLeagueMetaMap(),
+    Match.find(matchQuery)
+      .lean()
+      .populate('leagueId', 'name', null, { lean: true })
+      .sort({ startTime: 1 })
+      .skip(skip)
+      .limit(limit),
+    Odds.find(oddsQuery)
+      .select('gameId home_team away_team commence_time sport_key sport_title bookmakers league')
+      .lean()
+      .sort({ commence_time: 1 })
+      .skip(skip)
+      .limit(limit),
+    Match.countDocuments(matchQuery),
+    Odds.countDocuments(oddsQuery)
+  ])
+
+  const transformedOddsData = oddsData
+    .filter(odds => odds.bookmakers && odds.bookmakers.length > 0)
+    .map(odds => {
+      const firstBookmaker = odds.bookmakers[0]
+      const markets = {}
+      let additionalMarketsCount = 0
+
+      const normalizeMarketKey = (key) => {
+        const k = (key || '').toLowerCase()
+        const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_')
+        if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h'
+        if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals'
+        if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads'
+        return noLay
+      }
+
+      if (firstBookmaker.markets) {
+        for (const market of firstBookmaker.markets) {
+          const mKey = normalizeMarketKey(market.key)
+
+          if (mKey === 'h2h' && market.outcomes) {
+            for (const outcome of market.outcomes) {
+              if (outcome.name === odds.home_team) markets['1'] = outcome.price
+              else if (outcome.name === odds.away_team) markets['2'] = outcome.price
+              else if (outcome.name === 'Draw') markets.X = outcome.price
+            }
+            additionalMarketsCount++
+          } else if (mKey === 'totals' && market.outcomes && market.outcomes.length >= 2) {
+            const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0]
+            const underOutcome = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1]
+            const point = overOutcome?.point ?? underOutcome?.point
+            if (point != null) markets.Total = point
+            if (overOutcome?.price) markets.TM = overOutcome.price
+            if (underOutcome?.price) markets.TU = underOutcome.price
+            additionalMarketsCount++
+          } else if (mKey === 'spreads' && market.outcomes) {
+            const home = market.outcomes.find(o => o.name === odds.home_team)
+            const away = market.outcomes.find(o => o.name === odds.away_team)
+            const line = home?.point ?? away?.point
+            if (line != null) markets.handicapLine = line
+            if (home?.price) markets.homeHandicap = home.price
+            if (away?.price) markets.awayHandicap = away.price
+            additionalMarketsCount++
+          } else {
+            additionalMarketsCount++
+          }
+        }
+      }
+
+      const meta = extractLeagueMeta(leagueMetaMap, odds.sport_title)
+      const leagueName = meta?.leagueName || odds.sport_title || 'Match'
+      const country = meta?.country || ''
+      const sportDisplay = meta?.sportName || odds.sport_key
+      const fullLeagueTitle = computeFullLeagueTitle({
+        sportKeyOrName: sportDisplay,
+        country,
+        leagueName,
+        fallbackSportTitle: odds.sport_title
+      })
+
+      return {
+        id: odds.gameId,
+        homeTeam: odds.home_team,
+        awayTeam: odds.away_team,
+        startTime: odds.commence_time,
+        sport: odds.sport_key,
+        sport_key: odds.sport_key,
+        sport_title: odds.sport_title,
+        status: 'upcoming',
+        odds: markets,
+        additionalMarkets: additionalMarketsCount,
+        market: firstBookmaker.markets[0]?.key || 'Unknown',
+        bookmaker: firstBookmaker.title,
+        league: leagueName,
+        country,
+        fullLeagueTitle
+      }
+    }).filter(match => match !== null)
+
+  const formattedAdminMatches = adminMatches.map(match => {
+    let formattedOdds = match.odds
+
+    if (match.odds instanceof Map) {
+      formattedOdds = {}
+      for (const [key, value] of match.odds.entries()) {
+        formattedOdds[key] = value
+      }
+    }
+
+    if (formattedOdds && typeof formattedOdds === 'object') {
+      Object.keys(formattedOdds).forEach(k => {
+        const v = formattedOdds[k]
+        if (typeof v === 'string' && v.trim() !== '') {
+          const num = Number(v)
+          formattedOdds[k] = Number.isFinite(num) ? num : v
+        }
+      })
+      if (formattedOdds['1'] == null && formattedOdds.homeWin != null) {
+        formattedOdds['1'] = Number(formattedOdds.homeWin)
+      }
+      if (formattedOdds['2'] == null && formattedOdds.awayWin != null) {
+        formattedOdds['2'] = Number(formattedOdds.awayWin)
+      }
+      if (formattedOdds.X == null && formattedOdds.draw != null) {
+        formattedOdds.X = Number(formattedOdds.draw)
+      }
+    }
+
+    const leagueName = match.leagueId?.name || 'Match'
+    const meta = leagueName ? leagueMetaMap.get(String(leagueName).toLowerCase()) : null
+    const country = meta?.country || ''
+    const sportDisplay = meta?.sportName || match.sport
+    const fullLeagueTitle = computeFullLeagueTitle({
+      sportKeyOrName: sportDisplay,
+      country,
+      leagueName
+    })
+
+    return {
+      id: match._id,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      startTime: match.startTime,
+      sport: match.sport,
+      sport_title: leagueName,
+      status: match.status,
+      odds: formattedOdds,
+      additionalMarkets: formattedOdds ? Object.keys(formattedOdds).filter(key => formattedOdds[key] && formattedOdds[key] > 0).length : 0,
+      market: 'admin',
+      bookmaker: 'Admin',
+      videoUrl: match.videoUrl || null,
+      videoPosterUrl: match.videoPosterUrl || null,
+      league: leagueName,
+      country,
+      fullLeagueTitle
+    }
+  })
+
+  const allMatches = [...formattedAdminMatches, ...transformedOddsData]
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+
+  const totalMatches = totalAdminMatches + totalOddsData
+  const totalPages = Math.ceil(totalMatches / limit)
+
+  return {
+    matches: allMatches,
+    pagination: {
+      page,
+      limit,
+      total: totalMatches,
+      pages: totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    },
+    meta: {
+      adminMatches: formattedAdminMatches.length,
+      oddsMatches: transformedOddsData.length,
+      cached: false
+    }
+  }
+}
+
+async function refreshMatchesSnapshotAndCache (queryParams) {
+  const payload = await computeMatchesPayload(queryParams)
+  cacheSet('/api/matches', queryParams, payload, MATCHES_CACHE_TTL_SECONDS)
+  matchesSnapshots.set(snapshotKeyFor(queryParams), { payload, updatedAt: Date.now() })
+  return payload
+}
+
+function triggerMatchesRefresh (queryParams) {
+  const key = snapshotKeyFor(queryParams)
+  if (matchesRefreshInflight.has(key)) return
+  const p = refreshMatchesSnapshotAndCache(queryParams)
+    .catch(() => {})
+    .finally(() => {
+      matchesRefreshInflight.delete(key)
+    })
+  matchesRefreshInflight.set(key, p)
+}
+
+const DEFAULT_MATCHES_QUERY_PARAMS = normalizedMatchesQueryParams({})
+function scheduleDefaultMatchesWarm () {
+  const attempt = () => {
+    try {
+      if (mongoose.connection.readyState !== 1) return
+      triggerMatchesRefresh(DEFAULT_MATCHES_QUERY_PARAMS)
+    } catch (_) {}
+  }
+
+  setTimeout(attempt, 500)
+  const intervalId = setInterval(attempt, MATCHES_WARM_INTERVAL_MS)
+  try {
+    if (intervalId && typeof intervalId.unref === 'function') intervalId.unref()
+  } catch (_) {}
+
+  bus.on('matches:changed', attempt)
+  bus.on('odds:changed', attempt)
+  bus.on('sports:changed', attempt)
+}
+
+scheduleDefaultMatchesWarm()
 
 // Create a new match
 router.post('/', adminAuth, async (req, res) => {
@@ -251,235 +541,34 @@ router.get('/search', adminAuth, async (req, res) => {
 })
 
 // Get all matches with filtering and pagination
-router.get('/', cacheResponse(300), async (req, res) => { // Increased cache TTL
+router.get('/', async (req, res) => {
   try {
-    const sport = req.query.sport
-    const status = req.query.status
-    const leagueId = req.query.leagueId
-    const page = parseInt(req.query.page) || 1
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100) // Cap at 100
-    const skip = (page - 1) * limit
+    const queryParams = normalizedMatchesQueryParams(req.query || {})
 
-    // Get current time for filtering past matches
-    const now = new Date()
-
-    // Build optimized queries with proper indexing hints
-    const matchQuery = {
-      ...(sport && { sport }),
-      ...(status && { status }),
-      ...(leagueId && { leagueId }),
-      // Only show live and future matches (exclude finished/past matches)
-      $or: [
-        { status: 'live' },
-        { status: 'upcoming', startTime: { $gte: now } },
-        { status: { $nin: ['finished', 'cancelled'] } }
-      ]
+    const cached = cacheGet('/api/matches', queryParams)
+    if (cached) {
+      return respondCachedMatches(req, res, cached, 'HIT')
     }
 
-    const oddsQuery = {
-      ...(sport && { sport_key: sport }),
-      ...(leagueId && { league: leagueId }),
-      // Only show future matches from odds data
-      commence_time: { $gte: now }
+    const snapKey = snapshotKeyFor(queryParams)
+    const snap = matchesSnapshots.get(snapKey)
+    if (snap && snap.payload && (Date.now() - snap.updatedAt <= MATCHES_SNAPSHOT_MAX_AGE_MS)) {
+      triggerMatchesRefresh(queryParams)
+      return respondCachedMatches(req, res, snap.payload, 'STALE')
     }
 
-    // Get matches from both collections and metadata in parallel
-    const [leagueMetaMap, adminMatches, oddsData, totalAdminMatches, totalOddsData] = await Promise.all([
-      buildLeagueMetaMap(),
-      // Get admin-created matches with lean query for better performance
-      Match.find(matchQuery)
-        .lean() // Faster queries, returns plain objects
-        .populate('leagueId', 'name', null, { lean: true })
-        .sort({ startTime: 1 })
-        .skip(skip)
-        .limit(limit),
-      // Get odds-based matches with projection to reduce data transfer
-      Odds.find(oddsQuery)
-        .select('gameId home_team away_team commence_time sport_key sport_title bookmakers league')
-        .lean()
-        .sort({ commence_time: 1 })
-        .skip(skip)
-        .limit(limit),
-      // Get total counts for pagination
-      Match.countDocuments(matchQuery),
-      Odds.countDocuments(oddsQuery)
-    ])
-
-    // Optimized transformation with reduced processing
-    const transformedOddsData = oddsData
-      .filter(odds => odds.bookmakers && odds.bookmakers.length > 0)
-      .map(odds => {
-        const firstBookmaker = odds.bookmakers[0]
-        const markets = {}
-        let additionalMarketsCount = 0
-
-        // Market key normalization function
-        const normalizeMarketKey = (key) => {
-          const k = (key || '').toLowerCase()
-          const noLay = k.replace(/_?lay$/i, '').replace(/\blay\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\s/g, '_')
-          if (noLay === 'h2h' || noLay === 'moneyline') return 'h2h'
-          if (noLay === 'totals' || noLay === 'over_under' || noLay === 'points_total') return 'totals'
-          if (noLay === 'spreads' || noLay === 'handicap' || noLay === 'asian_handicap' || noLay === 'point_spread') return 'spreads'
-          return noLay
-        }
-
-        // Optimized market processing - only process essential markets
-        if (firstBookmaker.markets) {
-          for (const market of firstBookmaker.markets) {
-            const mKey = normalizeMarketKey(market.key)
-
-            if (mKey === 'h2h' && market.outcomes) {
-              // Process main betting markets
-              for (const outcome of market.outcomes) {
-                if (outcome.name === odds.home_team) markets['1'] = outcome.price
-                else if (outcome.name === odds.away_team) markets['2'] = outcome.price
-                else if (outcome.name === 'Draw') markets.X = outcome.price
-              }
-              // Include basic odds in additional markets count
-              additionalMarketsCount++
-            } else if (mKey === 'totals' && market.outcomes && market.outcomes.length >= 2) {
-              // Process totals efficiently
-              const overOutcome = market.outcomes.find(o => /over/i.test(o.name)) || market.outcomes[0]
-              const underOutcome = market.outcomes.find(o => /under/i.test(o.name)) || market.outcomes[1]
-              const point = overOutcome?.point ?? underOutcome?.point
-              if (point != null) markets.Total = point
-              if (overOutcome?.price) markets.TM = overOutcome.price
-              if (underOutcome?.price) markets.TU = underOutcome.price
-              additionalMarketsCount++
-            } else if (mKey === 'spreads' && market.outcomes) {
-              // Process spreads efficiently
-              const home = market.outcomes.find(o => o.name === odds.home_team)
-              const away = market.outcomes.find(o => o.name === odds.away_team)
-              const line = home?.point ?? away?.point
-              if (line != null) markets.handicapLine = line
-              if (home?.price) markets.homeHandicap = home.price
-              if (away?.price) markets.awayHandicap = away.price
-              additionalMarketsCount++
-            } else {
-              additionalMarketsCount++
-            }
-          }
-        }
-
-        const meta = extractLeagueMeta(leagueMetaMap, odds.sport_title)
-        const leagueName = meta?.leagueName || odds.sport_title || 'Match'
-        const country = meta?.country || ''
-        const sportDisplay = meta?.sportName || odds.sport_key
-        const fullLeagueTitle = computeFullLeagueTitle({
-          sportKeyOrName: sportDisplay,
-          country,
-          leagueName,
-          fallbackSportTitle: odds.sport_title
-        })
-
-        return {
-          id: odds.gameId,
-          homeTeam: odds.home_team,
-          awayTeam: odds.away_team,
-          startTime: odds.commence_time,
-          sport: odds.sport_key,
-          sport_key: odds.sport_key,
-          sport_title: odds.sport_title,
-          status: 'upcoming',
-          odds: markets,
-          additionalMarkets: additionalMarketsCount,
-          market: firstBookmaker.markets[0]?.key || 'Unknown',
-          bookmaker: firstBookmaker.title,
-          league: leagueName,
-          country,
-          fullLeagueTitle
-        }
-      }).filter(match => match !== null)
-
-    // Combine and format admin matches
-    const formattedAdminMatches = adminMatches.map(match => {
-      // Convert odds to the expected format if needed
-      let formattedOdds = match.odds
-
-      // If odds is a Map (from mongoose), convert to plain object
-      if (match.odds instanceof Map) {
-        formattedOdds = {}
-        for (const [key, value] of match.odds.entries()) {
-          formattedOdds[key] = value
-        }
-      }
-
-      // Ensure mandatory H2H odds exist (1 and 2) and coerce numbers
-      if (formattedOdds && typeof formattedOdds === 'object') {
-        Object.keys(formattedOdds).forEach(k => {
-          const v = formattedOdds[k]
-          if (typeof v === 'string' && v.trim() !== '') {
-            const num = Number(v)
-            formattedOdds[k] = Number.isFinite(num) ? num : v
-          }
-        })
-        // If missing, attempt fallback from homeWin/awayWin/draw keys
-        if (formattedOdds['1'] == null && formattedOdds.homeWin != null) {
-          formattedOdds['1'] = Number(formattedOdds.homeWin)
-        }
-        if (formattedOdds['2'] == null && formattedOdds.awayWin != null) {
-          formattedOdds['2'] = Number(formattedOdds.awayWin)
-        }
-        if (formattedOdds.X == null && formattedOdds.draw != null) {
-          formattedOdds.X = Number(formattedOdds.draw)
-        }
-      }
-
-      const leagueName = match.leagueId?.name || 'Match'
-      const meta = leagueName ? leagueMetaMap.get(String(leagueName).toLowerCase()) : null
-      const country = meta?.country || ''
-      const sportDisplay = meta?.sportName || match.sport
-      const fullLeagueTitle = computeFullLeagueTitle({
-        sportKeyOrName: sportDisplay,
-        country,
-        leagueName
-      })
-
-      return {
-        id: match._id,
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        startTime: match.startTime,
-        sport: match.sport,
-        sport_title: leagueName,
-        status: match.status,
-        odds: formattedOdds,
-        additionalMarkets: formattedOdds ? Object.keys(formattedOdds).filter(key => formattedOdds[key] && formattedOdds[key] > 0).length : 0,
-        market: 'admin',
-        bookmaker: 'Admin',
-        videoUrl: match.videoUrl || null,
-        videoPosterUrl: match.videoPosterUrl || null,
-        league: leagueName,
-        country,
-        fullLeagueTitle
-      }
-    })
-
-    // Combine all matches and sort by start time
-    const allMatches = [...formattedAdminMatches, ...transformedOddsData]
-      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
-
-    const totalMatches = totalAdminMatches + totalOddsData
-    const totalPages = Math.ceil(totalMatches / limit)
-
-    res.json({
-      matches: allMatches,
-      pagination: {
-        page,
-        limit,
-        total: totalMatches,
-        pages: totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      },
-      meta: {
-        adminMatches: formattedAdminMatches.length,
-        oddsMatches: transformedOddsData.length,
-        cached: res.get('X-Cache') === 'HIT'
-      }
-    })
+    const payload = await refreshMatchesSnapshotAndCache(queryParams)
+    return respondCachedMatches(req, res, payload, 'MISS')
   } catch (error) {
     console.error('Get matches error:', error)
+    try {
+      const queryParams = normalizedMatchesQueryParams(req.query || {})
+      const snapKey = snapshotKeyFor(queryParams)
+      const snap = matchesSnapshots.get(snapKey)
+      if (snap && snap.payload) {
+        return respondCachedMatches(req, res, snap.payload, 'STALE')
+      }
+    } catch (_) {}
     res.status(500).json({ error: 'Server error' })
   }
 })

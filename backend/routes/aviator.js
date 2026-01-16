@@ -273,22 +273,37 @@ async function computeOverrideCrash () {
   const { buckets2d } = getRecentBuckets()
   const guardRef = lastCrashSample
   for (const r of rules) {
-    if (r.type !== 'schedule') continue
-    const s = toMinutes(r.startTime)
-    const e = toMinutes(r.endTime)
     const hasMin = r.rangeMin != null
     const hasMax = r.rangeMax != null
-    if (s == null || e == null || (!hasMin && !hasMax)) continue
-    const inWindow = s <= e ? (minutesNow >= s && minutesNow <= e) : (minutesNow >= s || minutesNow <= e)
-    if (inWindow) {
-      const min = hasMin ? Math.max(XM, Number(r.rangeMin)) : XM
-      let max = hasMax ? Math.max(min, Number(r.rangeMax)) : MAX_CRASH
-      if (hasMin && hasMax && (max - min) < 0.05) max = min + 0.05
-      const minBound = hasMin ? min : 1.00
-      const maxBound = hasMax ? max : MAX_CRASH
-      const gen = (hasMin && hasMax)
-        ? () => sampleCrashInWindow(min, max)
-        : () => sampleCrashHeavyTail(minBound, maxBound)
+    if (r.type === 'schedule') {
+      const s = toMinutes(r.startTime)
+      const e = toMinutes(r.endTime)
+      if (!hasMin && !hasMax) continue
+      if (s == null || e == null) continue
+      const inWindow = s <= e ? (minutesNow >= s && minutesNow <= e) : (minutesNow >= s || minutesNow <= e)
+      if (inWindow) {
+        const min = hasMin ? Math.max(XM, Number(r.rangeMin)) : XM
+        let max = hasMax ? Math.max(min, Number(r.rangeMax)) : MAX_CRASH
+        if (hasMin && hasMax && (max - min) < 0.05) max = min + 0.05
+        const minBound = hasMin ? min : 1.00
+        const maxBound = hasMax ? max : MAX_CRASH
+        const gen = (hasMin && hasMax)
+          ? () => sampleCrashInWindow(min, max)
+          : () => sampleCrashHeavyTail(minBound, maxBound)
+        const val = sampleNonRepeatingCrash(gen, guardRef, buckets2d, minBound, maxBound)
+        lastCrashSample = val
+        return Math.round(val * 100) / 100
+      }
+      continue
+    }
+    if (r.type === 'global_range') {
+      if (!hasMin || !hasMax) continue
+      const min = Math.max(XM, Number(r.rangeMin))
+      let max = Math.max(min, Number(r.rangeMax))
+      if ((max - min) < 0.05) max = min + 0.05
+      const minBound = min
+      const maxBound = Math.min(MAX_CRASH, max)
+      const gen = () => sampleCrashInWindow(minBound, maxBound)
       const val = sampleNonRepeatingCrash(gen, guardRef, buckets2d, minBound, maxBound)
       lastCrashSample = val
       return Math.round(val * 100) / 100
@@ -357,6 +372,13 @@ router.get('/history', async (req, res) => {
 
 router.get('/rules', auth, adminAuth, async (req, res) => {
   try {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+      'Surrogate-Control': 'no-store',
+      Vary: 'Authorization'
+    })
     const rules = await AviatorRule.find({}).sort({ priority: -1, createdAt: -1 }).lean()
     res.json({ rules })
   } catch (e) {
@@ -392,7 +414,7 @@ router.put('/rules/:id', auth, adminAuth, async (req, res) => {
     const rule = await AviatorRule.findByIdAndUpdate(
       req.params.id,
       { $set: updates },
-      { new: true }
+      { new: true, runValidators: true }
     )
     if (!rule) return res.status(404).json({ error: 'Not found' })
     res.json({ success: true, rule })

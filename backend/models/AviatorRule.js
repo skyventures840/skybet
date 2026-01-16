@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 
 const aviatorRuleSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  type: { type: String, enum: ['global_floor', 'schedule'], required: true },
+  type: { type: String, enum: ['global_floor', 'global_range', 'schedule'], required: true },
   active: { type: Boolean, default: true },
   floorMultiplier: { type: Number, min: 1, default: null },
   startTime: { type: String, default: null },
