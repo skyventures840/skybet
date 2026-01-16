@@ -79,12 +79,15 @@ const AdminDashboard = () => {
   const [aviatorRules, setAviatorRules] = useState([]);
   const [aviatorLoading, setAviatorLoading] = useState(false);
   const [newFloor, setNewFloor] = useState('');
+  const [globalRangeMin, setGlobalRangeMin] = useState('');
+  const [globalRangeMax, setGlobalRangeMax] = useState('');
   const [scheduleStart, setScheduleStart] = useState('');
   const [scheduleEnd, setScheduleEnd] = useState('');
   const [scheduleMin, setScheduleMin] = useState('');
   const [scheduleMax, setScheduleMax] = useState('');
   const [schedulePriority, setSchedulePriority] = useState(10);
   const [floorSaving, setFloorSaving] = useState(false);
+  const [globalRangeSaving, setGlobalRangeSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [ruleActionBusy, setRuleActionBusy] = useState({});
 
@@ -1185,12 +1188,73 @@ const AdminDashboard = () => {
                       setAviatorRules(prev => [resp.data.rule, ...prev]);
                     }
                     setNewFloor('');
-                    fetchAviatorRules();
+                    fetchAviatorRules({ silent: true });
                   } catch (e) { alert('Failed to save floor rule'); }
                   finally { setFloorSaving(false); }
                 }}
               >
                 {floorSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-900 rounded border border-gray-700">
+            <div className="mb-3 text-white font-semibold">Global Range</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-white text-sm mb-1">Min</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={globalRangeMin}
+                  onChange={(e) => setGlobalRangeMin(e.target.value)}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                  placeholder="10"
+                />
+              </div>
+              <div>
+                <label className="block text-white text-sm mb-1">Max</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={globalRangeMax}
+                  onChange={(e) => setGlobalRangeMax(e.target.value)}
+                  className="shadow border rounded w-full py-2 px-3 text-white bg-gray-800 border-gray-600 placeholder-gray-400"
+                  placeholder="50"
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <button
+                className={`bg-green-600 ${globalRangeSaving ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'} text-white font-bold py-2 px-4 rounded`}
+                disabled={globalRangeSaving}
+                aria-busy={globalRangeSaving}
+                onClick={async () => {
+                  if (!globalRangeMin || !globalRangeMax || globalRangeSaving) return;
+                  try {
+                    setGlobalRangeSaving(true);
+                    const minV = parseFloat(globalRangeMin);
+                    const maxV = parseFloat(globalRangeMax);
+                    const resp = await apiService.createAviatorRule({
+                      name: `Range ${globalRangeMin}-${globalRangeMax}x`,
+                      type: 'global_range',
+                      rangeMin: minV,
+                      rangeMax: maxV,
+                      active: true,
+                      priority: 0
+                    });
+                    if (resp?.data?.rule) {
+                      setAviatorRules(prev => [resp.data.rule, ...prev]);
+                    }
+                    setGlobalRangeMin('');
+                    setGlobalRangeMax('');
+                    fetchAviatorRules({ silent: true });
+                  } catch (e) { alert('Failed to save global range rule'); }
+                  finally { setGlobalRangeSaving(false); }
+                }}
+              >
+                {globalRangeSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
@@ -1272,7 +1336,7 @@ const AdminDashboard = () => {
                       setAviatorRules(prev => [resp.data.rule, ...prev]);
                     }
                     setScheduleStart(''); setScheduleEnd(''); setScheduleMin(''); setScheduleMax('');
-                    fetchAviatorRules();
+                    fetchAviatorRules({ silent: true });
                   } catch (e) { alert('Failed to save schedule rule'); }
                   finally { setScheduleSaving(false); }
                 }}
@@ -1345,12 +1409,12 @@ const AdminDashboard = () => {
                               setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: nextActive } : x));
                             try {
                               await apiService.updateAviatorRule(r._id, { active: nextActive });
-                              await fetchAviatorRules();
+                              fetchAviatorRules({ silent: true });
                             } catch (err) {
                               const msg = err?.response?.data?.error || 'Failed to update active status';
                               alert(msg);
                               setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
-                              await fetchAviatorRules();
+                              fetchAviatorRules({ silent: true });
                             } finally {
                               setRuleActionBusy(prev => {
                                 const rest = { ...prev };
@@ -1366,6 +1430,8 @@ const AdminDashboard = () => {
                     <td>
                       {r.type === 'global_floor' ? (
                         <span>{r.floorMultiplier}x</span>
+                      ) : r.type === 'global_range' ? (
+                        <span>{r.rangeMin}-{r.rangeMax}x</span>
                       ) : (
                         <span>{r.startTime}-{r.endTime} • {r.rangeMin}-{r.rangeMax}x</span>
                       )}
@@ -1383,12 +1449,12 @@ const AdminDashboard = () => {
                           setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: true } : x));
                           try {
                             await apiService.updateAviatorRule(r._id, { active: true });
-                            await fetchAviatorRules();
+                            fetchAviatorRules({ silent: true });
                           } catch (e) {
                             const msg = e?.response?.data?.error || 'Failed to activate';
                             alert(msg);
                             setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
-                            await fetchAviatorRules();
+                            fetchAviatorRules({ silent: true });
                           } 
                           finally {
                             setRuleActionBusy(prev => {
@@ -1412,12 +1478,12 @@ const AdminDashboard = () => {
                           setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: false } : x));
                           try {
                             await apiService.updateAviatorRule(r._id, { active: false });
-                            await fetchAviatorRules();
+                            fetchAviatorRules({ silent: true });
                           } catch (e) {
                             const msg = e?.response?.data?.error || 'Failed to disable';
                             alert(msg);
                             setAviatorRules(prev => prev.map(x => x._id === r._id ? { ...x, active: prevActive } : x));
-                            await fetchAviatorRules();
+                            fetchAviatorRules({ silent: true });
                           } 
                           finally {
                             setRuleActionBusy(prev => {
@@ -1445,14 +1511,14 @@ const AdminDashboard = () => {
                           });
                           try {
                             await apiService.deleteAviatorRule(r._id);
-                            await fetchAviatorRules();
+                            fetchAviatorRules({ silent: true });
                           } catch (e) {
                             const msg = e?.response?.data?.error || 'Failed to delete';
                             alert(msg);
                             if (deletedRule) {
                               setAviatorRules(prev => [deletedRule, ...prev]);
                             }
-                            await fetchAviatorRules();
+                            fetchAviatorRules({ silent: true });
                           } 
                           finally {
                             setRuleActionBusy(prev => {
@@ -1476,13 +1542,14 @@ const AdminDashboard = () => {
     </div>
   );
 
-  async function fetchAviatorRules () {
+  async function fetchAviatorRules (opts = {}) {
+    const silent = opts && opts.silent === true
     try {
-      setAviatorLoading(true)
+      if (!silent) setAviatorLoading(true)
       const res = await apiService.getAviatorRules()
       setAviatorRules(res?.data?.rules || [])
     } finally {
-      setAviatorLoading(false)
+      if (!silent) setAviatorLoading(false)
     }
   }
 

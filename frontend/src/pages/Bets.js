@@ -742,16 +742,31 @@ const Bets = () => {
   // Derive status from pick vs derived outcome
   const deriveStatus = (match) => {
     const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
-    const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
+    const st = String(match?.status || '').toLowerCase();
+    const isSettledFlag =
+      st === 'won' || st === 'win' ||
+      st === 'lost' || st === 'loss' ||
+      st === 'void' ||
+      st === 'cancelled' || st === 'canceled' ||
+      st === 'settled';
+    const isCompleted =
+      ms === 'finished' || ms === 'completed' || ms === 'ended' ||
+      ms === 'won' || ms === 'win' ||
+      ms === 'lost' || ms === 'loss' ||
+      ms === 'void' ||
+      ms === 'cancelled' || ms === 'canceled' ||
+      ms === 'settled' ||
+      match?.result?.isFinal === true ||
+      isSettledFlag;
     if (!isCompleted) return 'pending';
     const hs = match?.result?.homeScore;
     const as = match?.result?.awayScore;
     const hasScores = typeof hs === 'number' && typeof as === 'number';
     if (!hasScores) {
-      const st = String(match?.status || '').toLowerCase();
       if (st === 'won' || st === 'win') return 'won';
       if (st === 'lost' || st === 'loss') return 'lost';
       if (st === 'void') return 'void';
+      if (st === 'cancelled' || st === 'canceled') return 'void';
       return 'pending';
     }
 

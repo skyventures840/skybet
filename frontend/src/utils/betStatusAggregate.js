@@ -11,6 +11,11 @@ export function aggregateBetStatus (statuses, fallbackStatus = 'pending') {
   const list = listRaw.filter(Boolean).map(normalize)
   const fb = normalize(fallbackStatus || 'pending')
   if (list.length === 0) return fb
+  const hasPending = list.some(s => s === 'pending')
+  const isFinalFallback = fb === 'won' || fb === 'lost' || fb === 'void'
+  const nonPending = list.filter(s => s !== 'pending')
+  const allNonPendingWon = nonPending.every(s => s === 'won')
+  if (hasPending && isFinalFallback && allNonPendingWon) return fb
   if (list.some(s => s === 'pending')) return 'pending'
   if (list.every(s => s === 'won')) return 'won'
   if (list.some(s => s === 'lost')) return 'lost'
