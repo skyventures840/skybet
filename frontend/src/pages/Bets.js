@@ -4,7 +4,7 @@ import apiService from '../services/api';
 import websocketService from '../services/websocketService';
 import enhancedCache from '../services/enhancedCache';
 import getMarketTitle, { normalizeMarketKey } from '../utils/marketTitles';
-import { aggregateBetStatus } from '../utils/betStatusAggregate';
+import { aggregateBetStatus, aggregateBetStatusWinLossOnly } from '../utils/betStatusAggregate';
 
 const Bets = () => {
   const [betHistory, setBetHistory] = useState([]);
@@ -870,6 +870,22 @@ const Bets = () => {
     return lowOutcome && lowPick && lowOutcome.includes(lowPick) ? 'won' : 'lost';
   };
 
+  const getAggregatedStatus = (matches, fallbackStatus) => {
+    const list = Array.isArray(matches) ? matches : [];
+    const statuses = list.map(m => m?.derivedStatus).filter(Boolean);
+    const hasBTTS = list.some(m => {
+      const key = normalizeMarketKey(m?.market || '');
+      if (key === 'both_teams_to_score') return true;
+      const sel = String(m?.selection || '');
+      return /btts|both\s*teams\s*to\s*score|gg|ng/i.test(sel);
+    });
+    const agg = hasBTTS
+      ? aggregateBetStatusWinLossOnly(statuses, (fallbackStatus || 'pending'))
+      : aggregateBetStatus(statuses, (fallbackStatus || 'pending'));
+    const label = agg === 'won' ? 'Won' : agg === 'lost' ? 'Lost' : agg === 'void' ? 'Void' : 'Pending';
+    return { agg, label };
+  };
+
   
 
   // Full-page bet view functions
@@ -1172,11 +1188,7 @@ const Bets = () => {
                         <div className="bet-summary-amounts">
                           <span className="bet-summary-payout">${formatAmount(bet.potentialWin)}</span>
                           {(() => {
-                            const agg = aggregateBetStatus(
-                              (displayMatches || []).map(m => m.derivedStatus),
-                              (bet.status || 'pending')
-                            );
-                            const label = agg === 'won' ? 'Won' : agg === 'lost' ? 'Lost' : agg === 'void' ? 'Void' : 'Pending';
+                            const { agg, label } = getAggregatedStatus(displayMatches, bet.status || 'pending');
                             return <span className={`bet-status status-${agg}`}>{label}</span>;
                           })()}
                         </div>
@@ -1193,115 +1205,116 @@ const Bets = () => {
       </div>
 
       {/* Full-page bet view */}
-      {showFullPageBet && selectedBet && (
-        <div className="full-page-bet-overlay">
-          <div className="full-page-bet-container">
-            <div className="full-page-bet-header">
-              <h2>Bet Details - #{selectedBet.id?.slice(-6) || 'N/A'}</h2>
-              <button 
-                className="close-full-page-btn"
-                onClick={closeFullPageBet}
-                title="Close full page view"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="full-page-bet-content">
-              {(() => {
-                const bet = selectedBet;
-                const isMultibet = bet.market === 'parlay' && bet.matches && bet.matches.length > 1;
-                
-                // Reuse the same logic for displaying matches
-                let displayMatches = bet.matches || [];
-                
-                if (isMultibet && displayMatches.length === 0) {
-                  if (bet.selection && bet.selection.includes(';')) {
-                    const matchStrings = bet.selection.split(';');
-                    displayMatches = matchStrings.map((matchStr, index) => {
-                      const parts = matchStr.split(':');
-                      if (parts.length >= 2) {
-                        const matchName = parts[0].trim();
-                        const selectionPart = parts[1].trim();
-                        const selectionMatch = selectionPart.match(/(.+?)\s*\(([0-9.]+)\)/);
-                        
-                        return {
-                          matchId: `legacy-${index}`,
-                          homeTeam: matchName.split(' vs ')[0] || 'Unknown',
-                          awayTeam: matchName.split(' vs ')[1] || 'Unknown',
-                          selection: selectionMatch ? selectionMatch[1].trim() : '1',
-                          odds: selectionMatch ? parseFloat(selectionMatch[2]) : 1.5,
-                          status: index === 0 ? 'won' : index === 1 ? 'won' : 'pending',
-                          outcome: index === 0 ? '1' : index === 1 ? '2' : null,
-                          startTime: new Date()
-                        };
-                      }
-                      return null;
-                    }).filter(Boolean);
-                  }
-                }
-                
-                if (!isMultibet && displayMatches.length === 0) {
-                  const key2 = bet.market ? normalizeMarketKey(bet.market) : '';
-                  const marketTypeDisplay2 = (() => {
-                    if (!key2) return 'Market';
-                    if (key2 === 'winner') return 'Winner';
-                    if (key2.startsWith('totals') || key2.startsWith('alternate_totals') || key2.startsWith('team_totals') || key2.startsWith('alternate_team_totals')) return 'Over/Under';
-                    if (key2.startsWith('spreads') || key2.startsWith('alternate_spreads')) return 'Handicap';
-                    if (key2 === 'outrights') return 'Outrights';
-                    return getMarketTitle(key2);
-                  })();
-                  const matchStr2 = typeof bet.match === 'string' ? bet.match : '';
-                  const split2 = matchStr2.includes(' vs ') ? matchStr2.split(' vs ') : [];
-                  const homeName2 = bet.homeTeam || (split2[0] || 'Unknown');
-                  const awayName2 = bet.awayTeam || (split2[1] || 'Unknown');
-                  const isFinal2 = !!(bet.result && (bet.result.isFinal === true || (typeof bet.result?.homeScore === 'number' && typeof bet.result?.awayScore === 'number'))) || (String(bet.status || '').toLowerCase() !== 'pending');
-                  displayMatches = [{
-                    matchId: bet.matchId,
-                    homeTeam: homeName2,
-                    awayTeam: awayName2,
-                    market: bet.market,
-                    marketTypeDisplay: marketTypeDisplay2,
-                    selection: bet.selection,
-                    odds: bet.odds?.selected || bet.odds,
-                    status: bet.status,
-                    matchStatus: isFinal2 ? 'finished' : (bet.status || 'pending'),
-                    outcome: bet.result?.outcome || bet.status,
-                    result: bet.result || null,
-                    startTime: bet.createdAt
-                  }];
-                }
-                
-                displayMatches = displayMatches.map(m => {
-                  const derivedOutcome = deriveOutcome(m);
-                  const derivedStatus = deriveStatus(m);
-                  return {
-                    ...m,
-                    derivedOutcome,
-                    derivedStatus
-                  };
-                });
+      {showFullPageBet && selectedBet && (() => {
+        const bet = selectedBet;
+        const isMultibet = bet.market === 'parlay' && bet.matches && bet.matches.length > 1;
+        const betIdLabel = bet.id?.slice(-6) || 'N/A';
 
-                const wonCount = displayMatches.filter(m => (m.derivedStatus) === 'won').length;
-                const lostCount = displayMatches.filter(m => (m.derivedStatus) === 'lost').length;
-                const totalCount = displayMatches.length || 1;
+        let displayMatches = bet.matches || [];
 
-                const getFtResult = (match) => {
-                  const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
-                  const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
-                  if (!isCompleted) return '—';
-                  if (match.result && (match.result.homeScore != null || match.result.awayScore != null)) {
-                    const hs = match.result.homeScore ?? '-';
-                    const as = match.result.awayScore ?? '-';
-                    return `${hs}-${as}`;
-                  }
-                  if (match.finalScore) return match.finalScore;
-                  if (match.outcome && ['1','X','2'].includes(String(match.outcome))) return match.outcome;
-                  return '—';
+        if (isMultibet && displayMatches.length === 0) {
+          if (bet.selection && bet.selection.includes(';')) {
+            const matchStrings = bet.selection.split(';');
+            displayMatches = matchStrings.map((matchStr, index) => {
+              const parts = matchStr.split(':');
+              if (parts.length >= 2) {
+                const matchName = parts[0].trim();
+                const selectionPart = parts[1].trim();
+                const selectionMatch = selectionPart.match(/(.+?)\s*\(([0-9.]+)\)/);
+
+                return {
+                  matchId: `legacy-${index}`,
+                  homeTeam: matchName.split(' vs ')[0] || 'Unknown',
+                  awayTeam: matchName.split(' vs ')[1] || 'Unknown',
+                  selection: selectionMatch ? selectionMatch[1].trim() : '1',
+                  odds: selectionMatch ? parseFloat(selectionMatch[2]) : 1.5,
+                  status: index === 0 ? 'won' : index === 1 ? 'won' : 'pending',
+                  outcome: index === 0 ? '1' : index === 1 ? '2' : null,
+                  startTime: new Date()
                 };
+              }
+              return null;
+            }).filter(Boolean);
+          }
+        }
 
-                return (
-                  <div className="full-page-bet-details">
+        if (!isMultibet && displayMatches.length === 0) {
+          const key2 = bet.market ? normalizeMarketKey(bet.market) : '';
+          const marketTypeDisplay2 = (() => {
+            if (!key2) return 'Market';
+            if (key2 === 'winner') return 'Winner';
+            if (key2.startsWith('totals') || key2.startsWith('alternate_totals') || key2.startsWith('team_totals') || key2.startsWith('alternate_team_totals')) return 'Over/Under';
+            if (key2.startsWith('spreads') || key2.startsWith('alternate_spreads')) return 'Handicap';
+            if (key2 === 'outrights') return 'Outrights';
+            return getMarketTitle(key2);
+          })();
+          const matchStr2 = typeof bet.match === 'string' ? bet.match : '';
+          const split2 = matchStr2.includes(' vs ') ? matchStr2.split(' vs ') : [];
+          const homeName2 = bet.homeTeam || (split2[0] || 'Unknown');
+          const awayName2 = bet.awayTeam || (split2[1] || 'Unknown');
+          const isFinal2 = !!(bet.result && (bet.result.isFinal === true || (typeof bet.result?.homeScore === 'number' && typeof bet.result?.awayScore === 'number'))) || (String(bet.status || '').toLowerCase() !== 'pending');
+          displayMatches = [{
+            matchId: bet.matchId,
+            homeTeam: homeName2,
+            awayTeam: awayName2,
+            market: bet.market,
+            marketTypeDisplay: marketTypeDisplay2,
+            selection: bet.selection,
+            odds: bet.odds?.selected || bet.odds,
+            status: bet.status,
+            matchStatus: isFinal2 ? 'finished' : (bet.status || 'pending'),
+            outcome: bet.result?.outcome || bet.status,
+            result: bet.result || null,
+            startTime: bet.createdAt
+          }];
+        }
+
+        displayMatches = displayMatches.map(m => {
+          const derivedOutcome = deriveOutcome(m);
+          const derivedStatus = deriveStatus(m);
+          return {
+            ...m,
+            derivedOutcome,
+            derivedStatus
+          };
+        });
+
+        const { label: aggLabel } = getAggregatedStatus(displayMatches, bet.status || 'pending');
+
+        const wonCount = displayMatches.filter(m => (m.derivedStatus) === 'won').length;
+        const lostCount = displayMatches.filter(m => (m.derivedStatus) === 'lost').length;
+        const totalCount = displayMatches.length || 1;
+
+        const getFtResult = (match) => {
+          const ms = String(match?.matchStatus || match?.status || '').toLowerCase();
+          const isCompleted = ms === 'finished' || ms === 'completed' || ms === 'ended' || match?.result?.isFinal === true;
+          if (!isCompleted) return '—';
+          if (match.result && (match.result.homeScore != null || match.result.awayScore != null)) {
+            const hs = match.result.homeScore ?? '-';
+            const as = match.result.awayScore ?? '-';
+            return `${hs}-${as}`;
+          }
+          if (match.finalScore) return match.finalScore;
+          if (match.outcome && ['1','X','2'].includes(String(match.outcome))) return match.outcome;
+          return '—';
+        };
+
+        return (
+          <div className="full-page-bet-overlay">
+            <div className="full-page-bet-container">
+              <div className="full-page-bet-header">
+                <h2>Bet Details - #{betIdLabel} • {aggLabel}</h2>
+                <button
+                  className="close-full-page-btn"
+                  onClick={closeFullPageBet}
+                  title="Close full page view"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="full-page-bet-content">
+                <div className="full-page-bet-details">
                     {/* Bet Summary */}
                     <div className="full-page-bet-summary">
                       <div className="summary-cards">
@@ -1446,12 +1459,11 @@ const Bets = () => {
                       </div>
                     </div>
                   </div>
-                );
-              })()}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

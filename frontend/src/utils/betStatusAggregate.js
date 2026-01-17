@@ -22,3 +22,25 @@ export function aggregateBetStatus (statuses, fallbackStatus = 'pending') {
   if (list.some(s => s === 'void')) return 'void'
   return fb
 }
+
+export function aggregateBetStatusWinLossOnly (statuses, fallbackStatus = 'pending') {
+  const normalize = (s) => {
+    const t = String(s || '').trim().toLowerCase()
+    if (t === 'win' || t === 'won') return 'won'
+    if (t === 'loss' || t === 'lost') return 'lost'
+    if (t === 'pending') return 'pending'
+    return t
+  }
+  const listRaw = Array.isArray(statuses) ? statuses : []
+  const list = listRaw.filter(Boolean).map(normalize)
+  const fb = normalize(fallbackStatus || 'pending')
+  if (list.length === 0) return fb
+
+  const total = list.length
+  const won = list.filter(s => s === 'won').length
+  const lost = list.filter(s => s === 'lost').length
+
+  if (won === total) return 'won'
+  if (lost >= 1 && (won + lost) === total) return 'lost'
+  return 'pending'
+}
